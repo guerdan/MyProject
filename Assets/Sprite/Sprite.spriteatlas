@@ -1,0 +1,125 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!687078895 &4343727234628468602
+SpriteAtlas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Sprite
+  m_EditorData:
+    serializedVersion: 2
+    textureSettings:
+      serializedVersion: 2
+      anisoLevel: 1
+      compressionQuality: 50
+      maxTextureSize: 2048
+      textureCompression: 0
+      filterMode: 1
+      generateMipMaps: 0
+      readable: 0
+      crunchedCompression: 0
+      sRGB: 1
+    platformSettings:
+    - serializedVersion: 3
+      m_BuildTarget: DefaultTexturePlatform
+      m_MaxTextureSize: 2048
+      m_ResizeAlgorithm: 0
+      m_TextureFormat: -1
+      m_TextureCompression: 1
+      m_CompressionQuality: 100
+      m_CrunchedCompression: 1
+      m_AllowsAlphaSplitting: 0
+      m_Overridden: 0
+      m_AndroidETC2FallbackOverride: 0
+      m_ForceMaximumCompressionQuality_BC6H_BC7: 0
+    - serializedVersion: 3
+      m_BuildTarget: Standalone
+      m_MaxTextureSize: 2048
+      m_ResizeAlgorithm: 0
+      m_TextureFormat: 29
+      m_TextureCompression: 1
+      m_CompressionQuality: 100
+      m_CrunchedCompression: 1
+      m_AllowsAlphaSplitting: 0
+      m_Overridden: 1
+      m_AndroidETC2FallbackOverride: 0
+      m_ForceMaximumCompressionQuality_BC6H_BC7: 0
+    packingSettings:
+      serializedVersion: 2
+      padding: 2
+      blockOffset: 1
+      allowAlphaSplitting: 0
+      enableRotation: 1
+      enableTightPacking: 0
+      enableAlphaDilation: 0
+    secondaryTextureSettings:
+      ggg:
+        platformSettings:
+        - serializedVersion: 3
+          m_BuildTarget: DefaultTexturePlatform
+          m_MaxTextureSize: 2048
+          m_ResizeAlgorithm: 0
+          m_TextureFormat: -1
+          m_TextureCompression: 1
+          m_CompressionQuality: 50
+          m_CrunchedCompression: 0
+          m_AllowsAlphaSplitting: 0
+          m_Overridden: 0
+          m_AndroidETC2FallbackOverride: 0
+          m_ForceMaximumCompressionQuality_BC6H_BC7: 0
+        sRGB: 1
+    variantMultiplier: 1
+    packables:
+    - {fileID: 102900000, guid: 75dca6e7a848c4f479b796261f29dafb, type: 3}
+    bindAsDefault: 1
+    isAtlasV2: 0
+    cachedData: {fileID: 0}
+  m_MasterAtlas: {fileID: 0}
+  m_PackedSprites:
+  - {fileID: 21300000, guid: 4cfb9d1021f2a714486e95155a621632, type: 3}
+  - {fileID: 21300000, guid: 23bdb351ffe5cb94cb0adb00be98ddcc, type: 3}
+  - {fileID: 21300000, guid: a1fe1b2280e7ebe42890637eba395a48, type: 3}
+  - {fileID: 21300000, guid: fad3eed2fd0d3e94695f22d967a254f7, type: 3}
+  - {fileID: 21300000, guid: 9f417e0395fba9343807ff167b00356f, type: 3}
+  - {fileID: 21300000, guid: 35898935d3ddea5489b87017a7232496, type: 3}
+  - {fileID: 21300000, guid: 93646ba5501dc6d4da2c3d4f2439f611, type: 3}
+  - {fileID: 21300000, guid: 79ee4e36185dc2247aa9842b79d39a85, type: 3}
+  - {fileID: 21300000, guid: ae01fb6780e7dc84f9f78208bcf49c51, type: 3}
+  - {fileID: 21300000, guid: f0755768c8612d74ba6967f0f56d714e, type: 3}
+  - {fileID: 21300000, guid: cc97fa984c7870e45a5346f85809ac16, type: 3}
+  - {fileID: 21300000, guid: 24299739c6ef7f442b1471c1ff2fbd2b, type: 3}
+  - {fileID: 21300000, guid: 35ec8dfacd6c07c41a30560084d2e96a, type: 3}
+  - {fileID: 21300000, guid: 18326d1bc73daba44ad3c939dd02b08e, type: 3}
+  - {fileID: 21300000, guid: 999f922b4b1850c408298b5f88ceedc8, type: 3}
+  - {fileID: 21300000, guid: 2511282ba2d656d49bec4981a7e86563, type: 3}
+  - {fileID: 21300000, guid: 5833ea4d06e97fa49ba43c023f8d8444, type: 3}
+  - {fileID: 21300000, guid: 3bafe8ce610cf8c439122930a236874b, type: 3}
+  - {fileID: 21300000, guid: be33170f9ecdfab4b9473c27d96ce2c1, type: 3}
+  - {fileID: 21300000, guid: 3aada44fa0b764845abf9c9e30afaf2f, type: 3}
+  - {fileID: 21300000, guid: 8dff6dff9b4baa04cafe56d77d588ff4, type: 3}
+  m_PackedSpriteNamesToIndex:
+  - icon_pvp_score
+  - icon_pvp_rank1
+  - rank_no4_bg01
+  - white
+  - rank_my_bg01
+  - rank_no2_bg01
+  - icon_pvp_fail_en
+  - rank_no3_bg01
+  - rank_no1_bg01
+  - rank_icon_log
+  - icon_pvp_defence
+  - rank_icon_reward
+  - icon_pvp_rank3
+  - icon_pvp_defence_en
+  - icon_pvp_fail
+  - icon_pvp_attack
+  - icon_pvp_win
+  - icon_pvp_rank2
+  - icon_pvp_win_en
+  - icon_pvp_attack_en
+  - bg_pvp_myrank
+  m_RenderDataMap: {}
+  m_Tag: Sprite
+  m_IsVariant: 0
