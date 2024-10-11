@@ -82,6 +82,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: a1fe1b2280e7ebe42890637eba395a48, type: 3}
   - {fileID: 21300000, guid: fad3eed2fd0d3e94695f22d967a254f7, type: 3}
   - {fileID: 21300000, guid: 9f417e0395fba9343807ff167b00356f, type: 3}
+  - {fileID: 21300000, guid: 396ad783eea98fc448eb72012e8482c4, type: 3}
   - {fileID: 21300000, guid: 35898935d3ddea5489b87017a7232496, type: 3}
   - {fileID: 21300000, guid: 93646ba5501dc6d4da2c3d4f2439f611, type: 3}
   - {fileID: 21300000, guid: 79ee4e36185dc2247aa9842b79d39a85, type: 3}
@@ -96,7 +97,6 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 5833ea4d06e97fa49ba43c023f8d8444, type: 3}
   - {fileID: 21300000, guid: 3bafe8ce610cf8c439122930a236874b, type: 3}
   - {fileID: 21300000, guid: be33170f9ecdfab4b9473c27d96ce2c1, type: 3}
-  - {fileID: 21300000, guid: 3aada44fa0b764845abf9c9e30afaf2f, type: 3}
   - {fileID: 21300000, guid: 8dff6dff9b4baa04cafe56d77d588ff4, type: 3}
   m_PackedSpriteNamesToIndex:
   - icon_pvp_score
@@ -104,6 +104,7 @@ SpriteAtlas:
   - rank_no4_bg01
   - white
   - rank_my_bg01
+  - icon_pvp_attack_en 1
   - rank_no2_bg01
   - icon_pvp_fail_en
   - rank_no3_bg01
@@ -118,7 +119,6 @@ SpriteAtlas:
   - icon_pvp_win
   - icon_pvp_rank2
   - icon_pvp_win_en
-  - icon_pvp_attack_en
   - bg_pvp_myrank
   m_RenderDataMap: {}
   m_Tag: Sprite

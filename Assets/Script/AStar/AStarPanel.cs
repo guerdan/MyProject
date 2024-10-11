@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Sprites;
@@ -6,15 +7,14 @@ using UnityEngine.UI;
 
 public class AStarPanel : MonoBehaviour, IPointerClickHandler
 {
+    public Button startBtn;
     public Button setPlayerBtn;
     public Button setDestinBtn;
     public Button setBarrierBtn;
     public Button clearAllBtn;
-    public Button startBtn;
 
-
-    private int[,] map;
-
+    public GameObject UIPrefab;
+    public GameObject UIParent;
     private List<GameObject> nodes = new List<GameObject>(); 
     // Start is called before the first frame update
     void Start()
@@ -25,13 +25,26 @@ public class AStarPanel : MonoBehaviour, IPointerClickHandler
         clearAllBtn.onClick.AddListener(onClearAllBtnnClick);
         startBtn.onClick.AddListener(onStartBtnClick);
 
-        for (int i = 0; i < transform.childCount; i++)
-        {
-            this.nodes.Add(transform.GetChild(i).gameObject);
-        }
+       
     }
 
-
+    void onStartBtnClick()
+    {
+        foreach (var go in nodes)
+        {
+            Destroy(go);
+        }
+        nodes.Clear();
+        int row = 12;
+        int column = 17;
+        int count = row * column;
+        for (int i = 0; i < count; i++)
+        {
+            GameObject node = Instantiate(UIPrefab);
+            node.transform.SetParent(UIParent.transform,false);
+            nodes.Add(node);
+        }
+    }
 
     void onSetPlayerBtnClick()
     {
@@ -53,10 +66,7 @@ public class AStarPanel : MonoBehaviour, IPointerClickHandler
         
     }
     
-    void onStartBtnClick()
-    {
-        
-    }
+    
 
     public void OnPointerClick(PointerEventData eventData)
     {

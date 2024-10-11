@@ -3,6 +3,7 @@ Shader "Custom/uv1"
     Properties
     {
         [PerRendererData] _MainTex ("Texture", 2D) = "white" {} // 主纹理
+        _Radius ("Radius", Float) = 0.5 // 主纹理
         [HideInInspector] _StencilComp ("Stencil Comparison", Float) = 8 // 模板比较函数
         [HideInInspector] _Stencil ("Stencil ID", Float) = 0 // 模板 ID
         [HideInInspector] _StencilOp ("Stencil Operation", Float) = 0 // 模板操作
@@ -47,12 +48,13 @@ Shader "Custom/uv1"
             fixed4 _TextureSampleAdd; // 纹理采样附加值
             float4 _ClipRect; // 剪裁矩形
             sampler2D _MainTex; // 主纹理采样器
+            float _Radius; // 半径
 
             struct a2v
             {
                 float4 vertex : POSITION; // 顶点位置
                 float4 color : COLOR; // 顶点颜色
-                float2 texcoord : TEXCOORD0; // 纹理坐标
+                float2 uv0 : TEXCOORD0; // 纹理坐标
                 float2 uv1 : TEXCOORD1; // 纹理坐标
                 UNITY_VERTEX_INPUT_INSTANCE_ID // 实例 ID
             };
@@ -61,7 +63,7 @@ Shader "Custom/uv1"
             {
                 float4 vertex : SV_POSITION; // 裁剪空间位置
                 float4 color : COLOR; // 顶点颜色
-                float2 texcoord : TEXCOORD0; // 纹理坐标
+                float2 uv0 : TEXCOORD0; // 纹理坐标
                 float2 uv1 : TEXCOORD1; // 纹理坐标
                 UNITY_VERTEX_OUTPUT_STEREO // 立体输出
             };
@@ -73,15 +75,20 @@ Shader "Custom/uv1"
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(OUT); // 初始化立体输出
                 OUT.vertex = UnityObjectToClipPos(IN.vertex); // 转换为裁剪空间位置
                 OUT.color = IN.color; // 传递颜色
-                OUT.texcoord = IN.texcoord; // 传递纹理坐标
+                OUT.uv0 = IN.uv0; // 传递纹理坐标
                 OUT.uv1 = IN.uv1; // 传递纹理坐标
                 return OUT;
             }
 
             fixed4 frag(v2f IN) : SV_Target
             {
-                // 读取纹理颜色并乘以顶点颜色
-                half4 color = tex2D(_MainTex, IN.uv1) * IN.color;
+
+                half4 color = tex2D(_MainTex, IN.uv0) * IN.color;                // 读取纹理颜色并乘以顶点颜色
+                float dis = distance(IN.uv1, float2(0.5,0.5));
+                if (dis >= _Radius)
+                {
+                   color.a = 0;
+                }
                 return color; // 返回颜色
             }
             ENDCG

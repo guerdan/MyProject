@@ -21,31 +21,54 @@ namespace Script
             //     vert.uv1.y = 0.5f;
             //     vh.SetUIVertex(vert, i);
             // }
-            
+
             List<UIVertex> vertices = new List<UIVertex>();
             vh.GetUIVertexStream(vertices);
+
+            if (vertices.Count <= 0) return;
+            UIVertex min_vertex = vertices[0];
+            UIVertex max_vertex = vertices[0];
+
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                min_vertex = UVAddXY(vertices[i]) <= UVAddXY(min_vertex) ? vertices[i] : min_vertex;
+                max_vertex = UVAddXY(vertices[i]) >= UVAddXY(max_vertex) ? vertices[i] : max_vertex;
+            }
+
+
+            float width = max_vertex.position.x - min_vertex.position.x;
+            float height = max_vertex.position.y - min_vertex.position.y;
 
             for (int i = 0; i < vertices.Count; i++)
             {
                 UIVertex vertex = vertices[i];
-                // 设置第二组 UV 坐标，这里简单地将第一组 UV 坐标复制到第二组
-                vertex.uv1 = new Vector2(vertex.uv0.x + 0.5f, vertex.uv0.y);
+                float xRatio = (vertex.position.x - min_vertex.position.x) / width;
+                float yRatio = (vertex.position.y - min_vertex.position.y) / height;
+                vertex.uv1 = new Vector2(xRatio, yRatio);
                 vertices[i] = vertex;
             }
 
             vh.Clear();
             vh.AddUIVertexTriangleStream(vertices);
 
-            string print = "";
-            for (int i = 0; i < vertices.Count; i++)
-            {
-                UIVertex vertex = vertices[i];
-                print += String.Format(
-                    $"Vertex {i}: UV0 = {vertex.uv0} \n");
-            }
-            Debug.LogWarning(print);
-        }
-        
+            #region 打印
 
+            // string print = "";
+            // for (int i = 0; i < vertices.Count; i++)
+            // {
+            //     UIVertex vertex = vertices[i];
+            //     print += String.Format(
+            //         $"Vertex {i}: UV0 = {vertex.uv0} position = {vertex.position}\n");
+            // }
+            //
+            // Debug.LogWarning(print);
+
+            #endregion
+        }
+
+        public float UVAddXY(UIVertex vertex0)
+        {
+            return vertex0.uv0.x + vertex0.uv0.y;
+        }
     }
 }
