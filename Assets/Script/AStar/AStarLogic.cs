@@ -2,45 +2,122 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class AStarPathFinding
+public class AStarLogicManager
 {
-    public Node[,] grid = null; // 假设有一个Grid类负责处理网格数据
-    public Node startNode;
-    public Node targetNode;
+    private static AStarLogicManager _inst;
 
-    private List<Node> openList = new List<Node>();
-    private HashSet<Node> closedList = new HashSet<Node>();
-
-    public void init(int row, int column, Vector2Int start, Vector2Int target)
+    public static AStarLogicManager inst
     {
-        grid = new Node[row, column];
+        get
+        {
+            _inst = _inst == null ? new AStarLogicManager() : _inst;
+            return _inst;
+        }
+    }
+
+
+    public AStarLogicNode[,] grid = null; // Node[x,y]
+    private AStarLogicNode startNode;
+    private AStarLogicNode targetNode;
+
+    public List<AStarLogicNode> openList = new List<AStarLogicNode>();
+    public HashSet<AStarLogicNode> closedList = new HashSet<AStarLogicNode>();
+
+    public void init(int row, int column)
+    {
+        grid = new AStarLogicNode[column, row];
         for (int i = 0; i < row; i++)
         {
             for (int j = 0; j < column; j++)
             {
-                grid[i, j] = new Node() { GridX = j, GridY = i };
+                grid[j, i] = new AStarLogicNode() { GridX = j, GridY = i };
             }
         }
 
-        this.startNode = grid[start.x, start.y];
-        this.targetNode = grid[target.x, target.y];
-    }
-
-    public void FindPathStep()
-    {
-        if (grid == null) return;
 
         openList.Clear();
         closedList.Clear();
+        startNode = null;
+        targetNode = null;
+    }
 
-        startNode.G = 0;
-        startNode.H = Heuristic(startNode, targetNode); // 使用启发式函数计算H值
-        startNode.F = startNode.G + startNode.H;
+    public bool inArea(Vector2Int pos)
+    {
+        if (grid == null) return false;
+        if (pos.x < 0 || pos.x >= grid.GetLength(0)) return false;
+        if (pos.y < 0 || pos.y >= grid.GetLength(1)) return false;
+        return true;
+    }
 
-        openList.Add(startNode);
+    /// <summary>
+    /// 设置障碍
+    /// </summary>
+    /// <param name="pos"></param>
+    public void SetBlock(Vector2Int pos)
+    {
+        if (!inArea(pos)) return;
+        AStarLogicNode node = grid[pos.x, pos.y];
+        if (node.Type == AStarLogicNodeType.Block)
+            node.Type = AStarLogicNodeType.Normal;
+        else if (node.Type == AStarLogicNodeType.Normal)
+            node.Type = AStarLogicNodeType.Block;
+    }
+
+    /// <summary>
+    /// 设置起点
+    /// </summary>
+    /// <param name="pos"></param>
+    public void SetStart(Vector2Int pos)
+    {
+        if (!inArea(pos)) return;
+        foreach (var node in grid)
+        {
+            if (node.Type == AStarLogicNodeType.Start)
+                node.Type = AStarLogicNodeType.Normal;
+        }
+
+        startNode = grid[pos.x, pos.y];
+        startNode.Type = AStarLogicNodeType.Start;
+    }
+
+    /// <summary>
+    /// 设置终点
+    /// </summary>
+    /// <param name="pos"></param>
+    public void SetTarget(Vector2Int pos)
+    {
+        if (!inArea(pos)) return;
+        foreach (var node in grid)
+        {
+            if (node.Type == AStarLogicNodeType.Target)
+                node.Type = AStarLogicNodeType.Normal;
+        }
+
+        targetNode = grid[pos.x, pos.y];
+        targetNode.Type = AStarLogicNodeType.Target;
+    }
+
+    /// <summary>
+    /// A*寻路逻辑，每执行一步
+    /// </summary>
+    public void FindPathStep()
+    {
+        if (grid == null) return;
+        if (targetNode == null) return;
+        if (startNode == null) return;
+
+        //若未初始化则初始
+        if (startNode.H == 0)
+        {
+            startNode.G = 0;
+            startNode.H = Heuristic(startNode, targetNode); // 使用启发式函数计算H值
+
+            openList.Add(startNode);
+        }
+
         if (openList.Count > 0)
         {
-            Node currentNode = GetLowestFScore(openList); // 获取F值最低的节点
+            AStarLogicNode currentNode = GetLowestFScore(openList); // 获取F值最低的节点
 
             if (currentNode == targetNode)
             {
@@ -71,22 +148,22 @@ public class AStarPathFinding
         }
     }
 
-    private int Heuristic(Node a, Node b)
+    private int Heuristic(AStarLogicNode a, AStarLogicNode b)
     {
         // 可能使用曼哈顿距离或其他启发式函数
         return Mathf.Abs(a.GridX - b.GridX) + Mathf.Abs(a.GridY - b.GridY);
     }
 
-    //遍历找出F/G最小的节点
-    private Node GetLowestFScore(List<Node> list)
+    //遍历找出F最小H最小（H越小估计失误越少）的节点
+    private AStarLogicNode GetLowestFScore(List<AStarLogicNode> list)
     {
-        Node min = list[0];
+        AStarLogicNode min = list[0];
         for (int i = 1; i < list.Count; i++)
         {
-            Node node = list[i];
+            AStarLogicNode node = list[i];
             if (node.F < min.F)
                 min = node;
-            if (node.F == min.F && node.G < min.G)
+            if (node.F == min.F && node.H < min.H)
                 min = node;
         }
 
@@ -94,9 +171,9 @@ public class AStarPathFinding
     }
 
     //找出节点的可达的邻节点
-    private List<Node> GetNeighbors(Node node)
+    private List<AStarLogicNode> GetNeighbors(AStarLogicNode node)
     {
-        List<Node> list = new List<Node>();
+        List<AStarLogicNode> list = new List<AStarLogicNode>();
         int x = node.GridX;
         int y = node.GridY;
         if (x > 0)
@@ -121,21 +198,32 @@ public class AStarPathFinding
             list.Add(grid[x, y - 1]);
         if (y < grid.GetLength(1) - 1)
             list.Add(grid[x, y + 1]);
+
+        list = list.FindAll(node => node.Type != AStarLogicNodeType.Block);
         return list;
     }
 
-    private int GetDistance(Node a, Node b)
+    private int GetDistance(AStarLogicNode a, AStarLogicNode b)
     {
         // 可能使用曼哈顿距离或其他启发式函数
         return Mathf.Abs(a.GridX - b.GridX) + Mathf.Abs(a.GridY - b.GridY);
     }
 }
 
+public enum AStarLogicNodeType
+{
+    Normal = 0,
+    Start = 1,
+    Target = 2,
+    Block = 3,
+}
+
 // Node类表示网格中的单个节点
-public class Node
+public class AStarLogicNode
 {
     public int GridX;
     public int GridY;
+    public AStarLogicNodeType Type = AStarLogicNodeType.Normal;
 
     /// <summary>
     /// 实际值
@@ -147,72 +235,12 @@ public class Node
     /// </summary>
     public int H;
 
-    public int F;
+    public int F => H + G;
 
     /// <summary>
     /// 链表
     /// </summary>
-    public Node parent;
+    public AStarLogicNode parent;
 
     // 其他属性和方法...
-}
-
-
-// public class Node
-// {
-//     Vector2 m_position; //下标
-//     public Vector2 position => m_position;
-//     public Node parent; //上一个node
-//
-//     //角色到该节点的实际距离
-//     int m_g;
-//
-//     public int g
-//     {
-//         get => m_g;
-//         set
-//         {
-//             m_g = value;
-//             m_f = m_g + m_h;
-//         }
-//     }
-//
-//     //该节点到目的地的估价距离
-//     int m_h;
-//
-//     public int h
-//     {
-//         get => m_h;
-//         set
-//         {
-//             m_h = value;
-//             m_f = m_g + m_h;
-//         }
-//     }
-//
-//     int m_f;
-//     public int f => m_f;
-//
-//     public Node(Vector2 pos, Node parent, int g, int h)
-//     {
-//         m_position = pos;
-//         this.parent = parent;
-//         m_g = g;
-//         m_h = h;
-//         m_f = m_g + m_h;
-//     }
-// }
-
-public class AStarLogic
-{
-    private static AStarLogic _inst;
-
-    public static AStarLogic inst
-    {
-        get
-        {
-            if (_inst == null) _inst = new AStarLogic();
-            return _inst;
-        }
-    }
 }

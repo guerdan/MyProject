@@ -82,7 +82,6 @@ SpriteAtlas:
   - {fileID: 21300000, guid: a1fe1b2280e7ebe42890637eba395a48, type: 3}
   - {fileID: 21300000, guid: fad3eed2fd0d3e94695f22d967a254f7, type: 3}
   - {fileID: 21300000, guid: 9f417e0395fba9343807ff167b00356f, type: 3}
-  - {fileID: 21300000, guid: 396ad783eea98fc448eb72012e8482c4, type: 3}
   - {fileID: 21300000, guid: 35898935d3ddea5489b87017a7232496, type: 3}
   - {fileID: 21300000, guid: 93646ba5501dc6d4da2c3d4f2439f611, type: 3}
   - {fileID: 21300000, guid: 79ee4e36185dc2247aa9842b79d39a85, type: 3}
@@ -104,7 +103,6 @@ SpriteAtlas:
   - rank_no4_bg01
   - white
   - rank_my_bg01
-  - icon_pvp_attack_en 1
   - rank_no2_bg01
   - icon_pvp_fail_en
   - rank_no3_bg01
