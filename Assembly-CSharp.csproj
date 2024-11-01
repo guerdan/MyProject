@@ -41,15 +41,19 @@
     <ImplicitlyExpandDesignTimeFacades>false</ImplicitlyExpandDesignTimeFacades>
   </PropertyGroup>
   <ItemGroup>
+     <Compile Include="Assets\Script\AStar\AStarCell.cs" />
      <Compile Include="Assets\Script\VertIndexAsUV1.cs" />
      <Compile Include="Assets\Script\DestroyDemo.cs" />
+     <Compile Include="Assets\Script\Shadow\OutlineCustome.cs" />
      <Compile Include="Assets\Script\AStar\AStarPanel.cs" />
      <Compile Include="Assets\Script\NewBehaviourScript.cs" />
      <Compile Include="Assets\Script\AStar\AStarLogic.cs" />
      <Compile Include="Assets\Script\Root.cs" />
-     <Compile Include="Assets\Script\AStar\AStarCell.cs" />
+     <None Include="Assets\Shader\MultiPassShader.shader" />
      <None Include="Assets\Shader\uv1.shader" />
      <None Include="Assets\Shader\ColorMask.shader" />
+     <None Include="Assets\Shader\Outline3D.shader" />
+     <None Include="Assets\Shader\Tiling.shader" />
      <Reference Include="UnityEngine">
      <HintPath>C:\Program Files\Unity 2021.3.6f1\Editor\Data\Managed\UnityEngine\UnityEngine.dll</HintPath>
      </Reference>

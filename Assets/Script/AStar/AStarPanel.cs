@@ -147,7 +147,7 @@ public class AStarPanel : MonoBehaviour, IPointerClickHandler
         for (int j = 0; j < column; j++)
         {
             int index = i * column + j;
-            nodes[index].GetComponent<AStarCell>().SetData(AStarLogicManager.inst.grid[j, i]);
+            nodes[index].GetComponent<AStarCell>().SetData(AStarLogicManager.inst.grid[i, j]);
         }
     }
 

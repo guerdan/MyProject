@@ -16,7 +16,7 @@ public class AStarLogicManager
     }
 
 
-    public AStarLogicNode[,] grid = null; // Node[x,y]
+    public AStarLogicNode[,] grid = null; // Node[y,x]
     private AStarLogicNode startNode;
     private AStarLogicNode targetNode;
 
@@ -25,12 +25,12 @@ public class AStarLogicManager
 
     public void init(int row, int column)
     {
-        grid = new AStarLogicNode[column, row];
+        grid = new AStarLogicNode[row, column];
         for (int i = 0; i < row; i++)
         {
             for (int j = 0; j < column; j++)
             {
-                grid[j, i] = new AStarLogicNode() { GridX = j, GridY = i };
+                grid[i, j] = new AStarLogicNode() { GridX = j, GridY = i };
             }
         }
 
@@ -44,8 +44,8 @@ public class AStarLogicManager
     public bool inArea(Vector2Int pos)
     {
         if (grid == null) return false;
-        if (pos.x < 0 || pos.x >= grid.GetLength(0)) return false;
-        if (pos.y < 0 || pos.y >= grid.GetLength(1)) return false;
+        if (pos.y < 0 || pos.y >= grid.GetLength(0)) return false;
+        if (pos.x < 0 || pos.x >= grid.GetLength(1)) return false;
         return true;
     }
 
@@ -56,7 +56,7 @@ public class AStarLogicManager
     public void SetBlock(Vector2Int pos)
     {
         if (!inArea(pos)) return;
-        AStarLogicNode node = grid[pos.x, pos.y];
+        AStarLogicNode node = grid[pos.y, pos.x];
         if (node.Type == AStarLogicNodeType.Block)
             node.Type = AStarLogicNodeType.Normal;
         else if (node.Type == AStarLogicNodeType.Normal)
@@ -76,7 +76,7 @@ public class AStarLogicManager
                 node.Type = AStarLogicNodeType.Normal;
         }
 
-        startNode = grid[pos.x, pos.y];
+        startNode = grid[pos.y, pos.x];
         startNode.Type = AStarLogicNodeType.Start;
     }
 
@@ -93,7 +93,7 @@ public class AStarLogicManager
                 node.Type = AStarLogicNodeType.Normal;
         }
 
-        targetNode = grid[pos.x, pos.y];
+        targetNode = grid[pos.y, pos.x];
         targetNode.Type = AStarLogicNodeType.Target;
     }
 
@@ -178,26 +178,26 @@ public class AStarLogicManager
         int y = node.GridY;
         if (x > 0)
         {
-            list.Add(grid[x - 1, y]);
+            list.Add(grid[y, x - 1]);
             if (y > 0)
-                list.Add(grid[x - 1, y - 1]);
-            if (y < grid.GetLength(1) - 1)
-                list.Add(grid[x - 1, y + 1]);
+                list.Add(grid[y - 1, x - 1]);
+            if (y < grid.GetLength(0) - 1)
+                list.Add(grid[y + 1, x - 1]);
         }
 
-        if (x < grid.GetLength(0) - 1)
+        if (x < grid.GetLength(1) - 1)
         {
-            list.Add(grid[x + 1, y]);
+            list.Add(grid[y, x + 1]);
             if (y > 0)
-                list.Add(grid[x + 1, y - 1]);
-            if (y < grid.GetLength(1) - 1)
-                list.Add(grid[x + 1, y + 1]);
+                list.Add(grid[y - 1, x + 1]);
+            if (y < grid.GetLength(0) - 1)
+                list.Add(grid[y + 1, x + 1]);
         }
 
         if (y > 0)
-            list.Add(grid[x, y - 1]);
-        if (y < grid.GetLength(1) - 1)
-            list.Add(grid[x, y + 1]);
+            list.Add(grid[y - 1, x]);
+        if (y < grid.GetLength(0) - 1)
+            list.Add(grid[y + 1, x]);
 
         list = list.FindAll(node => node.Type != AStarLogicNodeType.Block);
         return list;
