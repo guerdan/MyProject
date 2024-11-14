@@ -42,7 +42,7 @@ namespace Script.XLua
         void OnDestroy()
         {
             //释放lua环境
-            luaEnv.Dispose();
+            if (luaEnv != null) luaEnv.Dispose();
         }
 
         void Update()
@@ -50,6 +50,10 @@ namespace Script.XLua
             if (Input.GetKeyDown(KeyCode.A))
             {
                 luaEnv.DoString("require 'Lua/Folder1/testA'");
+
+                // 获取 Lua 函数
+                LuaFunction luaFunction = luaEnv.Global.Get<LuaFunction>("LuaFunctionExample");
+                luaFunction.Call(10);
             }
         }
 
@@ -58,7 +62,7 @@ namespace Script.XLua
         private IEnumerator LoadLuaAddressable()
         {
             var LuaHandle = Addressables.LoadAssetsAsync<TextAsset>(luaPaths, null, Addressables.MergeMode.Union);
-LuaHandle.WaitForCompletion();
+            LuaHandle.WaitForCompletion();
             LuaHandle.Completed += (handle) =>
             {
                 for (int i = 0; i < handle.Result.Count; i++)
@@ -80,6 +84,7 @@ LuaHandle.WaitForCompletion();
                 Debug.LogError("Lua脚本加载失败");
             }
 
+
         }
 
 
@@ -96,6 +101,7 @@ LuaHandle.WaitForCompletion();
     }
 
 
+    [LuaCallCSharp]
     public class TestA
     {
         public int a = 42;
@@ -107,6 +113,27 @@ LuaHandle.WaitForCompletion();
 
         public void DirectCall()
         {
+        }
+    }
+
+
+    [LuaCallCSharp]
+    public class TestB
+    {
+        public TestA a;
+
+        private void Awake1()
+        {
+            Debug.LogWarning("Awake");
+        }
+
+        public void DirectCall()
+        {
+        }
+
+        public void GAwake1()
+        {
+            Debug.LogWarning("Awake");
         }
     }
 }
