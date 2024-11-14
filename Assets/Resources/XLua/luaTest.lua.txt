@@ -1,0 +1,12 @@
+config = {name = "测试1", age = "30"}
+
+name ="测试2"
+age = 1
+
+print("加载了")
+
+function printInfo(info)
+    print("参数是",info)
+
+    return 100
+end

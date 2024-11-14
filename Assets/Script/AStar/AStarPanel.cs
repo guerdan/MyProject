@@ -72,18 +72,18 @@ public class AStarPanel : MonoBehaviour, IPointerClickHandler
         float cell_width = width / column;
         float cell_height = height / row;
         for (int i = 0; i < row; i++)
-        for (int j = 0; j < column; j++)
-        {
-            GameObject node = Instantiate(UIPrefab);
-            node.transform.SetParent(UIParent.transform, false);
-            nodes.Add(node);
+            for (int j = 0; j < column; j++)
+            {
+                GameObject node = Instantiate(UIPrefab);
+                node.transform.SetParent(UIParent.transform, false);
+                nodes.Add(node);
 
-            RectTransform rect = node.GetComponent<RectTransform>();
-            rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, cell_width - 2);
-            rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, cell_height - 2);
-            rect.anchoredPosition =
-                new Vector2(cell_width * j + cell_width / 2, -cell_height * i - cell_height / 2);
-        }
+                RectTransform rect = node.GetComponent<RectTransform>();
+                rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, cell_width - 2);
+                rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, cell_height - 2);
+                rect.anchoredPosition =
+                    new Vector2(cell_width * j + cell_width / 2, -cell_height * i - cell_height / 2);
+            }
 
         refreshUi();
 
@@ -130,7 +130,7 @@ public class AStarPanel : MonoBehaviour, IPointerClickHandler
         float cell_height = height / row;
         int x_index = (int)Math.Floor(uiPos.x / cell_width);
         int y_index = (int)Math.Floor(-uiPos.y / cell_height);
-        
+
 
         if (operate == AStarPanelOper.SetStart)
             AStarLogicManager.inst.SetStart(new Vector2Int(x_index, y_index));
@@ -144,21 +144,12 @@ public class AStarPanel : MonoBehaviour, IPointerClickHandler
     public void refreshUi()
     {
         for (int i = 0; i < row; i++)
-        for (int j = 0; j < column; j++)
-        {
-            int index = i * column + j;
-            nodes[index].GetComponent<AStarCell>().SetData(AStarLogicManager.inst.grid[i, j]);
-        }
+            for (int j = 0; j < column; j++)
+            {
+                int index = i * column + j;
+                nodes[index].GetComponent<AStarCell>().SetData(AStarLogicManager.inst.grid[i, j]);
+            }
     }
 
-    async void Animation()
-    {
-        // 创建一个简单的 tween 动画
-        Tween tween = transform.DOMove(new Vector3(3, 0, 0), 2f);
 
-        // 等待 tween 动画完成
-        await tween.AsyncWaitForCompletion();
-
-        Debug.Log("Tween animation completed");
-    }
 }

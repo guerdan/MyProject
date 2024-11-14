@@ -1,0 +1,9 @@
+print("testB hello")
+
+
+local testB = {
+    name = "testB",
+    age = 20,
+}
+
+return testB
