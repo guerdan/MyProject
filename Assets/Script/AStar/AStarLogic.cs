@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
-using UnityEngine;
+using System.Linq;
+using System;
 
 public class AStarLogicManager
 {
@@ -174,6 +175,7 @@ public class AStarLogicManager
     private List<AStarLogicNode> GetNeighbors(AStarLogicNode node)
     {
         List<AStarLogicNode> list = new List<AStarLogicNode>();
+
         int x = node.GridX;
         int y = node.GridY;
         if (x > 0)

@@ -64,5 +64,5 @@
         "UnityEngine",
         "XLua"
     ],
-    "dotnet.defaultSolution": "My project.sln"
+    "dotnet.defaultSolution": "MyProject.sln"
 }

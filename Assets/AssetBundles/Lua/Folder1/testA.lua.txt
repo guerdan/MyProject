@@ -1,0 +1,32 @@
+print("testA hello")
+
+-- local testB = require("Lua/Folder1/testB")
+
+-- print("call",testB.name)
+
+
+-- 反射调用 C# 方法
+local testClass = CS.Script.XLua.TestA()
+testClass:DirectCall()
+-- 反射访问 C# 属性
+print("C# property a:", testClass.a)
+
+function LuaFunctionExample()
+    -- 反射2600ms  6000个时钟周期, Warp 260ms  600个时钟周期
+    local watch = CS.System.Diagnostics.Stopwatch()
+    watch:Start()
+    for i = 1, 1000000, 1 do
+        testClass:DirectCall()
+    end
+
+    watch:Stop()
+    print("Direct call time: ", tostring(watch.ElapsedMilliseconds), " ms");
+end
+
+
+xlua.hotfix(CS.Script.XLua.TestB, "DirectCall", function(self)
+    print("hotfix DirectCall")
+end)
+
+local testB = CS.Script.XLua.TestB()
+testB:DirectCall()

@@ -10,6 +10,9 @@ scopes = {
 	"last_search.2138236A" = "44a70d1b13cf47e29810e30f45ffae08"
 	"OpenInspectorPreview.2138236A" = "0"
 	"currentGroup.2138236A" = "asset"
+	"last_search.C4949528" = "Camera Gizmo t:Texture2D"
+	"OpenInspectorPreview.C4949528" = "0"
+	"currentGroup.C4949528" = "asset"
 }
 providers = {
 	adb = {

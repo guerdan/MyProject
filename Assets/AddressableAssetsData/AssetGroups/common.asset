@@ -21,6 +21,10 @@ MonoBehaviour:
     m_Address: Common/Common
     m_ReadOnly: 0
     m_SerializedLabels: []
+  - m_GUID: b1b6b32c034e5944496380a7cb18fb5a
+    m_Address: Common/Prefab/Image1
+    m_ReadOnly: 0
+    m_SerializedLabels: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 461c0bb45d0c65047b0497b6d6fed90a, type: 2}
   m_SchemaSet:

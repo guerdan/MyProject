@@ -21,10 +21,9 @@ namespace XLua.CSObjectWrap
         {
 			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
 			System.Type type = typeof(Script.XLua.TestB);
-			Utils.BeginObjectRegister(type, L, translator, 0, 2, 1, 1);
+			Utils.BeginObjectRegister(type, L, translator, 0, 1, 1, 1);
 			
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "DirectCall", _m_DirectCall);
-			Utils.RegisterFunc(L, Utils.METHOD_IDX, "GAwake1", _m_GAwake1);
 			
 			
 			Utils.RegisterFunc(L, Utils.GETTER_IDX, "a", _g_get_a);
@@ -90,33 +89,6 @@ namespace XLua.CSObjectWrap
                 {
                     
                     gen_to_be_invoked.DirectCall(  );
-                    
-                    
-                    
-                    return 0;
-                }
-                
-            } catch(System.Exception gen_e) {
-                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
-            }
-            
-        }
-        
-        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
-        static int _m_GAwake1(RealStatePtr L)
-        {
-		    try {
-            
-                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
-            
-            
-                Script.XLua.TestB gen_to_be_invoked = (Script.XLua.TestB)translator.FastGetCSObj(L, 1);
-            
-            
-                
-                {
-                    
-                    gen_to_be_invoked.GAwake1(  );
                     
                     
                     

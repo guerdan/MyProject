@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
@@ -45,24 +46,12 @@ namespace Script.XLua
             if (luaEnv != null) luaEnv.Dispose();
         }
 
-        void Update()
-        {
-            if (Input.GetKeyDown(KeyCode.A))
-            {
-                luaEnv.DoString("require 'Lua/Folder1/testA'");
-
-                // 获取 Lua 函数
-                LuaFunction luaFunction = luaEnv.Global.Get<LuaFunction>("LuaFunctionExample");
-                luaFunction.Call(10);
-            }
-        }
 
 
 
         private IEnumerator LoadLuaAddressable()
         {
             var LuaHandle = Addressables.LoadAssetsAsync<TextAsset>(luaPaths, null, Addressables.MergeMode.Union);
-            LuaHandle.WaitForCompletion();
             LuaHandle.Completed += (handle) =>
             {
                 for (int i = 0; i < handle.Result.Count; i++)
@@ -85,7 +74,34 @@ namespace Script.XLua
             }
 
 
+
+            var LuaHandle2 = Addressables.LoadAssetsAsync<TextAsset>(luaPaths, null, Addressables.MergeMode.Union);
+            LuaHandle2.Completed += (handle) =>
+            {
+                Debug.LogWarning("onComplete" + Time.frameCount);
+            };
+
+                Debug.LogWarning("invoke" + Time.frameCount);
+
         }
+
+
+        void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.A))
+            {
+                luaEnv.DoString("require 'Lua/Folder1/testA'");
+
+                // 获取 Lua 函数
+                // LuaFunction luaFunction = luaEnv.Global.Get<LuaFunction>("LuaFunctionExample");
+                // luaFunction.Call(10);
+
+                var b = new TestB();
+                b.DirectCall();
+            }
+        }
+
+
 
 
         public byte[] LuaScriptLoader(ref string filepath)
@@ -109,6 +125,8 @@ namespace Script.XLua
         private void Awake()
         {
             Debug.LogWarning("Awake");
+
+
         }
 
         public void DirectCall()
@@ -122,18 +140,17 @@ namespace Script.XLua
     {
         public TestA a;
 
-        private void Awake1()
+        private void Awake()
         {
             Debug.LogWarning("Awake");
         }
 
+        [Hotfix]
         public void DirectCall()
         {
+            Debug.LogWarning("DirectCall");
         }
 
-        public void GAwake1()
-        {
-            Debug.LogWarning("Awake");
-        }
+
     }
 }

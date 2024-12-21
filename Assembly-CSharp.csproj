@@ -59,7 +59,7 @@
     <UnityVersion>2021.3.6f1</UnityVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Analyzer Include="C:\Users\hp\.vscode\extensions\visualstudiotoolsforunity.vstuc-1.0.4\Analyzers\Microsoft.Unity.Analyzers.dll" />
+    <Analyzer Include="C:\Users\hp\.vscode\extensions\visualstudiotoolsforunity.vstuc-1.0.5\Analyzers\Microsoft.Unity.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Script\ObjectPool.cs" />
@@ -69,6 +69,7 @@
     <Compile Include="Assets\XLua\Gen\UnityEngine_TextAssetWrap.cs" />
     <Compile Include="Assets\XLua\Gen\XLuaTest_Foo1ParentWrap.cs" />
     <Compile Include="Assets\XLua\Tutorial\LoadLuaScript\Loader\CustomLoader.cs" />
+    <Compile Include="Assets\XLua\Gen\Script_XLua_TestAWrap.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_DebugWrap.cs" />
     <Compile Include="Assets\XLua\Examples\11_RawObject\RawObjectTest.cs" />
     <Compile Include="Assets\XLua\Gen\Tutorial_DerivedClassWrap.cs" />
@@ -81,9 +82,11 @@
     <Compile Include="Assets\XLua\Gen\XLuaTest_Foo2ChildWrap.cs" />
     <Compile Include="Assets\XLua\Gen\DelegatesGensBridge.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_WaitForSecondsWrap.cs" />
+    <Compile Include="Assets\Script\Test\AssetTest.cs" />
     <Compile Include="Assets\Script\DestroyDemo.cs" />
     <Compile Include="Assets\XLua\Examples\02_U3DScripting\LuaBehaviour.cs" />
     <Compile Include="Assets\XLua\Examples\10_SignatureLoader\SignatureLoaderTest.cs" />
+    <Compile Include="Assets\Script\Framework\AssetUtil.cs" />
     <Compile Include="Assets\XLua\Tutorial\LuaCallCSharp\LuaCallCs.cs" />
     <Compile Include="Assets\XLua\Examples\04_LuaObjectOrented\InvokeLua.cs" />
     <Compile Include="Assets\XLua\Src\LuaFunction.cs" />
@@ -94,9 +97,11 @@
     <Compile Include="Assets\XLua\Gen\UnityEngine_TimeWrap.cs" />
     <Compile Include="Assets\XLua\Gen\EnumWrap.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_ComponentWrap.cs" />
+    <Compile Include="Assets\Script\Framework\AssetManager.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_BehaviourWrap.cs" />
+    <Compile Include="Assets\Script\Framework\Utility.cs" />
     <Compile Include="Assets\XLua\Src\CodeEmit.cs" />
-    <Compile Include="Assets\Script\Test\TestClass.cs" />
+    <Compile Include="Assets\Script\Test\PerformanceTestClass.cs" />
     <Compile Include="Assets\XLua\Gen\PackUnpack.cs" />
     <Compile Include="Assets\XLua\Examples\07_AsyncTest\AsyncTest.cs" />
     <Compile Include="Assets\XLua\Src\LuaException.cs" />
@@ -113,7 +118,7 @@
     <Compile Include="Assets\XLua\Src\LuaTable.cs" />
     <Compile Include="Assets\XLua\Examples\01_Helloworld\Helloworld.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_Vector4Wrap.cs" />
-    <Compile Include="Assets\Script\Tween\MoveRect.cs" />
+    <Compile Include="Assets\Script\Tweener\MoveRect.cs" />
     <Compile Include="Assets\XLua\Tutorial\LoadLuaScript\ByFile\ByFile.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_KeyframeWrap.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_Ray2DWrap.cs" />
@@ -149,7 +154,6 @@
     <Compile Include="Assets\XLua\Gen\XLuaTest_NoGcWrap.cs" />
     <Compile Include="Assets\XLua\Src\LuaBase.cs" />
     <Compile Include="Assets\Script\AStar\AStarPanel.cs" />
-    <Compile Include="Assets\Script\NewBehaviourScript.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_QuaternionWrap.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_Vector2Wrap.cs" />
     <Compile Include="Assets\XLua\Examples\07_AsyncTest\MessageBox.cs" />
@@ -157,7 +161,8 @@
     <Compile Include="Assets\XLua\Tutorial\LoadLuaScript\ByString\ByString.cs" />
     <Compile Include="Assets\XLua\Gen\Tutorial_BaseClassWrap.cs" />
     <Compile Include="Assets\XLua\Examples\05_NoGc\NoGc.cs" />
-    <Compile Include="Assets\Script\Tween\MoveParent.cs" />
+    <Compile Include="Assets\XLua\Gen\Script_XLua_TestBWrap.cs" />
+    <Compile Include="Assets\Script\Tweener\MoveParent.cs" />
     <Compile Include="Assets\XLua\Src\ObjectTranslator.cs" />
     <Compile Include="Assets\XLua\Src\LuaEnv.cs" />
     <Compile Include="Assets\XLua\Gen\System_ObjectWrap.cs" />
@@ -181,6 +186,8 @@
     <None Include="Assets\XLua\Examples\07_AsyncTest\Resources\async_test.lua.txt" />
     <None Include="Assets\XLua\Tutorial\LoadLuaScript\ByFile\Resources\byfile.lua.txt" />
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\MyTask2.lua.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder1\testB.lua.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder1\classA.lua.txt" />
     <None Include="Assets\Shader\MultiPassShader.shader" />
     <None Include="Assets\XLua\Examples\06_Coroutine\Resources\coruntine_test.lua.txt" />
     <None Include="Assets\XLua\Resources\xlua\util.lua.txt" />
@@ -188,6 +195,7 @@
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\Method1.lua.txt" />
     <None Include="Assets\Resources\XLua\luaTest.lua.txt" />
     <None Include="Assets\XLua\Gen\Resources\hotfix_id_map.lua.txt" />
+    <None Include="Assets\AssetBundles\Other\Sprite2AtlasAddress.txt" />
     <None Include="Assets\XLua\Resources\perf\profiler.lua.txt" />
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\MyTask.lua.txt" />
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\AsyncMethod3.lua.txt" />
@@ -202,7 +210,7 @@
     <None Include="Assets\XLua\Examples\02_U3DScripting\LuaTestScript.lua.txt" />
     <None Include="Assets\XLua\Examples\07_AsyncTest\Resources\message_box.lua.txt" />
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\AsyncMethod2.lua.txt" />
-    <None Include="Assets\AssetBundle\Lua\Folder1\testA.lua.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder1\testA.lua.txt" />
     <None Include="Assets\XLua\Resources\tdr\tdr.lua.txt" />
     <None Include="Assets\XLua\CHANGELOG.txt" />
     <None Include="Assets\XLua\Gen\link.xml" />
@@ -1078,6 +1086,10 @@
       <HintPath>Library\ScriptAssemblies\Unity.2D.PixelPerfect.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="UnityEditor.CacheServer">
+      <HintPath>Library\ScriptAssemblies\UnityEditor.CacheServer.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="PsdPlugin">
       <HintPath>Library\ScriptAssemblies\PsdPlugin.dll</HintPath>
       <Private>False</Private>
@@ -1094,6 +1106,10 @@
       <HintPath>Library\ScriptAssemblies\Unity.TestTools.CodeCoverage.Editor.OpenCover.Model.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.Addressables">
+      <HintPath>Library\ScriptAssemblies\Unity.Addressables.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Unity.VisualScripting.State.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.State.Editor.dll</HintPath>
       <Private>False</Private>
@@ -1106,16 +1122,16 @@
       <HintPath>Library\ScriptAssemblies\Unity.2D.Path.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.VisualScripting.SettingsProvider.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.SettingsProvider.Editor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="Unity.TestTools.CodeCoverage.Editor.OpenCover.Mono.Reflection">
       <HintPath>Library\ScriptAssemblies\Unity.TestTools.CodeCoverage.Editor.OpenCover.Mono.Reflection.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEditor.UI">
       <HintPath>Library\ScriptAssemblies\UnityEditor.UI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.VisualScripting.SettingsProvider.Editor">
+      <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.SettingsProvider.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Rider.Editor">
@@ -1142,6 +1158,10 @@
       <HintPath>Library\ScriptAssemblies\Unity.Mathematics.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.Addressables.Editor">
+      <HintPath>Library\ScriptAssemblies\Unity.Addressables.Editor.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Unity.2D.Common.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.2D.Common.Editor.dll</HintPath>
       <Private>False</Private>
@@ -1162,12 +1182,20 @@
       <HintPath>Library\ScriptAssemblies\Unity.2D.Animation.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.MemoryProfiler">
+      <HintPath>Library\ScriptAssemblies\Unity.MemoryProfiler.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Unity.2D.Tilemap.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.2D.Tilemap.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.VisualStudio.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.VisualStudio.Editor.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.Profiling.Core">
+      <HintPath>Library\ScriptAssemblies\Unity.Profiling.Core.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Timeline">
@@ -1186,6 +1214,10 @@
       <HintPath>Library\ScriptAssemblies\Unity.Burst.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.MemoryProfiler.Editor">
+      <HintPath>Library\ScriptAssemblies\Unity.MemoryProfiler.Editor.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Unity.2D.Sprite.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.2D.Sprite.Editor.dll</HintPath>
       <Private>False</Private>
@@ -1196,6 +1228,10 @@
     </Reference>
     <Reference Include="Unity.InternalAPIEditorBridge.001">
       <HintPath>Library\ScriptAssemblies\Unity.InternalAPIEditorBridge.001.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.ResourceManager">
+      <HintPath>Library\ScriptAssemblies\Unity.ResourceManager.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UniTask.DOTween">
@@ -1262,8 +1298,20 @@
       <HintPath>Library\ScriptAssemblies\Unity.2D.Common.Runtime.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.ScriptableBuildPipeline">
+      <HintPath>Library\ScriptAssemblies\Unity.ScriptableBuildPipeline.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Unity.2D.SpriteShape.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.2D.SpriteShape.Editor.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.MemoryProfiler.Editor.MemoryProfilerModule">
+      <HintPath>Library\ScriptAssemblies\Unity.MemoryProfiler.Editor.MemoryProfilerModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.ScriptableBuildPipeline.Editor">
+      <HintPath>Library\ScriptAssemblies\Unity.ScriptableBuildPipeline.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UniTask">
@@ -1280,30 +1328,6 @@
     </Reference>
     <Reference Include="Unity.VisualScripting.State">
       <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.State.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.Addressables">
-      <HintPath>Library\ScriptAssemblies\Unity.Addressables.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.Addressables.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.Addressables.Editor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="UnityEditor.CacheServer">
-      <HintPath>Library\ScriptAssemblies\UnityEditor.CacheServer.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.ResourceManager">
-      <HintPath>Library\ScriptAssemblies\Unity.ResourceManager.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.ScriptableBuildPipeline">
-      <HintPath>Library\ScriptAssemblies\Unity.ScriptableBuildPipeline.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.ScriptableBuildPipeline.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.ScriptableBuildPipeline.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>

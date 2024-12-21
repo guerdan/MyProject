@@ -1,0 +1,19 @@
+-- 定义一个类
+local ClassA = {}
+ClassA.__index = ClassA
+
+-- 构造函数
+function ClassA:new(name, age)
+    local instance = setmetatable({}, ClassA)
+    instance.name = name
+    instance.age = age
+    return instance
+end
+
+-- 类方法
+function ClassA:printInfo()
+    print("Name: " .. self.name .. ", Age: " .. self.age)
+end
+
+-- 返回类
+return ClassA
