@@ -1,11 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using XLua;
 
-
-namespace Editor
+namespace Script.Editor
 {
     public static class HotfixCfg
     {

@@ -21,8 +21,12 @@ MonoBehaviour:
     m_Address: Common/Common
     m_ReadOnly: 0
     m_SerializedLabels: []
-  - m_GUID: b1b6b32c034e5944496380a7cb18fb5a
-    m_Address: Common/Prefab/Image1
+  - m_GUID: 6604e3c22021f9b4d98e037bff9cee12
+    m_Address: Common/Animation/LoadingProgressUIClip
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: e18dabc6a193a6f45ae80e2f6cea3d5f
+    m_Address: Common/Animation/LoadingProgressUI
     m_ReadOnly: 0
     m_SerializedLabels: []
   m_ReadOnly: 0

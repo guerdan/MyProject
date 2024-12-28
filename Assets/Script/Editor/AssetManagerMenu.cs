@@ -1,8 +1,7 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
-using Script.Framework;
+using Script.Util;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Settings;
@@ -14,7 +13,7 @@ using Object = UnityEngine.Object;
 namespace Script.Editor
 {
 
-    public partial class AssetManager
+    public class AssetManager
     {
         private const string MenuItemPath = Utility.CustomToolsPath + "Addressable/";
         private const string RefreshSpriteAddressJsonFileString = "Refresh Sprite Address Json File";
