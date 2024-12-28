@@ -7,7 +7,7 @@ namespace Script.Util
 {
     public static class TweenUtil
     {
-        public static Tween GetContentScaleTween(GameObject node, float start, float end, float duration, Ease ease)
+        public static Tween GetNodeScaleTween(GameObject node, float start, float end, float duration, Ease ease)
         {
             var trans = node.transform;
 
@@ -21,7 +21,7 @@ namespace Script.Util
                         trans.localScale = Vector3.one * scale;
                     });
         }
-        public static Tween GetContentFadeTween(GameObject node,float start, float end, float duration, Ease ease)
+        public static Tween GetNodeFadeTween(GameObject node,float start, float end, float duration, Ease ease)
         {
             CanvasGroup group = node.GetComponent<CanvasGroup>();
             if (group == null) group = node.AddComponent<CanvasGroup>();
@@ -36,7 +36,7 @@ namespace Script.Util
                         group.alpha = opa / 255;
                     });
         }
-        public static Tween GetMaskBgFadeTween(Image img,float start, float end, float duration, Ease ease)
+        public static Tween GetImageFadeTween(Image img,float start, float end, float duration, Ease ease)
         {
             float opa = start;
             img.color = new Color(0, 0, 0, opa / 255);

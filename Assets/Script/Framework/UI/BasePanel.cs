@@ -27,9 +27,10 @@ namespace Script.Framework.UI
         [SerializeField] public Button[] CloseButtons;
         protected const float OpenAnimDuration = 0.4f;
         protected const float CloseAnimDuration = 0.12f;
-        protected const float MaskOpacity = 85;
+        // protected const float MaskOpacity = 85;
+        protected const float MaskOpacity = 204;
 
-        protected bool display = false;     //打开状态
+        protected bool display = false;      //打开状态
         protected Sequence openSeq;          //弹窗打开动画
         protected Sequence closeSeq;         //弹窗关闭动画
 
@@ -42,14 +43,9 @@ namespace Script.Framework.UI
         public PanelDefine PanelDefine { get { return _panelDefine; } set { _panelDefine = value; } }
         public Transform Transform { get { return transform; } }
         public Transform Content { get { return transform.Find("Content"); } }
+        public bool AnimEnable { get { return _animEnable && PanelDefine.Type != UITypeEnum.Full; } }  //全屏式界面不提供默认动画，如需要自行实现
 
-        public bool AnimEnable { get { return _animEnable; } }
-
-
-        public virtual void SetData(object data)
-        {
-
-        }
+        public virtual void SetData(object data) { }
 
         public virtual void BeforeShow()
         {
@@ -78,51 +74,43 @@ namespace Script.Framework.UI
         {
         }
 
-        //如需要重写动画时，赋值openTween即可
+        //如需要重写动画时，赋值openSeq即可
         public virtual void OnShow(Action cb)
         {
-            //默认动画，全屏界面不适用
-            if (PanelDefine.Type == UITypeEnum.Full) _animEnable = false;
-
             if (!AnimEnable || Content == null)
             {
                 cb?.Invoke();
                 return;
             }
 
-            var tween0 = TweenUtil.GetContentScaleTween(Content.gameObject, 0.7f, 1f, OpenAnimDuration, Ease.OutBack);
-            var tween1 = TweenUtil.GetContentFadeTween(Content.gameObject, 0, 255, OpenAnimDuration, Ease.OutBack);
-            var tween2 = TweenUtil.GetMaskBgFadeTween(_maskBgNode.GetComponent<Image>(),
+            var tween0 = TweenUtil.GetNodeScaleTween(Content.gameObject, 0.7f, 1f, OpenAnimDuration, Ease.OutBack);
+            var tween1 = TweenUtil.GetNodeFadeTween(Content.gameObject, 0, 255, OpenAnimDuration, Ease.OutBack);
+            var tween2 = TweenUtil.GetImageFadeTween(_maskBgNode.GetComponent<Image>(),
                 0, MaskOpacity, OpenAnimDuration, Ease.OutBack);
 
             openSeq = DOTween.Sequence().Join(tween0).Join(tween1).Join(tween2)
-                                .OnComplete(() => { cb?.Invoke(); });
+                .OnComplete(() => { cb?.Invoke(); });
             openSeq.Play();
         }
 
 
-
-        //如需要重写动画时，赋值openTween即可
+        //如需要重写动画时，赋值closeSeq即可
         public virtual void OnHide(Action cb)
         {
-            //默认动画，全屏界面不适用
-            if (PanelDefine.Type == UITypeEnum.Full) _animEnable = false;
-
             if (!AnimEnable || Content == null)
             {
                 cb?.Invoke();
                 return;
             }
 
-            var tween0 = TweenUtil.GetContentScaleTween(Content.gameObject, 1f, 0.7f, CloseAnimDuration, Ease.InBack);
-            var tween1 = TweenUtil.GetContentFadeTween(Content.gameObject, 255, 0, CloseAnimDuration, Ease.InBack);
-            var tween2 = TweenUtil.GetMaskBgFadeTween(_maskBgNode.GetComponent<Image>(),
+            var tween0 = TweenUtil.GetNodeScaleTween(Content.gameObject, 1f, 0.7f, CloseAnimDuration, Ease.InBack);
+            var tween1 = TweenUtil.GetNodeFadeTween(Content.gameObject, 255, 0, CloseAnimDuration, Ease.InBack);
+            var tween2 = TweenUtil.GetImageFadeTween(_maskBgNode.GetComponent<Image>(),
                 MaskOpacity, 0, CloseAnimDuration, Ease.InBack);
 
             closeSeq = DOTween.Sequence().Join(tween0).Join(tween1).Join(tween2)
-                                .OnComplete(() => { cb?.Invoke(); });
+                .OnComplete(() => { cb?.Invoke(); });
             closeSeq.Play();
-
         }
 
 
@@ -152,7 +140,7 @@ namespace Script.Framework.UI
             closeSeq = null;
         }
 
-        //创建一个背景遮罩
+        //创建一个背景遮罩，阻挡点击，（需要的话）呈黑色
         private void CreateMaskBg()
         {
             _maskBgNode = new GameObject("MaskBg");

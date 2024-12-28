@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Script.Framework.AssetLoader;
 using Script.Util;
 using UnityEngine;
@@ -17,6 +18,19 @@ namespace Script.Framework.UI
         void Recycle(BasePanel panel);
 
     }
+    public class BasePanelWait
+    {
+        public BasePanel Panel;
+        public object Data;
+        public PanelDefine PanelDefine;
+        public BasePanelWait(BasePanel panel, object data, PanelDefine panelDefine)
+        {
+            Panel = panel;
+            Data = data;
+            PanelDefine = panelDefine;
+        }
+    }
+
     public class UIManager : IUIManager
     {
         private static IUIManager _inst;
@@ -29,19 +43,23 @@ namespace Script.Framework.UI
             }
         }
 
+        private Dictionary<int, List<BasePanelWait>> _panelWaits;              //打开界面队列
+
         private Dictionary<PanelEnum, BasePanel> _panelCache;    //PanelEnum 最多缓存一份界面实例
-        private Dictionary<PanelEnum, float> _panelRecycleTime;    //缓存回收时间
+        private Dictionary<PanelEnum, float> _panelRecycleTime;  //缓存回收时间
 
         public UIManager()
         {
             _panelCache = new Dictionary<PanelEnum, BasePanel>();
             _panelRecycleTime = new Dictionary<PanelEnum, float>();
+            _panelWaits = new Dictionary<int, List<BasePanelWait>>();
         }
 
         // 打开一个界面
         public void ShowPanel(PanelEnum panelKey, object data)
         {
             PanelDefine define = PanelUtil.PanelDefineDic[panelKey];
+            int layer = define.Layer;
             if (define == null)
             {
                 Debug.LogError($"{panelKey}未配置PanelDefine");
@@ -54,37 +72,57 @@ namespace Script.Framework.UI
             {
                 BasePanel panel = _panelCache[panelKey];
                 DeleteCache(panelKey);
-                ShowPanelInternal(panel, data);
-
-                Debug.Log($"打开界面 {panelKey} 缓存 耗时：{(DateTime.Now - time).TotalMilliseconds}ms");
+                AddPanelWait(panel, data, layer, define);
+                ShowPanelInternal(layer);
+                Debug.Log($"打开界面 {define.Name} 缓存 耗时：{(DateTime.Now - time).TotalMilliseconds}ms");
             }
             else
             {
                 UISceneMixin.Inst.ShowLoadingAnim();
+                var waitResult = AddPanelWait(null, data, layer, define);
                 AssetUtil.LoadPrefab(define.Path, (prefab) =>
                 {
                     GameObject go = GameObject.Instantiate(prefab);
-                    BasePanel panel = go.GetComponent<BasePanel>();
-                    panel.PanelDefine = define;
-                    ShowPanelInternal(panel, data);
-
-                    GameTimer.Inst.SetTimeOnce(this, () =>
+                    var panel = go.GetComponent<BasePanel>();
+                    if (panel == null)
                     {
-                        UISceneMixin.Inst.HideLoadingAnim();
-                    }, 0.5f);
-
-                    Debug.Log($"打开界面 {panelKey} 新节点 耗时：{(DateTime.Now - time).TotalMilliseconds}ms");
+                        Debug.LogError($"{define.Path} 界面上不存在BasePanel");
+                    }
+                    waitResult.Panel = panel;
+                    ShowPanelInternal(layer);
+                    UISceneMixin.Inst.HideLoadingAnim();
+                    Debug.Log($"打开界面 {define.Name} 新节点 耗时：{(DateTime.Now - time).TotalMilliseconds}ms");
                     return go;
                 });
 
             }
         }
-
-        private void ShowPanelInternal(BasePanel panel, object data)
+        private BasePanelWait AddPanelWait(BasePanel panel, object data, int layer, PanelDefine define)
         {
-            panel.gameObject.SetActive(true);
-            panel.SetData(data);
-            UISceneMixin.Inst.PushPanel(panel);
+            var wait = new BasePanelWait(panel, data, define);
+            if (!_panelWaits.TryGetValue(layer, out var list))
+            {
+                list = new List<BasePanelWait>();
+                _panelWaits[layer] = list;
+            }
+            list.Add(wait);
+            return wait;
+        }
+
+        //将等待队列一个个弹出再清空。
+        private void ShowPanelInternal(int layer)
+        {
+            var list = _panelWaits[layer];
+            if (list == null || list.Count == 0) return;
+            foreach (var wait in list)
+            {
+                if (wait.Panel == null) break;
+                wait.Panel.PanelDefine = wait.PanelDefine;
+                wait.Panel.gameObject.SetActive(true);
+                wait.Panel.SetData(wait.Data);
+                UISceneMixin.Inst.PushPanel(wait.Panel);
+            }
+            list.Clear();
         }
         // 关掉层级中最上的一个界面
         public void PopPanel(int layer = 0)
