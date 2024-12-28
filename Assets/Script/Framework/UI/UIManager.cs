@@ -80,6 +80,7 @@ namespace Script.Framework.UI
             {
                 UISceneMixin.Inst.ShowLoadingAnim();
                 var waitResult = AddPanelWait(null, data, layer, define);
+
                 AssetUtil.LoadPrefab(define.Path, (prefab) =>
                 {
                     GameObject go = GameObject.Instantiate(prefab);
@@ -90,7 +91,10 @@ namespace Script.Framework.UI
                     }
                     waitResult.Panel = panel;
                     ShowPanelInternal(layer);
+
                     UISceneMixin.Inst.HideLoadingAnim();
+                    // GameTimer.Inst.SetTimeOnce(this, () => UISceneMixin.Inst.HideLoadingAnim(), 1f);
+
                     Debug.Log($"打开界面 {define.Name} 新节点 耗时：{(DateTime.Now - time).TotalMilliseconds}ms");
                     return go;
                 });

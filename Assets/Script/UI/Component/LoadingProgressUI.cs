@@ -1,6 +1,8 @@
 
 
 using System.Collections;
+using DG.Tweening;
+using Script.Util;
 using UnityEngine;
 
 namespace Script.UI.Component
@@ -11,7 +13,7 @@ namespace Script.UI.Component
         [SerializeField] public GameObject BlockNode;
         [SerializeField] public GameObject ImageNode;
 
-        private Coroutine showImageCor;
+        private Sequence sequence;
 
         void Awake()
         {
@@ -21,24 +23,23 @@ namespace Script.UI.Component
         public void Show()
         {
             BlockNode.SetActive(true);
-            showImageCor = StartCoroutine(ShowImage());
+
+            var tween0 = DOTween.To(() => 0, v => {}, 1, 0.1f).OnComplete(() =>
+            {
+                ImageNode.SetActive(true);
+            });
+
+            var tween1 = TweenUtil.GetNodeFadeTween(BlockNode, 0, 255, 0.2f, Ease.Linear);
+            sequence = DOTween.Sequence().Append(tween0).Append(tween1);
+            sequence.Play();
         }
         public void Hide()
         {
             BlockNode.SetActive(false);
             ImageNode.SetActive(false);
-            if (showImageCor != null)
-            {
-                StopCoroutine(showImageCor);
-                showImageCor = null;
-            }
+            sequence?.Kill();
+            sequence = null;
         }
-
-
-        private IEnumerator ShowImage()
-        {
-            yield return new WaitForSeconds(0.2f);
-            ImageNode.SetActive(true);
-        }
+        
     }
 }
