@@ -29,6 +29,10 @@ MonoBehaviour:
     m_Address: Common/Animation/LoadingProgressUI
     m_ReadOnly: 0
     m_SerializedLabels: []
+  - m_GUID: 1b4c18a65fbef2246a893419d986b381
+    m_Address: Common/Prefabs/Component/LoadingProgressUI
+    m_ReadOnly: 0
+    m_SerializedLabels: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 461c0bb45d0c65047b0497b6d6fed90a, type: 2}
   m_SchemaSet:

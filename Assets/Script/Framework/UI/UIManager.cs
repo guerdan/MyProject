@@ -15,7 +15,8 @@ namespace Script.Framework.UI
         void PopPanel(int layer = 0);
         // 关闭指定界面
         void PopPanel(PanelEnum panelEnum);
-        void Recycle(BasePanel panel);
+        //清理掉所有界面缓存，并调用AssetManager标记清除接口
+        void ClearCache();
 
     }
     public class BasePanelWait
@@ -43,43 +44,43 @@ namespace Script.Framework.UI
             }
         }
 
-        private Dictionary<int, List<BasePanelWait>> _panelWaits;              //打开界面队列
+        private Dictionary<int, List<BasePanelWait>> _panelStackWaits;      //打开界面队列
 
-        private Dictionary<PanelEnum, BasePanel> _panelCache;    //PanelEnum 最多缓存一份界面实例
-        private Dictionary<PanelEnum, float> _panelRecycleTime;  //缓存回收时间
+        private Dictionary<PanelEnum, BasePanel> _panelCache;               //PanelEnum 最多缓存一份界面实例
+        private Dictionary<PanelEnum, float> _panelRecycleTime;             //缓存回收时间
+        private bool _canRecycle = false;             //触发资源管理器回收标志
 
         public UIManager()
         {
             _panelCache = new Dictionary<PanelEnum, BasePanel>();
             _panelRecycleTime = new Dictionary<PanelEnum, float>();
-            _panelWaits = new Dictionary<int, List<BasePanelWait>>();
+            _panelStackWaits = new Dictionary<int, List<BasePanelWait>>();
         }
 
         // 打开一个界面
         public void ShowPanel(PanelEnum panelKey, object data)
         {
             PanelDefine define = PanelUtil.PanelDefineDic[panelKey];
-            int layer = define.Layer;
             if (define == null)
             {
                 Debug.LogError($"{panelKey}未配置PanelDefine");
                 return;
             }
 
-
+            int layer = define.Layer;
             var time = DateTime.Now;
             if (_panelCache.ContainsKey(panelKey))
             {
                 BasePanel panel = _panelCache[panelKey];
                 DeleteCache(panelKey);
-                AddPanelWait(panel, data, layer, define);
+                AddPanelStackWaits(panel, data, layer, define);
                 ShowPanelInternal(layer);
                 Debug.Log($"打开界面 {define.Name} 缓存 耗时：{(DateTime.Now - time).TotalMilliseconds}ms");
             }
             else
             {
                 UISceneMixin.Inst.ShowLoadingAnim();
-                var waitResult = AddPanelWait(null, data, layer, define);
+                var waitResult = AddPanelStackWaits(null, data, layer, define);
 
                 AssetUtil.LoadPrefab(define.Path, (prefab) =>
                 {
@@ -93,7 +94,7 @@ namespace Script.Framework.UI
                     ShowPanelInternal(layer);
 
                     UISceneMixin.Inst.HideLoadingAnim();
-                    // GameTimer.Inst.SetTimeOnce(this, () => UISceneMixin.Inst.HideLoadingAnim(), 1f);
+                    // GameTimer.Inst.SetTimeOnce(this, () => UISceneMixin.Inst.HideLoadingAnim(), 1f);//延迟测试
 
                     Debug.Log($"打开界面 {define.Name} 新节点 耗时：{(DateTime.Now - time).TotalMilliseconds}ms");
                     return go;
@@ -101,13 +102,13 @@ namespace Script.Framework.UI
 
             }
         }
-        private BasePanelWait AddPanelWait(BasePanel panel, object data, int layer, PanelDefine define)
+        private BasePanelWait AddPanelStackWaits(BasePanel panel, object data, int layer, PanelDefine define)
         {
             var wait = new BasePanelWait(panel, data, define);
-            if (!_panelWaits.TryGetValue(layer, out var list))
+            if (!_panelStackWaits.TryGetValue(layer, out var list))
             {
                 list = new List<BasePanelWait>();
-                _panelWaits[layer] = list;
+                _panelStackWaits[layer] = list;
             }
             list.Add(wait);
             return wait;
@@ -116,30 +117,64 @@ namespace Script.Framework.UI
         //将等待队列一个个弹出再清空。
         private void ShowPanelInternal(int layer)
         {
-            var list = _panelWaits[layer];
+            var list = _panelStackWaits[layer];
             if (list == null || list.Count == 0) return;
             foreach (var wait in list)
             {
                 if (wait.Panel == null) break;
                 wait.Panel.PanelDefine = wait.PanelDefine;
+                wait.Panel.StackIndex = UISceneMixin.Inst.GetPanelCount(layer);
                 wait.Panel.gameObject.SetActive(true);
                 wait.Panel.SetData(wait.Data);
-                UISceneMixin.Inst.PushPanel(wait.Panel);
+
+                var last = UISceneMixin.Inst.PeekPanel(layer);
+                if (NeedHideLast(wait.PanelDefine, last))
+                {
+                    last.OnHideContent();
+                }
+
+                UISceneMixin.Inst.PushPanel(wait.Panel, null);
             }
             list.Clear();
         }
+
+
+        // 需求效果： 因遮挡关系而隐藏，多界面情况下简洁并省性能。
+        // 当最上方为Full界面时，其他界面全隐藏。
+        // 当最上方为PopUp界面，栈中的界面除了最上方的Full界面其他都隐藏。
+        public bool NeedHideLast(PanelDefine define, IPanel last)
+        {
+            int layer = define.Layer;
+            if (layer == 0 && define.HideLastPanel && last != null)
+            {
+                if (define.Type == UITypeEnum.PopUp && last.PanelDefine.Type == UITypeEnum.PopUp)
+                    return true;
+                if (define.Type == UITypeEnum.Full)
+                    return true;
+            }
+            return false;
+        }
+
         // 关掉层级中最上的一个界面
         public void PopPanel(int layer = 0)
         {
-            UISceneMixin.Inst.PopPanel(layer);
+            UISceneMixin.Inst.PopPanel(layer, null);
+            PopPanelInternal(layer);
         }
         // 关闭指定界面
         public void PopPanel(PanelEnum panelEnum)
         {
             var panel = UISceneMixin.Inst.FindPanel(panelEnum);
-            UISceneMixin.Inst.PopPanel(panel);
+            UISceneMixin.Inst.PopPanel(panel, null);
+            PopPanelInternal(panel.PanelDefine.Layer);
         }
 
+        private void PopPanelInternal(int layer = 0)
+        {
+            var last = UISceneMixin.Inst.PeekPanel(layer);
+            if (layer == 0 && last != null)
+                last.OnShowContent();
+        }
 
         public void Recycle(BasePanel panel)
         {
@@ -169,20 +204,22 @@ namespace Script.Framework.UI
 
 
 
-            //当关闭Layer=0的界面栈的最后个界面时，调用AssetManager.ReleaseUnuseAsset真正回收资源
-            //因为连续打开的界面通常是一个系统功能模块，在同一个Bundle中。所以最后个界面关闭才有可能释放bundle。
-            if (define.Layer == 0 && UISceneMixin.Inst.PeekPanel(0) == null)
+            //当Layer=0的界面栈的最后个界面被销毁时，_canRecycle置true。进而调用AssetManager标记清除。
+            //因为连续打开的界面通常是一个系统功能模块，在一个Bundle中。所以只有在最后个界面被销毁后才有可能释放bundle。
+            //是最合适的时间来进行标记清除。
+            if (_canRecycle)
             {
+                _canRecycle = false;
                 AssetManager.Inst.ReleaseUnuseAsset();
             }
         }
 
-        public void OnUpdate(float delta)
+        public void OnUpdate(float deltaTime)
         {
             List<PanelEnum> keys = new List<PanelEnum>(_panelRecycleTime.Keys);
             foreach (var key in keys)
             {
-                _panelRecycleTime[key] -= delta;
+                _panelRecycleTime[key] -= deltaTime;
                 if (_panelRecycleTime[key] <= 0)
                 {
                     Destroy(_panelCache[key]);
@@ -194,11 +231,28 @@ namespace Script.Framework.UI
         private void Destroy(BasePanel panel)
         {
             UnityEngine.Object.Destroy(panel.gameObject);
+            if (panel.StackIndex == 0 && panel.PanelDefine.Layer == 0)
+            {
+                _canRecycle = true;
+            }
         }
         private void DeleteCache(PanelEnum key)
         {
             _panelCache.Remove(key);
             _panelRecycleTime.Remove(key);
+        }
+
+        public void ClearCache()
+        {
+            List<PanelEnum> keys = new List<PanelEnum>(_panelRecycleTime.Keys);
+            foreach (var key in keys)
+            {
+                Destroy(_panelCache[key]);
+                DeleteCache(key);
+            }
+
+            _canRecycle = false;
+            GameTimer.Inst.SetTimeOnce(this, () => AssetManager.Inst.ReleaseUnuseAsset(), 0);//Destroy在下帧才真正销毁,故延迟1帧
         }
     }
 }

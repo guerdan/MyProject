@@ -21,7 +21,7 @@ namespace Script.Util
                         trans.localScale = Vector3.one * scale;
                     });
         }
-        public static Tween GetNodeFadeTween(GameObject node,float start, float end, float duration, Ease ease)
+        public static Tween GetNodeFadeTween(GameObject node, float start, float end, float duration, Ease ease)
         {
             CanvasGroup group = node.GetComponent<CanvasGroup>();
             if (group == null) group = node.AddComponent<CanvasGroup>();
@@ -36,7 +36,7 @@ namespace Script.Util
                         group.alpha = opa / 255;
                     });
         }
-        public static Tween GetImageFadeTween(Image img,float start, float end, float duration, Ease ease)
+        public static Tween GetImageFadeTween(Image img, float start, float end, float duration, Ease ease)
         {
             float opa = start;
             img.color = new Color(0, 0, 0, opa / 255);
@@ -51,19 +51,32 @@ namespace Script.Util
 
         public static float OutBackEase(float time, float duration, float overshootOrAmplitude, float period)
         {
-            var t = time / duration;
-            var s = 10.70158f;
-            t = t - 1;
+            float s = 1.70158f;
+            float t = time / duration - 1;
             return t * t * ((s + 1) * t + s) + 1;
         }
+
+
         public static float OutBackEaseClip(float time, float duration, float overshootOrAmplitude, float period)
         {
-            var t = time / duration;
-            var s = 1.70158f;
-            t = t - 1;
+            float s = 1.70158f;
+            float t = time / duration - 1;
             var result = t * t * ((s + 1) * t + s) + 1;
-            result = Mathf.Clamp(result, 0, 1);
-            return result;
+            return Mathf.Clamp(result, 0, 1);
+        }
+
+        public static float InBackEase(float time, float duration, float overshootOrAmplitude, float period)
+        {
+            float s = 1.70158f;
+            float t = time / duration;
+            return t * t * ((s + 1) * t - s);
+        }
+        public static float InBackEaseClip(float time, float duration, float overshootOrAmplitude, float period)
+        {
+            float s = 1.70158f;
+            float t = time / duration;
+            var result = t * t * ((s + 1) * t - s);
+            return Mathf.Clamp(result, 0, 1);
         }
 
     }

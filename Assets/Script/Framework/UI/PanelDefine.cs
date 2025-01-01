@@ -48,10 +48,10 @@ namespace Script.Framework.UI
 
         public bool ShowGrayBg = true;          //是否显示灰色背景。Full界面无此功能，其他界面有。默认为true
 
-        // 是否因遮挡关系而隐藏自己。默认为true
+        // 是否因遮挡关系而隐藏上个界面。默认为true
         // 打开一个Full界面，栈中的界面全隐藏
         // 打开一个PopUp界面，栈中的界面除了最上方的Full界面其他都隐藏。
-        public bool HideOnOverlay = true;
+        public bool HideLastPanel = true;
 
         // public bool TopSingle = true;   // 最上层只能弹出一份弹窗，防连点。默认为true。如果加载时屏蔽，实例出来后也屏蔽，那就无懈可击
 

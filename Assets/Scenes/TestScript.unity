@@ -392,7 +392,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 515884456}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cfd20ab4d51f97947a85248bdb92684c, type: 3}
   m_Name: 
@@ -1274,8 +1274,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 796295a3a77ba564b89589ed73f35ddc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GuideStack: {fileID: 0}
   PanelCacheParent: {fileID: 0}
+  GuideStack: {fileID: 0}
+  LoadingProgressUI: {fileID: 0}
 --- !u!1 &1884912978
 GameObject:
   m_ObjectHideFlags: 0

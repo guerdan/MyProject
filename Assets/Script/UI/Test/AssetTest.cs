@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Reflection;
 using Script.Framework;
 using Script.Framework.AssetLoader;
+using Script.Framework.UI;
 using Script.Util;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -18,7 +19,7 @@ namespace Script.Test
         public Image image0;
         public Image image1;
 
-        
+
 
         List<string> imgPaths0 = new List<string>(){
             "Common/Sprites/bg_pvp_myrank",
@@ -44,6 +45,22 @@ namespace Script.Test
             "PreCommon/Sprites/rank_no4_bg01",
         };
         Random random = new Random();
+
+        void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.A))
+            {
+                SetImage0();
+            }
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                UIManager.Inst.ClearCache();
+            }
+            if (Input.GetKeyDown(KeyCode.L))
+            {
+                LookMemory();
+            }
+        }
         void SetImage0()
         {
             AssetUtil.SetImage(imgPaths1[random.Next(0, imgPaths1.Count)], image0);

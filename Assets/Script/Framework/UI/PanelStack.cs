@@ -79,12 +79,12 @@ namespace Script.Framework.UI
                 view.AfterHide();
                 view.Recycle();
                 cb?.Invoke();
-            });        
+            });
         }
 
         public IPanel FindView(PanelEnum key)
         {
-            foreach(var view in _views)
+            foreach (var view in _views)
             {
                 if (view.PanelDefine.Key == key)
                 {
@@ -98,6 +98,27 @@ namespace Script.Framework.UI
         public IPanel Peek()
         {
             return _views.Count > 0 ? _views.Peek() : null;
+        }
+        public int GetCount()
+        {
+            return _views.Count;
+        }
+        public IPanel GetTopIndexPanel(int index)
+        {
+            if (index < 0 || index >= _views.Count ) return null;
+
+            Stack<IPanel> tempStack = new Stack<IPanel>();
+            for (int i = 0; i < index; i++)
+            {
+                tempStack.Push(_views.Pop());
+            }
+            IPanel result = _views.Peek();
+            while (tempStack.Count > 0)
+            {
+                _views.Push(tempStack.Pop());
+            }
+
+            return result;
         }
     }
 }

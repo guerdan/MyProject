@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Script.Framework.AssetLoader;
 using Script.UI.Component;
@@ -75,22 +76,22 @@ namespace Script.Framework.UI
             rect.offsetMax = new Vector2(0, 0);
         }
 
-        public void PushPanel(IPanel panel)
+        public void PushPanel(IPanel panel, Action cb)
         {
             PanelDefine define = panel.PanelDefine;
             var stack = _panelStacks[define.Layer];
-            stack.Push(panel, null);
+            stack.Push(panel, cb);
         }
-        public IPanel PopPanel(int layer)
+        public IPanel PopPanel(int layer, Action cb)
         {
             var stack = _panelStacks[layer];
-            return stack.Pop(null);
+            return stack.Pop(cb);
         }
 
-        public void PopPanel(IPanel panel)
+        public void PopPanel(IPanel panel, Action cb)
         {
             var stack = _panelStacks[panel.PanelDefine.Layer];
-            stack.Pop(panel, null);
+            stack.Pop(panel, cb);
         }
 
 
@@ -100,11 +101,22 @@ namespace Script.Framework.UI
             var stack = _panelStacks[define.Layer];
             return stack.FindView(panelEnum);
         }
+        public IPanel FindPanel(int layer, int topIndex)
+        {
+            var stack = _panelStacks[layer];
+            return stack.GetTopIndexPanel(topIndex);
+        }
 
         public IPanel PeekPanel(int layer)
         {
             var stack = _panelStacks[layer];
             return stack.Peek();
+        }
+
+        public int GetPanelCount(int layer)
+        {
+            var stack = _panelStacks[layer];
+            return stack.GetCount();
         }
 
 
