@@ -1,0 +1,249 @@
+fileFormatVersion: 2
+guid: 65fc861e5cb88b040a4a4db99fb5b8f0
+ModelImporter:
+  serializedVersion: 21300
+  internalIDToNameTable:
+  - first:
+      74: -4992108531781382518
+    second: GLTF_created_0|Poring Animation_GLTF_created_0
+  - first:
+      74: -8529456728097512213
+    second: GLTF_created_0|Poring Animation_GLTF_created_0 //// Sketchfab_model
+  - first:
+      74: -434113547955990290
+    second: GLTF_created_0|Poring Animation_GLTF_created_0 //// GLTF_created_0
+  - first:
+      74: 2907150420785336253
+    second: GLTF_created_0|Poring Animation_GLTF_created_0 //// GLTF_created_0_rootJoint
+  - first:
+      74: 8200566056813352668
+    second: GLTF_created_0|Poring Animation_GLTF_created_0 //// Root_6
+  - first:
+      74: 5470512104533487215
+    second: GLTF_created_0|Poring Animation_GLTF_created_0 //// PoringShadow_0
+  - first:
+      74: 6608851042869665726
+    second: GLTF_created_0|Poring Animation_GLTF_created_0 //// Poring_5
+  - first:
+      74: -4325596739186749684
+    second: GLTF_created_0|Poring Animation_GLTF_created_0 //// PoringBodyShadow_1
+  - first:
+      74: 6944789467542225449
+    second: GLTF_created_0|Poring Animation_GLTF_created_0 //// GoodFace_2
+  - first:
+      74: 5894933126324833956
+    second: GLTF_created_0|Poring Animation_GLTF_created_0 //// EvilFace_3
+  - first:
+      74: 1492203875212182365
+    second: GLTF_created_0|Poring Animation_GLTF_created_0 //// PoringBall_4
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Poring
+    second: {fileID: 2100000, guid: caf536c1116b51044a385611a90c1bb9, type: 2}
+  materials:
+    materialImportMode: 2
+    materialName: 0
+    materialSearch: 1
+    materialLocation: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleCurves: 1
+    optimizeGameObjects: 1
+    removeConstantScaleCurves: 1
+    motionNodeName: 
+    rigImportErrors: 
+    rigImportWarnings: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    importAnimatedCustomProperties: 1
+    importConstraints: 0
+    animationCompression: 1
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    extraUserProperties: []
+    clipAnimations: []
+    isReadable: 1
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    useSRGBMaterialColor: 1
+    sortHierarchyByName: 1
+    importVisibility: 1
+    importBlendShapes: 1
+    importCameras: 1
+    importLights: 1
+    nodeNameCollisionStrategy: 1
+    fileIdsGeneration: 2
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    keepQuads: 0
+    weldVertices: 1
+    bakeAxisConversion: 0
+    preserveHierarchy: 0
+    skinWeightsMode: 0
+    maxBonesPerVertex: 4
+    minBoneWeight: 0.001
+    optimizeBones: 1
+    meshOptimizationFlags: -1
+    indexFormat: 0
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVMarginMethod: 1
+    secondaryUVMinLightmapResolution: 40
+    secondaryUVMinObjectScale: 1
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+    normalCalculationMode: 4
+    legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0
+    blendShapeNormalImportMode: 1
+    normalSmoothingSource: 0
+  referencedClips: []
+  importAnimation: 1
+  humanDescription:
+    serializedVersion: 3
+    human: []
+    skeleton:
+    - name: slime(Clone)
+      parentName: 
+      position: {x: 0, y: 0, z: 0}
+      rotation: {x: 0, y: 0, z: 0, w: 1}
+      scale: {x: 1, y: 1, z: 1}
+    - name: Sketchfab_model
+      parentName: slime(Clone)
+      position: {x: -0, y: 0, z: 0}
+      rotation: {x: 1, y: 0, z: -0, w: 0.0000000754979}
+      scale: {x: 100, y: 100.000015, z: 100.000015}
+    - name: root
+      parentName: Sketchfab_model
+      position: {x: -0, y: 0, z: 0}
+      rotation: {x: 0, y: -0, z: -0, w: 1}
+      scale: {x: 1, y: 1, z: 1}
+    - name: GLTF_SceneRootNode
+      parentName: root
+      position: {x: -0, y: 0, z: 0}
+      rotation: {x: 0.7071069, y: 0, z: -0, w: 0.7071067}
+      scale: {x: 1, y: 1.0000001, z: 1.0000001}
+    - name: PoringRig_8
+      parentName: GLTF_SceneRootNode
+      position: {x: -0, y: 0, z: 0}
+      rotation: {x: 0, y: -0, z: -0, w: 1}
+      scale: {x: 1, y: 1, z: 1}
+    - name: GLTF_created_0
+      parentName: PoringRig_8
+      position: {x: -0, y: 0, z: 0}
+      rotation: {x: 0, y: -0, z: -0, w: 1}
+      scale: {x: 1, y: 1, z: 1}
+    - name: Base_7
+      parentName: GLTF_created_0
+      position: {x: -0, y: 0, z: 0}
+      rotation: {x: 0, y: -0, z: -0, w: 1}
+      scale: {x: 1, y: 1, z: 1}
+    - name: GLTF_created_0_rootJoint
+      parentName: GLTF_created_0
+      position: {x: -0, y: 0, z: 0}
+      rotation: {x: 0.7071068, y: -0.000000012101622, z: -0.00000001210162, w: 0.7071067}
+      scale: {x: 1, y: 1, z: 1}
+    - name: Root_6
+      parentName: GLTF_created_0_rootJoint
+      position: {x: -0, y: 0, z: 0}
+      rotation: {x: -2.984703e-16, y: -1.7763568e-15, z: -1.3210963e-24, w: 1}
+      scale: {x: 1, y: 1, z: 1}
+    - name: PoringShadow_0
+      parentName: Root_6
+      position: {x: 5.6870836e-25, y: 0.0074394196, z: 1.7763568e-17}
+      rotation: {x: 0.00000002980232, y: 0.000000036613823, z: -0.60529405, w: 0.79600203}
+      scale: {x: 0.9188341, y: 1, z: 0.9188341}
+    - name: PoringShadow_0_end
+      parentName: PoringShadow_0
+      position: {x: -0, y: 0.0074394206, z: 0}
+      rotation: {x: 0, y: -0, z: -0, w: 1}
+      scale: {x: 1, y: 1, z: 1}
+    - name: Poring_5
+      parentName: Root_6
+      position: {x: 5.6870836e-25, y: 0.0074394196, z: 1.7763568e-17}
+      rotation: {x: -1.0023154e-14, y: -8.881785e-15, z: 3.1660277e-22, w: 1}
+      scale: {x: 1, y: 1.0618596, z: 1}
+    - name: PoringBodyShadow_1
+      parentName: Poring_5
+      position: {x: 4.116885e-25, y: 0.00008304596, z: 1.0348337e-17}
+      rotation: {x: 1.7237269e-15, y: -1.0025489e-23, z: -6.825819e-23, w: 1}
+      scale: {x: 1, y: 1, z: 1}
+    - name: PoringBodyShadow_1_end
+      parentName: PoringBodyShadow_1
+      position: {x: -0, y: 0.00008304596, z: 0}
+      rotation: {x: 0, y: -0, z: -0, w: 1}
+      scale: {x: 1, y: 1, z: 1}
+    - name: GoodFace_2
+      parentName: Poring_5
+      position: {x: 2.9577435e-10, y: 0.006165128, z: 0.008641155}
+      rotation: {x: -4.2351647e-22, y: 0.000000017114285, z: -6.895734e-24, w: 1}
+      scale: {x: 1, y: 1, z: 1}
+    - name: GoodFace_2_end
+      parentName: GoodFace_2
+      position: {x: -0, y: 0.00008304596, z: 0}
+      rotation: {x: 0, y: -0, z: -0, w: 1}
+      scale: {x: 1, y: 1, z: 1}
+    - name: EvilFace_3
+      parentName: Poring_5
+      position: {x: 2.9577438e-10, y: 0.006204409, z: 0.008641156}
+      rotation: {x: 6.938901e-16, y: 0.000000017114285, z: -4.825481e-23, w: 1}
+      scale: {x: 0.00999999, y: 0.00999999, z: 0.00999999}
+    - name: EvilFace_3_end
+      parentName: EvilFace_3
+      position: {x: -0, y: 0.00008304596, z: 0}
+      rotation: {x: 0, y: -0, z: -0, w: 1}
+      scale: {x: 1, y: 1, z: 1}
+    - name: PoringBall_4
+      parentName: Poring_5
+      position: {x: -7.6638036e-11, y: 0.00991882, z: -0.0022390084}
+      rotation: {x: 7.4014824e-16, y: 0.000000017114285, z: -2.895388e-23, w: 1}
+      scale: {x: 0.6, y: 0.6, z: 0.6}
+    - name: PoringBall_4_end
+      parentName: PoringBall_4
+      position: {x: -0, y: 0.00008304596, z: 0}
+      rotation: {x: 0, y: -0, z: -0, w: 1}
+      scale: {x: 1, y: 1, z: 1}
+    - name: Object_7
+      parentName: slime(Clone)
+      position: {x: -0, y: 0, z: 0}
+      rotation: {x: -0.7071068, y: 0, z: -0, w: 0.7071067}
+      scale: {x: 100, y: 100.00002, z: 100.00002}
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    globalScale: 1
+    rootMotionBoneName: root
+    hasTranslationDoF: 0
+    hasExtraRoot: 1
+    skeletonHasParents: 1
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  autoGenerateAvatarMappingIfUnspecified: 1
+  animationType: 1
+  humanoidOversampling: 1
+  avatarSetup: 0
+  addHumanoidExtraRootOnlyWhenUsingAvatar: 1
+  remapMaterialsIfMaterialImportModeIsNone: 0
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

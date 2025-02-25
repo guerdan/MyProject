@@ -113,7 +113,7 @@ namespace Script.XBattle.AStar
             if (startNode.H == 0)
             {
                 startNode.G = 0;
-                startNode.H = Heuristic(startNode, targetNode); // 使用启发式函数计算H值
+                startNode.H = Estimate(startNode, targetNode); // 使用启发式函数计算H值
 
                 openList.Add(startNode);
             }
@@ -141,7 +141,7 @@ namespace Script.XBattle.AStar
                     if (!openList.Contains(neighbor) || newMovementCostToNeighbor < neighbor.G)
                     {
                         neighbor.G = newMovementCostToNeighbor;
-                        neighbor.H = Heuristic(neighbor, targetNode);
+                        neighbor.H = Estimate(neighbor, targetNode);
                         neighbor.parent = currentNode;
 
                         if (!openList.Contains(neighbor))
@@ -151,9 +151,11 @@ namespace Script.XBattle.AStar
             }
         }
 
-        private int Heuristic(AStarLogicNode a, AStarLogicNode b)
+        // 可以使用曼哈顿距离或其他启发式函数，
+        // 最好使用曼哈顿，h函数大于真实估值会让寻路带有更强的目的性，减少遍历次数，从而提升效率
+        // 若h函数小于真实估值，则一定会遍历出最优解。
+        private int Estimate(AStarLogicNode a, AStarLogicNode b)
         {
-            // 可能使用曼哈顿距离或其他启发式函数
             return Mathf.Abs(a.GridX - b.GridX) + Mathf.Abs(a.GridY - b.GridY);
         }
 
@@ -209,7 +211,6 @@ namespace Script.XBattle.AStar
 
         private int GetDistance(AStarLogicNode a, AStarLogicNode b)
         {
-            // 可能使用曼哈顿距离或其他启发式函数
             return Mathf.Abs(a.GridX - b.GridX) + Mathf.Abs(a.GridY - b.GridY);
         }
     }

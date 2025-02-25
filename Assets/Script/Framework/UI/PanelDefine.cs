@@ -88,7 +88,7 @@ namespace Script.Framework.UI
         }
 
         static List<PanelDefine> PanelDefineList = new List<PanelDefine>(){
-            new PanelDefine{
+            new PanelDefine(){
                 Key = PanelEnum.HeroDetailPanel,
                 Name = "HeroDetailPanel",
                 Path = "Hero/Prefabs/HeroDetailPanel",

@@ -219,6 +219,13 @@
       "dependencies": {},
       "url": "https://packages.unity.com"
     },
+    "com.unity.search.extensions": {
+      "version": "https://github.com/Unity-Technologies/com.unity.search.extensions.git?path=package",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "892b9ab4cf756dde384ef93eac63f8bbeed8d191"
+    },
     "com.unity.settings-manager": {
       "version": "1.0.3",
       "depth": 2,

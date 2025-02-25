@@ -59,13 +59,14 @@
     <UnityVersion>2021.3.6f1</UnityVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Analyzer Include="C:\Users\hp\.vscode\extensions\visualstudiotoolsforunity.vstuc-1.0.5\Analyzers\Microsoft.Unity.Analyzers.dll" />
+    <Analyzer Include="C:\Users\hp\.vscode\extensions\visualstudiotoolsforunity.vstuc-1.1.0\Analyzers\Microsoft.Unity.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\XLua\Examples\08_Hotfix\Editor\HotfixTestCfg.cs" />
     <Compile Include="Assets\Script\Editor\HotfixCfg.cs" />
     <Compile Include="Assets\XLua\Editor\XLuaUnityDefaultConfig.cs" />
     <Compile Include="Assets\XLua\Src\Editor\Hotfix.cs" />
+    <Compile Include="Assets\Script\Editor\MeshViewerEditor.cs" />
     <Compile Include="Assets\XLua\Examples\13_BuildFromCLI\Editor\BuildFromCLI.cs" />
     <Compile Include="Assets\XLua\Src\Editor\LinkXmlGen\LinkXmlGen.cs" />
     <Compile Include="Assets\XLua\Src\Editor\Report.cs" />
@@ -1084,6 +1085,10 @@
     </Reference>
     <Reference Include="UniTask.TextMeshPro">
       <HintPath>Library\ScriptAssemblies\UniTask.TextMeshPro.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="com.unity.search.extensions.editor">
+      <HintPath>Library\ScriptAssemblies\com.unity.search.extensions.editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Mathematics.Editor">

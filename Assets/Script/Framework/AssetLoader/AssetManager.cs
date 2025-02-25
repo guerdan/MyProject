@@ -16,9 +16,13 @@ namespace Script.Framework.AssetLoader
     /// 2 Destroy接口能销毁一切克隆体，但不能销毁预制体。如果是GameObject自动删除其下挂接的子节点和组件，但不会销毁引用资源（如材质、纹理等）
     /// 容易造成泄漏的点：
     /// 1.预制体的引用计数未正常删减。
-    /// 2.游离的引用资源的克隆体。例如：SpriteAtlas的精灵是个克隆体，它既不会被Addressables自动销毁，也不会被Destroy(GameObject)而销毁。最保守但低效的做法是周期性地调用 Resources.UnloadUnusedAssets();
+    /// 2.游离的引用资源的克隆体。例如：SpriteAtlas取Sprite就是个克隆体
+    /// ，它既不会被Addressables自动销毁，也不会被Destroy(GameObject)而销毁。
+    /// 最保守但低效的做法是周期性地调用 Resources.UnloadUnusedAssets();
+    /// 类似的克隆体还有：手动修改实例Material（非shareMaterial），手动修改实例Mesh。
     /// 
     /// 方案：只有完全熟悉了Addressables接口和Unity的资源与克隆体理念，才能做套适配方案。
+    /// 克隆体走额外接口，接口（先复制出克隆体，绑定克隆体与预制体）
     /// 代理回收，就是延续引用计数方案，还适合跟踪。
     /// </summary>
     public interface IAssetManager

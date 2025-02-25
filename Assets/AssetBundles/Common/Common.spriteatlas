@@ -78,6 +78,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 18326d1bc73daba44ad3c939dd02b08e, type: 3}
   - {fileID: 21300000, guid: 999f922b4b1850c408298b5f88ceedc8, type: 3}
   - {fileID: 21300000, guid: 2511282ba2d656d49bec4981a7e86563, type: 3}
+  - {fileID: 21300000, guid: ac7869bb7ce37b94e8db34b6bb2e3d6e, type: 3}
   - {fileID: 21300000, guid: a81ed4dbd5814784daa82c4fe42a7441, type: 3}
   - {fileID: 21300000, guid: 1b58147cb1da32247a67e97bd84ed039, type: 3}
   - {fileID: 21300000, guid: da9599dccfacaf84cbb1e020b3b4c28d, type: 3}
@@ -116,6 +117,7 @@ SpriteAtlas:
   - icon_pvp_defence_en
   - icon_pvp_fail
   - icon_pvp_attack
+  - icon_pvp_rank1 1
   - bg_color_hero_bottom
   - bg_bag_title_deco
   - button_red

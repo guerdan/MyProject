@@ -13,6 +13,12 @@ scopes = {
 	"last_search.C4949528" = "Camera Gizmo t:Texture2D"
 	"OpenInspectorPreview.C4949528" = "0"
 	"currentGroup.C4949528" = "asset"
+	"last_search.F4CE10C0" = "from=\"Assets/AssetBundles/Hero/Prefabs/HeroMainPanel.prefab\""
+	"OpenInspectorPreview.F4CE10C0" = "0"
+	"currentGroup.F4CE10C0" = "all"
+	"last_search.19D80077" = "ref=\"Assets/Script/UI/Component/ArtButton.cs\""
+	"OpenInspectorPreview.19D80077" = "0"
+	"currentGroup.19D80077" = "all"
 }
 providers = {
 	adb = {
@@ -53,6 +59,11 @@ providers = {
 	scene = {
 		active = true
 		priority = 50
+		defaultAction = null
+	}
+	dep = {
+		active = false
+		priority = 31
 		defaultAction = null
 	}
 }

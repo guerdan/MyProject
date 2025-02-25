@@ -13,7 +13,15 @@ namespace Script.UI.Component
 
         void Start()
         {
-            setStartBtn.onClick.AddListener(onSetStartBtnClick);
+            setStartBtn?.onClick.AddListener(onSetStartBtnClick);
+        }
+
+        void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                onSetStartBtnClick();
+            }
         }
 
         void OnDisable()
@@ -25,31 +33,31 @@ namespace Script.UI.Component
 
         void onSetStartBtnClick()
         {
-            if (sequence == null)
-            {
-                sequence = DOTween.Sequence();
+            sequence?.Kill();
+            sequence = null;
 
-                myValue = 0;
+            sequence = DOTween.Sequence();
+            var ori = transform.localPosition;
+            myValue = ori.y;
 
-                var t1 = DOTween
-                .To(() => myValue, x => myValue = x, 200f, 2f)
-                .SetEase(Ease.InOutQuad) // 指定缓动类型
-                .SetDelay(1f) // 添加 1 秒的延迟
-                    .OnUpdate(() =>
-                    {
-                        transform.localPosition = new Vector3(myValue, myValue, myValue);
-                        Debug.Log("Tween update! ");
-                    })
-                    .OnComplete(() =>
-                    {
-                        // 缓动完成时的回调
-                        Debug.Log("Tween complete! Final myValue: " + myValue);
-                    });
+            var t1 = DOTween
+            .To(() => myValue, x => myValue = x, 20f, 200f)
+            .SetEase(Ease.InOutQuad) // 指定缓动类型
+            .SetDelay(1f) // 添加 1 秒的延迟
+                .OnUpdate(() =>
+                {
+                    transform.localPosition = new Vector3(ori.x, myValue, ori.z);
+                    // Debug.Log("Tween update! ");
+                })
+                .OnComplete(() =>
+                {
+                    // 缓动完成时的回调
+                    // Debug.Log("Tween complete! Final myValue: " + myValue);
+                });
 
 
-                sequence.Append(t1);//物体3秒移动到（1，1，1）
-
-            }
+            sequence.Append(t1);//物体3秒移动到（1，1，1）
+            sequence.Play();
 
         }
 
