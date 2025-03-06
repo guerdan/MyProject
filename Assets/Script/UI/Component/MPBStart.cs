@@ -28,13 +28,18 @@ namespace Script.UI.Component
             {
                 if (i % 2 == 0)
                 {
+                    list[i].GetPropertyBlock(materialPropertyBlock);
                     materialPropertyBlock.SetColor("_Color", Color.white);
                     list[i].SetPropertyBlock(materialPropertyBlock);
+                    materialPropertyBlock.Clear();
+                    
                 }
                 else
                 {
+                    list[i].GetPropertyBlock(materialPropertyBlock);
                     materialPropertyBlock.SetColor("_Color", Color.red);
                     list[i].SetPropertyBlock(materialPropertyBlock);
+                    materialPropertyBlock.Clear();
                 }
             }
 

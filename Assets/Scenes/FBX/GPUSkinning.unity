@@ -323,6 +323,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: slime
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 65fc861e5cb88b040a4a4db99fb5b8f0, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1826719709262503059, guid: 65fc861e5cb88b040a4a4db99fb5b8f0, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: -2.1826769e-13
@@ -366,22 +370,26 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 65fc861e5cb88b040a4a4db99fb5b8f0, type: 3}
   m_PrefabInstance: {fileID: 1511982176}
   m_PrefabAsset: {fileID: 0}
---- !u!111 &1511982179
-Animation:
+--- !u!95 &1511982181
+Animator:
+  serializedVersion: 4
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1511982177}
   m_Enabled: 1
-  serializedVersion: 3
-  m_Animation: {fileID: -4992108531781382518, guid: 65fc861e5cb88b040a4a4db99fb5b8f0, type: 3}
-  m_Animations:
-  - {fileID: -4992108531781382518, guid: 65fc861e5cb88b040a4a4db99fb5b8f0, type: 3}
-  m_WrapMode: 0
-  m_PlayAutomatically: 1
-  m_AnimatePhysics: 0
-  m_CullingType: 0
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 32a548031d32f894a981f20703a08fe1, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorControllerStateOnDisable: 0
 --- !u!1 &1695129970
 GameObject:
   m_ObjectHideFlags: 0
@@ -449,7 +457,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1695129970}
-  m_Mesh: {fileID: -4294552576481311072, guid: 65fc861e5cb88b040a4a4db99fb5b8f0, type: 3}
+  m_Mesh: {fileID: 4300000, guid: c64154b6ec3ceff469152563edc8a352, type: 2}
 --- !u!4 &1695129973
 Transform:
   m_ObjectHideFlags: 0
@@ -473,8 +481,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1949345112}
+  - component: {fileID: 1949345114}
   - component: {fileID: 1949345113}
+  - component: {fileID: 1949345115}
   m_Layer: 0
   m_Name: Root
   m_TagString: Untagged
@@ -482,22 +491,51 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1949345112
-Transform:
+--- !u!114 &1949345113
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1949345111}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66d0c935e8b05fe4f944b1e490fbe002, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  OutPutDir: Assets/Others/3D/Models/Slime
+  skinnedRenderer: {fileID: 107518544}
+  mesh: {fileID: -4294552576481311072, guid: 65fc861e5cb88b040a4a4db99fb5b8f0, type: 3}
+  animation: {fileID: 0}
+  clip: {fileID: -4992108531781382518, guid: 65fc861e5cb88b040a4a4db99fb5b8f0, type: 3}
+  weightCount: 2
+  shader: {fileID: 4800000, guid: b34ef5033eaecc24baace10708edd39e, type: 3}
+  animTex: {fileID: 0}
+  vertexCount: 9
+  animFrameCount: 0
+  boneCount: 0
+  width: 0
+--- !u!224 &1949345114
+RectTransform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1949345111}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.0316236, y: 0.92613447, z: 0.8462838}
+  m_LocalPosition: {x: 0, y: 0, z: 0.8462838}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1949345113
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 1.0316236, y: 0.92613447}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1949345115
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -506,20 +544,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 1949345111}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 66d0c935e8b05fe4f944b1e490fbe002, type: 3}
+  m_Script: {fileID: 11500000, guid: e04f7bf85c5b1f8458c3e63c94397481, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  OutPutDir: Assets/Others/3D/Models/Slime
-  skinnedRenderer: {fileID: 107518544}
-  mesh: {fileID: -4294552576481311072, guid: 65fc861e5cb88b040a4a4db99fb5b8f0, type: 3}
-  animation: {fileID: 1511982179}
-  clip: {fileID: -4992108531781382518, guid: 65fc861e5cb88b040a4a4db99fb5b8f0, type: 3}
-  weightCount: 2
-  animTex: {fileID: 0}
-  vertexCount: 9
-  animFrameCount: 0
-  boneCount: 0
-  width: 0
+  meshRenderer: {fileID: 0}
 --- !u!1 &1957859871
 GameObject:
   m_ObjectHideFlags: 0

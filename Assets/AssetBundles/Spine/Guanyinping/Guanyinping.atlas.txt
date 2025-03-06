@@ -1,0 +1,181 @@
+
+Guanyinping.png
+size: 1024,1024
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+1_1
+  rotate: false
+  xy: 2, 5
+  size: 231, 111
+  orig: 231, 111
+  offset: 0, 0
+  index: -1
+1_10
+  rotate: false
+  xy: 252, 652
+  size: 283, 370
+  orig: 283, 370
+  offset: 0, 0
+  index: -1
+1_11
+  rotate: false
+  xy: 833, 502
+  size: 164, 244
+  orig: 164, 244
+  offset: 0, 0
+  index: -1
+1_12
+  rotate: false
+  xy: 2, 459
+  size: 248, 563
+  orig: 248, 563
+  offset: 0, 0
+  index: -1
+1_13
+  rotate: false
+  xy: 537, 789
+  size: 327, 233
+  orig: 327, 233
+  offset: 0, 0
+  index: -1
+1_14
+  rotate: false
+  xy: 866, 748
+  size: 152, 174
+  orig: 152, 174
+  offset: 0, 0
+  index: -1
+1_15
+  rotate: true
+  xy: 797, 274
+  size: 212, 119
+  orig: 212, 119
+  offset: 0, 0
+  index: -1
+1_16
+  rotate: false
+  xy: 537, 679
+  size: 249, 108
+  orig: 249, 108
+  offset: 0, 0
+  index: -1
+1_17
+  rotate: true
+  xy: 252, 458
+  size: 192, 331
+  orig: 192, 331
+  offset: 0, 0
+  index: -1
+1_18
+  rotate: false
+  xy: 2, 118
+  size: 247, 339
+  orig: 247, 339
+  offset: 0, 0
+  index: -1
+1_19
+  rotate: false
+  xy: 441, 200
+  size: 167, 256
+  orig: 167, 256
+  offset: 0, 0
+  index: -1
+1_2
+  rotate: false
+  xy: 652, 81
+  size: 131, 164
+  orig: 131, 164
+  offset: 0, 0
+  index: -1
+1_20
+  rotate: false
+  xy: 785, 99
+  size: 137, 146
+  orig: 137, 146
+  offset: 0, 0
+  index: -1
+1_21
+  rotate: false
+  xy: 782, 2
+  size: 55, 64
+  orig: 55, 64
+  offset: 0, 0
+  index: -1
+1_22
+  rotate: false
+  xy: 652, 16
+  size: 128, 63
+  orig: 128, 63
+  offset: 0, 0
+  index: -1
+1_23
+  rotate: false
+  xy: 251, 127
+  size: 188, 329
+  orig: 188, 329
+  offset: 0, 0
+  index: -1
+1_24
+  rotate: true
+  xy: 610, 247
+  size: 239, 185
+  orig: 239, 185
+  offset: 0, 0
+  index: -1
+1_25
+  rotate: false
+  xy: 585, 488
+  size: 246, 189
+  orig: 246, 189
+  offset: 0, 0
+  index: -1
+1_3
+  rotate: false
+  xy: 785, 68
+  size: 115, 29
+  orig: 115, 29
+  offset: 0, 0
+  index: -1
+1_4
+  rotate: true
+  xy: 441, 28
+  size: 170, 209
+  orig: 170, 209
+  offset: 0, 0
+  index: -1
+1_5
+  rotate: false
+  xy: 918, 379
+  size: 93, 121
+  orig: 93, 121
+  offset: 0, 0
+  index: -1
+1_6
+  rotate: false
+  xy: 924, 166
+  size: 63, 96
+  orig: 63, 96
+  offset: 0, 0
+  index: -1
+1_7
+  rotate: true
+  xy: 918, 264
+  size: 113, 88
+  orig: 113, 88
+  offset: 0, 0
+  index: -1
+1_8
+  rotate: false
+  xy: 924, 105
+  size: 50, 59
+  orig: 50, 59
+  offset: 0, 0
+  index: -1
+1_9
+  rotate: false
+  xy: 866, 924
+  size: 156, 98
+  orig: 156, 98
+  offset: 0, 0
+  index: -1

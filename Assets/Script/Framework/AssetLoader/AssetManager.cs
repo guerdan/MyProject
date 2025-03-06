@@ -65,15 +65,17 @@ namespace Script.Framework.AssetLoader
             {
                 if (_inst == null) _inst = new AssetManager();
                 return _inst;
+
+                
             }
         }
 
 
-        // <代理对象, <资源地址, handle>字典> 代理对象销毁时释放相关handle。
+        // <实例, <资源地址, handle>字典> 代理对象销毁时释放相关handle。
         // handle代表资源唯一性。同个资源Addressables会返回相同的handle。<代理对象, handle>代表一次引用计数。同个代理与同个handle，在_delegatorToHandles最多占一次。
         private Dictionary<Object, Dictionary<string, AsyncOperationHandle>> _delegatorToHandles;
 
-        // <图集资源, <精灵名, Sprite(Clone)>字典> 用于缓存图集中的精灵，待图集资源被销毁时销毁Sprite克隆体。
+        // <图集资源, <精灵名, Sprite(Clone)>字典> 用于缓存图集中的精灵，当资源被销毁时就销毁它的克隆体。
         private Dictionary<Object, Dictionary<string, Sprite>> _atlasToSprites;
 
         // <精灵路径, 图集地址> 用于优化动态加载图集图片的流程，自动转换加载方式。

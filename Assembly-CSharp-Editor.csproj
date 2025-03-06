@@ -1255,6 +1255,8 @@
   <ItemGroup>
     <ProjectReference Include="Assembly-CSharp-firstpass.csproj" />
     <ProjectReference Include="Assembly-CSharp.csproj" />
+    <ProjectReference Include="Spine.Runtime.csproj" />
+    <ProjectReference Include="Spine.Editor.csproj" />
   </ItemGroup>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
   <ItemGroup>

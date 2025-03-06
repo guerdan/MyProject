@@ -1,6 +1,5 @@
-print("testB hello")
 
-
+GCode = 20
 local testB = {
     name = "testB",
     age = 20,

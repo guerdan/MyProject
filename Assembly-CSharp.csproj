@@ -71,6 +71,7 @@
     <Compile Include="Assets\XLua\Tutorial\LoadLuaScript\Loader\CustomLoader.cs" />
     <Compile Include="Assets\Script\Framework\UI\PanelDefine.cs" />
     <Compile Include="Assets\XLua\Gen\Script_XLua_TestAWrap.cs" />
+    <Compile Include="Assets\Script\Render\GPUSkinning\GPUSkinning2DSample.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_DebugWrap.cs" />
     <Compile Include="Assets\Script\Render\GPUSkinning\AnimClip2Tex.cs" />
     <Compile Include="Assets\XLua\Examples\11_RawObject\RawObjectTest.cs" />
@@ -89,6 +90,7 @@
     <Compile Include="Assets\Script\Test\AssetTest.cs" />
     <Compile Include="Assets\Script\Test\DestroyDemo.cs" />
     <Compile Include="Assets\XLua\Examples\02_U3DScripting\LuaBehaviour.cs" />
+    <Compile Include="Assets\Script\Util\HierarchyExpandCollapse.cs" />
     <Compile Include="Assets\XLua\Examples\10_SignatureLoader\SignatureLoaderTest.cs" />
     <Compile Include="Assets\Script\Util\AssetUtil.cs" />
     <Compile Include="Assets\Script\Framework\UI\PanelStack.cs" />
@@ -139,7 +141,7 @@
     <Compile Include="Assets\XLua\Gen\XLuaTest_PeddingWrap.cs" />
     <Compile Include="Assets\XLua\Examples\09_GenericMethod\Foo.cs" />
     <Compile Include="Assets\XLua\Src\RawObject.cs" />
-    <Compile Include="Assets\Script\Render\GPUSkinning\GPUSkinningSampleTex.cs" />
+    <Compile Include="Assets\Script\Render\GPUSkinning\GPUSkinningSample.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_GameObjectWrap.cs" />
     <Compile Include="Assets\XLua\Src\TemplateEngine\TemplateEngine.cs" />
     <Compile Include="Assets\Script\Framework\GameTimer.cs" />
@@ -162,6 +164,7 @@
     <Compile Include="Assets\XLua\Src\ObjectPool.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_AnimationCurveWrap.cs" />
     <Compile Include="Assets\XLua\Gen\Tutorial_CSCallLua_ItfDBridge.cs" />
+    <Compile Include="Assets\Script\Render\GPUSkinning\GPUSkinUtil.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_LightWrap.cs" />
     <Compile Include="Assets\XLua\Gen\XLuaTest_NoGcWrap.cs" />
     <Compile Include="Assets\XLua\Src\LuaBase.cs" />
@@ -208,6 +211,7 @@
     <None Include="Assets\XLua\Examples\07_AsyncTest\Resources\async_test.lua.txt" />
     <None Include="Assets\XLua\Tutorial\LoadLuaScript\ByFile\Resources\byfile.lua.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMPro.cginc" />
+    <None Include="Assets\Spine\version.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile Overlay.shader" />
     <None Include="Assets\Shader\TransparentCutout.shader" />
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\MyTask2.lua.txt" />
@@ -226,9 +230,11 @@
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\Method1.lua.txt" />
     <None Include="Assets\Script\Render\GPUSkinning\VertexAnim_Improved.shader" />
     <None Include="Assets\Resources\XLua\luaTest.lua.txt" />
+    <None Include="Assets\AssetBundles\Spine\Caocao\Caocao.atlas.txt" />
     <None Include="Assets\XLua\Gen\Resources\hotfix_id_map.lua.txt" />
     <None Include="Assets\AssetBundles\Other\Sprite2AtlasAddress.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Surface.shader" />
+    <None Include="Assets\Script\Render\GPUSkinning\2DBoneAnim.shader" />
     <None Include="Assets\TextMesh Pro\Sprites\EmojiOne Attribution.txt" />
     <None Include="Assets\XLua\Resources\perf\profiler.lua.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap-Custom-Atlas.shader" />
@@ -249,6 +255,7 @@
     <None Include="Assets\Shader\Outline3D.shader" />
     <None Include="Assets\Others\3D\PBR.shader" />
     <None Include="Assets\XLua\Examples\03_UIEvent\ButtonInteraction.lua.txt" />
+    <None Include="Assets\AssetBundles\Spine\Guanyinping\Guanyinping.atlas.txt" />
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\AsyncMethod4.lua.txt" />
     <None Include="Assets\Shader\Tiling.shader" />
     <None Include="Assets\XLua\Examples\02_U3DScripting\LuaTestScript.lua.txt" />
@@ -1371,6 +1378,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="Assembly-CSharp-firstpass.csproj" />
+    <ProjectReference Include="Spine.Runtime.csproj" />
+    <ProjectReference Include="Spine.Editor.csproj" />
   </ItemGroup>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
   <ItemGroup>

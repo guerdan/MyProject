@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿#if UNITY_EDITOR
+
+using UnityEngine;
 using UnityEditor;
 // using Sirenix.OdinInspector;
 // using Sirenix.OdinInspector.Editor;
@@ -221,3 +223,4 @@ public class BoneAnim2Tex
     }
 
 }
+#endif

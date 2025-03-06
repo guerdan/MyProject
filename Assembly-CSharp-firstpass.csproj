@@ -1185,6 +1185,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="Spine.Runtime.csproj" />
+    <ProjectReference Include="Spine.Editor.csproj" />
   </ItemGroup>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
   <ItemGroup>

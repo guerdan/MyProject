@@ -14,6 +14,12 @@ namespace Script.UI.Test
 {
     public class UITest : MonoBehaviour
     {
+        public MeshRenderer meshRenderer;
+        void Start()
+        {
+            Application.targetFrameRate = 60;
+
+        }
         void Update()
         {
             if (Input.GetKeyDown(KeyCode.A))
@@ -32,6 +38,8 @@ namespace Script.UI.Test
 
             if (Input.GetKeyDown(KeyCode.Q))
             {
+                Application.targetFrameRate = 60;
+
             }
 
             if (Input.GetKeyDown(KeyCode.R))
@@ -64,11 +72,20 @@ namespace Script.UI.Test
 
             if (Input.GetKeyDown(KeyCode.K))
             {
+                //image不会创建材质实例
+                //    var image = GetComponent<Image>();
+                //    image.material.SetFloat("_Test", 1);
+
+                // MeshRenderer
+                var m = meshRenderer;
+                meshRenderer.sharedMaterial.SetFloat("_Test", 1);
+
+                var p = new MaterialPropertyBlock();
             }
 
 
 
-            // return;
+            return;
 
 
             // // 标记自定义方法的开始

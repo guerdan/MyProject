@@ -12,31 +12,27 @@ namespace Script.XLua
     public class XLuaManager : MonoBehaviour
     {
 
-        static XLuaManager Instance;
+        public static XLuaManager Inst;
         /// <summary>
         /// 脚本缓存字典
         /// </summary>
         public Dictionary<string, TextAsset> LuaTextAssetsDic = new Dictionary<string, TextAsset>();
 
-
-
         private LuaEnv luaEnv;  //lua 环境
-        private List<string> luaPaths;  //lua 环境
+        private List<string> luaPaths;  //lua 的addressable
 
         void Awake()
         {
-            Instance = this;
+            Inst = this;
             //创建lua运行环境
             luaEnv = new LuaEnv();
-            luaEnv.DoString("", "chunk", null);
 
+            luaEnv.DoString("", "chunk", null);
 
             luaPaths = new List<string>(){
                 "Lua/Folder1/testA.lua.txt",
                 "Lua/Folder1/testB.lua.txt",
             };
-
-
             StartCoroutine(LoadLuaAddressable());
         }
 
@@ -45,10 +41,7 @@ namespace Script.XLua
             //释放lua环境
             if (luaEnv != null) luaEnv.Dispose();
         }
-
-
-
-
+        // 异步加载脚本
         private IEnumerator LoadLuaAddressable()
         {
             var LuaHandle = Addressables.LoadAssetsAsync<TextAsset>(luaPaths, null, Addressables.MergeMode.Union);
@@ -57,7 +50,7 @@ namespace Script.XLua
                 for (int i = 0; i < handle.Result.Count; i++)
                 {
                     TextAsset textAsset = handle.Result[i];
-                    XLuaManager.Instance.LuaTextAssetsDic.Add(luaPaths[i], textAsset);
+                    LuaTextAssetsDic.Add(luaPaths[i], textAsset);
                 }
             };
 
@@ -65,7 +58,7 @@ namespace Script.XLua
 
             if (LuaHandle.Status == AsyncOperationStatus.Succeeded)
             {
-                luaEnv.AddLoader(XLuaManager.Instance.LuaScriptLoader);
+                luaEnv.AddLoader(LuaScriptLoader);
                 Debug.Log("Lua脚本加载成功");
             }
             else
@@ -73,36 +66,8 @@ namespace Script.XLua
                 Debug.LogError("Lua脚本加载失败");
             }
 
-
-
-            var LuaHandle2 = Addressables.LoadAssetsAsync<TextAsset>(luaPaths, null, Addressables.MergeMode.Union);
-            LuaHandle2.Completed += (handle) =>
-            {
-                Debug.LogWarning("onComplete" + Time.frameCount);
-            };
-
-                Debug.LogWarning("invoke" + Time.frameCount);
-
+            Addressables.Release(LuaHandle);
         }
-
-
-        void Update()
-        {
-            if (Input.GetKeyDown(KeyCode.A))
-            {
-                luaEnv.DoString("require 'Lua/Folder1/testA'");
-
-                // 获取 Lua 函数
-                // LuaFunction luaFunction = luaEnv.Global.Get<LuaFunction>("LuaFunctionExample");
-                // luaFunction.Call(10);
-
-                var b = new TestB();
-                b.DirectCall();
-            }
-        }
-
-
-
 
         public byte[] LuaScriptLoader(ref string filepath)
         {
@@ -111,8 +76,30 @@ namespace Script.XLua
             //通过字典获取资源
             TextAsset result = LuaTextAssetsDic[filepath];
             return result.bytes;
-
         }
+
+
+        void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.A))
+            {
+                luaEnv.DoString("require 'Lua/Folder1/testB'");
+                luaEnv.DoString("require 'Lua/Folder1/testA'");
+
+                // 获取 Lua 函数
+                // LuaFunction luaFunction = luaEnv.Global.Get<LuaFunction>("LuaFunctionExample");
+                // luaFunction.Call(10);
+
+
+                luaEnv.Global.Get("TestCall", out Action action);
+                action.Invoke();
+            }
+        }
+
+
+
+
+
 
     }
 

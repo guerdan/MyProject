@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿#if UNITY_EDITOR
+using UnityEngine;
 using UnityEditor;
 // using Sirenix.OdinInspector;
 // using Sirenix.OdinInspector.Editor;
@@ -179,3 +180,4 @@ public class AnimClip2Tex {
         }
     }
 }
+#endif

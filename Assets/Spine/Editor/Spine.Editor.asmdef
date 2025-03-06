@@ -1,0 +1,16 @@
+{
+    "name": "Spine.Editor",
+    "references": [
+        "GUID:93efc831c6bc943dca00d3916f5a3633"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": []
+}

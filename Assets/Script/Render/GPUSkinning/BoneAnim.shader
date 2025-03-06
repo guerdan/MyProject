@@ -41,11 +41,6 @@ Shader "GPU Skinning/BoneAnim"
 				{
 					float2 uv : TEXCOORD0;
 					float4 vertex : SV_POSITION;
-					float4 line1 : TEXCOORD1;
-					float4 line2 : TEXCOORD2;
-					float4 line3 : TEXCOORD3;
-					float4 line4 : TEXCOORD4;
-					float4 uv_n_uv :TEXCOORD5;
 					UNITY_VERTEX_INPUT_INSTANCE_ID
 				};
 
@@ -56,7 +51,7 @@ Shader "GPU Skinning/BoneAnim"
 				sampler2D _MainTex;
 				float4 _MainTex_ST;
 				sampler2D _AnimTex;
-				float4 _AnimTex_TexelSize;
+				float4 _AnimTex_TexelSize;//纹理的1/宽像素数、1/高像素数、宽像素数、高像素数、
 				int _BoneCount, _FrameCount;
 				float _Interval;
 				
@@ -91,9 +86,9 @@ Shader "GPU Skinning/BoneAnim"
 					UNITY_SETUP_INSTANCE_ID(v);
 					v2f o;
 					o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-					// 计算y轴坐标（时间）
-					float y = _Time.y / _Interval + UNITY_ACCESS_INSTANCED_PROP(Props, _Random) * _FrameCount;;
-					y = floor(y - floor(y / _FrameCount) * _FrameCount);
+					
+					float y = _Time.y / _Interval + UNITY_ACCESS_INSTANCED_PROP(Props, _Random) * _FrameCount;
+					y = floor(y - floor(y / _FrameCount) * _FrameCount);  // y为当前帧序
 
 					// 拿回索引和权重
                     float4 temp = 0;
@@ -122,17 +117,14 @@ Shader "GPU Skinning/BoneAnim"
 					// 法线也如此操作
 					// o.worldNormal = UnityObjectToWorldNormal(mul(mat, float4(v.normal, 0)).xyz);
 
-					o.line1 = line0;
-					o.line2 = line1;
-					o.line3 = line2;
-					o.line4 = float4(0, 0, 0, 1);
-					o.uv_n_uv = tex2Dlod(_AnimTex, float4(0, 0, 0, 0));
+
 					return o;
 				}
 
 				fixed4 frag(v2f i) : SV_Target
 				{
 					fixed4 col = tex2D(_MainTex, i.uv);
+                    clip(col.a - 0.1);
 					return col;
 				}
 				ENDCG
