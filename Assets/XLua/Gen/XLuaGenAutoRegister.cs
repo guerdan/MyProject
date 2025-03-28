@@ -160,9 +160,6 @@ namespace XLua.CSObjectWrap
             translator.DelayWrapLoader(typeof(XLuaTest.FooExtension), XLuaTestFooExtensionWrap.__Register);
         
         
-            translator.DelayWrapLoader(typeof(Script.XLua.TestA), ScriptXLuaTestAWrap.__Register);
-        
-        
             translator.DelayWrapLoader(typeof(Script.XLua.TestB), ScriptXLuaTestBWrap.__Register);
         
         

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
@@ -6,11 +7,30 @@ using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.U2D;
+using static UnityEngine.AddressableAssets.Addressables;
 using Object = UnityEngine.Object;
 
 
 namespace Script.Framework.AssetLoader
 {
+    public enum UnloadMode
+    {
+        /// <summary>
+        /// 手动管理资源释放
+        /// </summary>
+        NotAuto,
+        /// <summary>
+        /// 如果委托者被销毁，在回收周期中卸载
+        /// </summary>
+        WithDelegator,
+        /// <summary>
+        /// 当资源加载完成后卸载
+        /// </summary>
+        WhenComplete
+    }
+
+    // todo 缺点：Addressable得加载时长不是最优，每个资源都至少要1帧从协程中返回。
+
     /// <summary>
     /// 1 所有UnityEngine Object对象分为预制体和克隆体。
     /// 2 Destroy接口能销毁一切克隆体，但不能销毁预制体。如果是GameObject自动删除其下挂接的子节点和组件，但不会销毁引用资源（如材质、纹理等）
@@ -27,31 +47,57 @@ namespace Script.Framework.AssetLoader
     /// </summary>
     public interface IAssetManager
     {
+        #region 接口
 
         /// <summary>
         /// 异步加载资源，代理接口。已加载过的资源，可以同步调用。
         /// 1.加载期间代理对象若被销毁，则不执行回调。2.代理对象被销毁，将释放对此资源的引用计数
         /// </summary>
         /// <typeparam name="T">资源类型</typeparam>
-        /// <param name="address">配置资源名</param>
+        /// <param name="address">可以是资源名也可以是lable</param>
         /// <param name="loadComplete"></param>
         /// <param name="delegtor"> 代理对象最好就是持有者本身，也可以是更高层的管理者 </param>
-        void LoadAsync<T>(string address, Action<T> loadComplete, Object delegtor) where T : Object;
-        // 异步加载资源，原始接口。应用层自行决定何时释放资源。暂存handle并调用ReleaseAsset接口释放引用计数
-        void LoadAsyncEmpty<T>(string address, Action<T, AsyncOperationHandle> loadComplete) where T : Object;
-        // 绑定代理与handle
+        /// <param name="mode"> WithDelegator模式下delegtor不为null。其他情况delegtor为null </param>
+        void LoadAssetAsync<T>(string address, Action<T> loadComplete
+       , Object delegtor, UnloadMode mode = UnloadMode.WithDelegator) where T : Object;
+        void LoadAssetAsync<T>(string address, Action<T, AsyncOperationHandle> loadComplete
+        , Object delegtor, UnloadMode mode = UnloadMode.WithDelegator) where T : Object;
+
+
+        #endregion
+
+        #region 批量加载
+        /// <summary>
+        /// 批量加载全部类型的资源,addresses的并集,手动管理资源。每个资源至少一帧
+        /// </summary>
+        AsyncOperationHandle LoadAssetsAsync(List<string> addresses, Action<Object> loadComplete);
+        /// <summary>
+        /// 会筛选指定泛型资源，其他类型资源不会加载。
+        /// </summary>
+        AsyncOperationHandle<IList<T>> LoadAssetsAsync<T>(List<string> addresses, Action<T> loadComplete) where T : Object;
+        #endregion
+
+        #region 自定义绑定方式(绑定实例)
+        /// <summary>
+        /// 绑定代理与handle
+        /// </summary>
         void BindDelegator(string address, Object delagtor, AsyncOperationHandle handle);
 
+        #endregion
+        #region 释放资源
         /// <summary>
         /// 清理资源缓存。
         /// 用过或熟悉 Addressable 的同学应该都知道，Addressable使用引用计数来维护资源的使用，
         /// 当某个资源引用计数为0时，便会将其卸载，待整个bundle引用计数为0时，再将整个bundle卸载（此时释放资源内存）。
         /// </summary>
         void ReleaseUnuseAsset();
-        // 清理handle资源缓存。
-        void ReleaseAsset(AsyncOperationHandle handle);
-        // 清理delagtor的所有依赖handle。
+        // 自定义释放，清理delagtor的所有依赖handle。
         void ReleaseAsset(Object delegtor);
+
+        void ReleaseAsset(AsyncOperationHandle handle);
+
+        #endregion
+
     }
 
     public class AssetManager : IAssetManager
@@ -66,7 +112,7 @@ namespace Script.Framework.AssetLoader
                 if (_inst == null) _inst = new AssetManager();
                 return _inst;
 
-                
+
             }
         }
 
@@ -97,26 +143,44 @@ namespace Script.Framework.AssetLoader
         /// Addressables会自动统计"待加载资源"对其依赖资源的引用计数，而无法统计外界对"待加载资源"的依赖。
         /// 于是框架做的事情就等价于 image.sprite = sprite;时，sprite的引用计数+1。
         /// </summary>
-        public void LoadAsync<T>(string address, Action<T> loadComplete, Object delagtor) where T : Object
+        public void LoadAssetAsync<T>(string address, Action<T> loadComplete
+               , Object delagtor, UnloadMode mode = UnloadMode.WithDelegator) where T : Object
         {
-            if (delagtor == null)
+            LoadAssetAsync<T>(address, (asset, _) => loadComplete.Invoke(asset), delagtor, mode);
+        }
+        public void LoadAssetAsync<T>(string address, Action<T, AsyncOperationHandle> loadComplete
+        , Object delagtor, UnloadMode mode = UnloadMode.WithDelegator) where T : Object
+        {
+            if (mode == UnloadMode.WithDelegator && delagtor == null)
             {
-                Debug.LogWarning("[AssetManager] delagtor is null, 接口调用错误");
+                Debug.LogWarning("[AssetManager] LoadAsync delagtor is null, 接口调用错误");
                 return;
             }
 
             Action<string, T, AsyncOperationHandle> loadCompleteAction =
             (address, asset, handle) =>
             {
-                // 说明代理对象已经被销毁，不用向后执行并释放资源。设计上，保证回调安全性。
-                if (delagtor == null)
+                if (mode == UnloadMode.NotAuto)
                 {
-                    ReleaseAsset(handle);
-                    return;
+                    loadComplete.Invoke(asset, handle);
                 }
+                else if (mode == UnloadMode.WithDelegator)
+                {
+                    // 说明代理对象已经被销毁，不用向后执行并释放资源。设计上，保证回调安全性。
+                    if (delagtor == null)
+                    {
+                        ReleaseAsset(handle);
+                        return;
+                    }
 
-                loadComplete.Invoke(asset);
-                BindDelegator(address, delagtor, handle);
+                    loadComplete.Invoke(asset, handle);
+                    BindDelegator(address, delagtor, handle);
+                }
+                else if (mode == UnloadMode.WhenComplete)
+                {
+                    loadComplete.Invoke(asset, handle);
+                    ReleaseAsset(handle);
+                }
             };
 
             LoadAssetInType<T>(address, loadCompleteAction);
@@ -141,15 +205,6 @@ namespace Script.Framework.AssetLoader
                 //同个代理与同个handle，只占一次计数。于是就释放。
                 ReleaseAsset(handle);
             }
-        }
-
-        /// <summary>
-        /// 生接口。应用层自行决定何时释放资源。调用ReleaseAsset接口释放
-        /// </summary>
-        public void LoadAsyncEmpty<T>(string address, Action<T, AsyncOperationHandle> loadComplete) where T : Object
-        {
-
-            LoadAssetInType<T>(address, (assetAddress, asset, handle) => loadComplete.Invoke(asset, handle));
         }
 
 
@@ -221,12 +276,12 @@ namespace Script.Framework.AssetLoader
                 //两个handle是同一个
                 (handle) =>
                 {
-                    if (handle.Status != AsyncOperationStatus.Succeeded || handle.Result == null)
+                    if (operateHandle.Status != AsyncOperationStatus.Succeeded || operateHandle.Result == null)
                     {
                         Debug.LogError($"Load Asset Async Failed: {address}.");
                         return;
                     }
-                    loadCompleteAction.Invoke(address, handle.Result, handle);
+                    loadCompleteAction.Invoke(address, operateHandle.Result, operateHandle);
                 };
             }
 
@@ -282,5 +337,26 @@ namespace Script.Framework.AssetLoader
                 _delegatorToHandles.Remove(delegator);
             }
         }
+
+        public AsyncOperationHandle LoadAssetsAsync(List<string> addresses, Action<Object> loadComplete)
+        {
+            AsyncOperationHandle handle = Addressables.LoadAssetsAsync<Object>(addresses, (obj) =>
+            {
+                loadComplete?.Invoke(obj);
+            }, MergeMode.Union);
+            return handle;
+        }
+
+        // 这个只加载指定泛型资源，其他类型资源不会加载。addresses的并集(理所当然消除重复)
+        public AsyncOperationHandle<IList<T>> LoadAssetsAsync<T>(List<string> addresses, Action<T> loadComplete) where T : Object
+        {
+            AsyncOperationHandle<IList<T>> handle = Addressables.LoadAssetsAsync<T>(addresses, (obj) =>
+            {
+                loadComplete?.Invoke(obj);
+            }, MergeMode.Union);
+            return handle;
+        }
+
+
     }
 }

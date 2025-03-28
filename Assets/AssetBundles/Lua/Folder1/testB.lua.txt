@@ -5,4 +5,7 @@ local testB = {
     age = 20,
 }
 
+
+print("testB hello")
+
 return testB

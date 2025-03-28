@@ -5,6 +5,14 @@
             "name": "Attach to Unity",
             "type": "vstuc",
             "request": "attach"
+        },
+        {
+            "type": "emmylua_attach",
+            "request": "attach",
+            "name": "Lua Debug",
+            "pid": 0,//进程ID 任务管理器右键转到详细信息 和下面的进程名称同时存在一个即可
+            "processName": "Unity.exe",//进程名称   没意外的话就是Unity.exe和上面的进程ID只要存在一个即可使用
+            "captureLog": false
         }
      ]
 }

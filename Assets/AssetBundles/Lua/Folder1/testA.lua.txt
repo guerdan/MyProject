@@ -4,36 +4,47 @@
 
 
 -- -- 反射调用 C# 方法
--- local testClass = CS.Script.XLua.TestA()
+local testClass = CS.Script.XLua.TestB()
+local testClassC = CS.Script.XLua.TestC()
 -- testClass:DirectCall()
 -- -- 反射访问 C# 属性
 -- print("C# property a:", testClass.a)
 
--- function LuaFunctionExample()
---     -- 反射2600ms  6000个时钟周期, Warp 260ms  600个时钟周期
---     local watch = CS.System.Diagnostics.Stopwatch()
---     watch:Start()
---     for i = 1, 1000000, 1 do
---         testClass:DirectCall()
---     end
+function LuaFunctionExample()
+    -- 反射2600ms  6000个时钟周期, Warp 260ms  600个时钟周期
+    local watch = CS.System.Diagnostics.Stopwatch()
+    watch:Start()
 
---     watch:Stop()
---     print("Direct call time: ", tostring(watch.ElapsedMilliseconds), " ms");
--- end
+    for i = 1, 1000000, 1 do
+        testClass:DirectCall(testClassC)
+    end
 
+    watch:Stop()
+    print("Direct call time: ", tostring(watch.ElapsedMilliseconds), " ms");
+end
+
+LuaFunctionExample()
 
 -- xlua.hotfix(CS.Script.XLua.TestB, "DirectCall", function(self)
 --     print("hotfix DirectCall")
 -- end)
 
--- local testB = CS.Script.XLua.TestB()
--- testB:DirectCall()
 
 print("testA hello")
 print("gc", GCode)
 
+function TestCallEmpty()
 
+end
 
 function TestCall()
-    print("TestCall")
+    -- --180ns
+    -- for i = 1, 1000000 do
+    --     math.sin(i)
+    -- end
+
+    local sin = math.sin
+    for i = 1, 1000000 do
+        sin(i)
+    end
 end

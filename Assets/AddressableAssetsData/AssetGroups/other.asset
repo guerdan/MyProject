@@ -21,6 +21,10 @@ MonoBehaviour:
     m_Address: Other/Sprite2AtlasAddress
     m_ReadOnly: 0
     m_SerializedLabels: []
+  - m_GUID: 95f4f00480fa3484185a16d7d0131c6e
+    m_Address: Other/LuaSummary
+    m_ReadOnly: 0
+    m_SerializedLabels: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 461c0bb45d0c65047b0497b6d6fed90a, type: 2}
   m_SchemaSet:

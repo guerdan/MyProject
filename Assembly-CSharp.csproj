@@ -59,10 +59,9 @@
     <UnityVersion>2021.3.6f1</UnityVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Analyzer Include="C:\Users\hp\.vscode\extensions\visualstudiotoolsforunity.vstuc-1.1.0\Analyzers\Microsoft.Unity.Analyzers.dll" />
+    <Analyzer Include="C:\Users\hp\.vscode\extensions\visualstudiotoolsforunity.vstuc-1.1.1\Analyzers\Microsoft.Unity.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\Script\Render\PostEffectsBase.cs" />
     <Compile Include="Assets\XLua\Gen\XLuaTest_Foo1ChildWrap.cs" />
     <Compile Include="Assets\XLua\Examples\08_Hotfix\HotfixTest.cs" />
     <Compile Include="Assets\XLua\Src\LuaDLL.cs" />
@@ -70,7 +69,6 @@
     <Compile Include="Assets\XLua\Gen\XLuaTest_Foo1ParentWrap.cs" />
     <Compile Include="Assets\XLua\Tutorial\LoadLuaScript\Loader\CustomLoader.cs" />
     <Compile Include="Assets\Script\Framework\UI\PanelDefine.cs" />
-    <Compile Include="Assets\XLua\Gen\Script_XLua_TestAWrap.cs" />
     <Compile Include="Assets\Script\Render\GPUSkinning\GPUSkinning2DSample.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_DebugWrap.cs" />
     <Compile Include="Assets\Script\Render\GPUSkinning\AnimClip2Tex.cs" />
@@ -135,6 +133,7 @@
     <Compile Include="Assets\XLua\Tutorial\LoadLuaScript\ByFile\ByFile.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_KeyframeWrap.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_Ray2DWrap.cs" />
+    <Compile Include="Assets\Script\Render\OutlineRender\CameraDepthRender.cs" />
     <Compile Include="Assets\XLua\Src\Utils.cs" />
     <Compile Include="Assets\XLua\Gen\System_Collections_IEnumeratorBridge.cs" />
     <Compile Include="Assets\XLua\Gen\XLuaGenAutoRegister.cs" />
@@ -204,7 +203,7 @@
     <Compile Include="Assets\XLua\Src\StaticLuaCallbacks.cs" />
     <Compile Include="Assets\XLua\Gen\System_Collections_Generic_List_1_System_Int32_Wrap.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_MathfWrap.cs" />
-    <Compile Include="Assets\Script\Render\OutLineRender.cs" />
+    <Compile Include="Assets\Script\Render\OutlineRender\OutLineRender.cs" />
     <Compile Include="Assets\XLua\Gen\XLuaTest_FooWrap.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -212,26 +211,43 @@
     <None Include="Assets\XLua\Tutorial\LoadLuaScript\ByFile\Resources\byfile.lua.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMPro.cginc" />
     <None Include="Assets\Spine\version.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test2.lua.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile Overlay.shader" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test12.lua.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test8.lua.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test9.lua.txt" />
     <None Include="Assets\Shader\TransparentCutout.shader" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test18.lua.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test16.lua.txt" />
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\MyTask2.lua.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test1.lua.txt" />
     <None Include="Assets\AssetBundles\Lua\Folder1\testB.lua.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test14.lua.txt" />
     <None Include="Assets\AssetBundles\Lua\Folder1\classA.lua.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test13.lua.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap.shader" />
     <None Include="Assets\Shader\MultiPassShader.shader" />
     <None Include="Assets\XLua\Examples\06_Coroutine\Resources\coruntine_test.lua.txt" />
     <None Include="Assets\Others\Shaders\Diffuse.shader" />
+    <None Include="Assets\Shader\Outline2.shader" />
     <None Include="Assets\XLua\Resources\xlua\util.lua.txt" />
     <None Include="Assets\Script\Render\GPUSkinning\BoneAnim.shader" />
     <None Include="Assets\TextMesh Pro\Shaders\TMPro_Mobile.cginc" />
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\MyTask1.lua.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF SSD.shader" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Surface-Mobile.shader" />
+    <None Include="Assets\AssetBundles\Lua\LuaSummary.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test4.lua.txt" />
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\Method1.lua.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test15.lua.txt" />
     <None Include="Assets\Script\Render\GPUSkinning\VertexAnim_Improved.shader" />
     <None Include="Assets\Resources\XLua\luaTest.lua.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder1\LuaBehaviour.lua.txt" />
     <None Include="Assets\AssetBundles\Spine\Caocao\Caocao.atlas.txt" />
-    <None Include="Assets\XLua\Gen\Resources\hotfix_id_map.lua.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test17.lua.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test3.lua.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test6.lua.txt" />
+    <None Include="Assets\Script\Render\OutlineRender\GetDepthTexture.shader" />
     <None Include="Assets\AssetBundles\Other\Sprite2AtlasAddress.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Surface.shader" />
     <None Include="Assets\Script\Render\GPUSkinning\2DBoneAnim.shader" />
@@ -242,11 +258,14 @@
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\MyTask.lua.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile SSD.shader" />
     <None Include="Assets\TextMesh Pro\Resources\LineBreaking Leading Characters.txt" />
-    <None Include="Assets\Shader\OutLinePostProcess.shader" />
+    <None Include="Assets\Script\Render\OutlineRender\OutLinePostProcessDepth.shader" />
+    <None Include="Assets\AssetBundles\Common\FuncMaterial\OutlineProcess\OutLinePostProcess.shader" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test5.lua.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMPro_Properties.cginc" />
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\AsyncMethod3.lua.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMPro_Surface.cginc" />
     <None Include="Assets\Shader\uv1.shader" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test7.lua.txt" />
     <None Include="Assets\XLua\Resources\perf\memory.lua.txt" />
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\AsyncMethod1.lua.txt" />
     <None Include="Assets\Script\Render\GPUSkinning\BoneAnim_Improved.shader" />
@@ -262,6 +281,7 @@
     <None Include="Assets\XLua\Examples\07_AsyncTest\Resources\message_box.lua.txt" />
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\AsyncMethod2.lua.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile Masking.shader" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test19.lua.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF Overlay.shader" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap-Mobile.shader" />
     <None Include="Assets\AssetBundles\Lua\Folder1\testA.lua.txt" />
@@ -271,6 +291,7 @@
     <None Include="Assets\XLua\Gen\link.xml" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile.shader" />
     <None Include="Assets\XLua\Examples\06_Coroutine\Resources\cs_coroutine.lua.txt" />
+    <None Include="Assets\AssetBundles\Lua\Folder2\test11.lua.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_Sprite.shader" />
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\await.lua.txt" />
   </ItemGroup>

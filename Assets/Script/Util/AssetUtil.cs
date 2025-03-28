@@ -17,29 +17,16 @@ namespace Script.Util
     {
 
         /// <summary>
-        /// 在回调执行后释放资源。
-        /// </summary>
-        public static void LoadSyncOnce<T>(string path, Action<T> callback) where T : Object
-        {
-            AssetManager.Inst.LoadAsyncEmpty<T>(path, (source, handle) =>
-            {
-                callback(source);
-                AssetManager.Inst.ReleaseAsset(handle);
-                
-            });
-        }
-
-        /// <summary>
         /// 加载预制件。绑定实例与资源。
         /// 测试了 LoadPrefab接口，从内存监视器上看没问题
         /// </summary>
         public static void LoadPrefab(string path, Func<GameObject, GameObject> callback)
         {
-            AssetManager.Inst.LoadAsyncEmpty<GameObject>(path, (prefab, handle) =>
+            AssetManager.Inst.LoadAssetAsync<GameObject>(path, (prefab, handle) =>
             {
                 GameObject go = callback(prefab);
                 AssetManager.Inst.BindDelegator(path, go, handle);
-            });
+            }, null, UnloadMode.NotAuto);
         }
 
 
@@ -49,7 +36,7 @@ namespace Script.Util
         /// </summary>
         public static void SetImage(string path, Image image)
         {
-            AssetManager.Inst.LoadAsync<Sprite>(path, (sprite) =>
+            AssetManager.Inst.LoadAssetAsync<Sprite>(path, (sprite, _) =>
             {
                 image.sprite = sprite;
             }, image);

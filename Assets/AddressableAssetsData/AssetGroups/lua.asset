@@ -17,12 +17,92 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 21ec2c9cb659a3b46a9f8c8945431f59
   m_SerializeEntries:
+  - m_GUID: 1299b597f8213ee48950a7fdb7e436bd
+    m_Address: Lua/Folder1/classA.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 56497c032da452c4ebaf15f4342f50ac
+    m_Address: Lua/Folder1/LuaBehaviour.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
   - m_GUID: 1ebfe4c519b00f840a2b4a15c5ac0776
     m_Address: Lua/Folder1/testA.lua.txt
     m_ReadOnly: 0
     m_SerializedLabels: []
   - m_GUID: d134b0ada1467f74a93df48f5f4f6fd6
     m_Address: Lua/Folder1/testB.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 71fa21624333a94438708bc6d041278d
+    m_Address: Lua/Folder2/test1.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: af9bd122da7ccf440b69a622aa7237da
+    m_Address: Lua/Folder2/test11.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 013681e701abdb641a4c547417ed71cf
+    m_Address: Lua/Folder2/test12.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 122de1100cc983d47a67f24cffc625d4
+    m_Address: Lua/Folder2/test13.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: d1e84e694ea15fa4d8fc3feb95e6bba3
+    m_Address: Lua/Folder2/test14.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: e59c431a1af8580428f9f57e5e2b3901
+    m_Address: Lua/Folder2/test15.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 6165bfad2aed11b4ea6bc270f3f6f6be
+    m_Address: Lua/Folder2/test16.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 9617ed51b80b1464b946168f65c6f81e
+    m_Address: Lua/Folder2/test17.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 61d124a7132a66b45a06b41d36d63e05
+    m_Address: Lua/Folder2/test18.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: ad0296753ec7a8948b61003ea14fc9fb
+    m_Address: Lua/Folder2/test19.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: a079fd9b2225a004a9fa3b05f2658178
+    m_Address: Lua/Folder2/test2.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: c6b37a190b61c154e8838f0f38afdf9f
+    m_Address: Lua/Folder2/test3.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: a5521cdd54d6878449f686e43fef99cb
+    m_Address: Lua/Folder2/test4.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 092924d020aa5aa4c8eeb608fec19996
+    m_Address: Lua/Folder2/test5.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: e6a88af73a02d1143989d13ffc74766f
+    m_Address: Lua/Folder2/test6.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 2ac762cc29a041d498b8e378c503ce7f
+    m_Address: Lua/Folder2/test7.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 018b5e8bb414dbe4f8b34b6909362525
+    m_Address: Lua/Folder2/test8.lua.txt
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 211860abc5d361c498205ce60b33be1a
+    m_Address: Lua/Folder2/test9.lua.txt
     m_ReadOnly: 0
     m_SerializedLabels: []
   m_ReadOnly: 0

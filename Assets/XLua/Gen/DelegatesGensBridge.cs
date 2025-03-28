@@ -765,6 +765,11 @@ namespace XLua
 			    return new UnityEngine.Events.UnityAction(__Gen_Delegate_Imp0);
 			}
 		
+		    if (type == typeof(Script.XLua.TestCall))
+			{
+			    return new Script.XLua.TestCall(__Gen_Delegate_Imp0);
+			}
+		
 		    if (type == typeof(System.Func<double, double, double>))
 			{
 			    return new System.Func<double, double, double>(__Gen_Delegate_Imp1);

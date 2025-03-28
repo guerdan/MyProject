@@ -21,14 +21,15 @@ namespace XLua.CSObjectWrap
         {
 			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
 			System.Type type = typeof(Script.XLua.TestB);
-			Utils.BeginObjectRegister(type, L, translator, 0, 1, 1, 1);
+			Utils.BeginObjectRegister(type, L, translator, 0, 2, 1, 1);
 			
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "DirectCall", _m_DirectCall);
+			Utils.RegisterFunc(L, Utils.METHOD_IDX, "DirectCallM", _m_DirectCallM);
 			
 			
-			Utils.RegisterFunc(L, Utils.GETTER_IDX, "a", _g_get_a);
+			Utils.RegisterFunc(L, Utils.GETTER_IDX, "testC", _g_get_testC);
             
-			Utils.RegisterFunc(L, Utils.SETTER_IDX, "a", _s_set_a);
+			Utils.RegisterFunc(L, Utils.SETTER_IDX, "testC", _s_set_testC);
             
 			
 			Utils.EndObjectRegister(type, L, translator, null, null,
@@ -87,8 +88,36 @@ namespace XLua.CSObjectWrap
             
                 
                 {
+                    Script.XLua.TestC _testC = (Script.XLua.TestC)translator.GetObject(L, 2, typeof(Script.XLua.TestC));
                     
-                    gen_to_be_invoked.DirectCall(  );
+                    gen_to_be_invoked.DirectCall( _testC );
+                    
+                    
+                    
+                    return 0;
+                }
+                
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _m_DirectCallM(RealStatePtr L)
+        {
+		    try {
+            
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+            
+            
+                Script.XLua.TestB gen_to_be_invoked = (Script.XLua.TestB)translator.FastGetCSObj(L, 1);
+            
+            
+                
+                {
+                    
+                    gen_to_be_invoked.DirectCallM(  );
                     
                     
                     
@@ -105,13 +134,13 @@ namespace XLua.CSObjectWrap
         
         
         [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
-        static int _g_get_a(RealStatePtr L)
+        static int _g_get_testC(RealStatePtr L)
         {
 		    try {
                 ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
 			
                 Script.XLua.TestB gen_to_be_invoked = (Script.XLua.TestB)translator.FastGetCSObj(L, 1);
-                translator.Push(L, gen_to_be_invoked.a);
+                translator.Push(L, gen_to_be_invoked.testC);
             } catch(System.Exception gen_e) {
                 return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
             }
@@ -121,13 +150,13 @@ namespace XLua.CSObjectWrap
         
         
         [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
-        static int _s_set_a(RealStatePtr L)
+        static int _s_set_testC(RealStatePtr L)
         {
 		    try {
                 ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
 			
                 Script.XLua.TestB gen_to_be_invoked = (Script.XLua.TestB)translator.FastGetCSObj(L, 1);
-                gen_to_be_invoked.a = (Script.XLua.TestA)translator.GetObject(L, 2, typeof(Script.XLua.TestA));
+                gen_to_be_invoked.testC = (Script.XLua.TestC)translator.GetObject(L, 2, typeof(Script.XLua.TestC));
             
             } catch(System.Exception gen_e) {
                 return LuaAPI.luaL_error(L, "c# exception:" + gen_e);

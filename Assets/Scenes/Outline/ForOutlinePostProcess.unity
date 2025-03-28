@@ -213,7 +213,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 90100703}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.123450756, y: 1.1556134, z: 0.06344253}
+  m_LocalPosition: {x: 0.123450756, y: 3.69, z: -4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -230,6 +230,7 @@ GameObject:
   m_Component:
   - component: {fileID: 457137030}
   - component: {fileID: 457137032}
+  - component: {fileID: 457137033}
   m_Layer: 0
   m_Name: Outline Camera
   m_TagString: Untagged
@@ -275,8 +276,8 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.3
-  far clip plane: 1000
+  near clip plane: 4
+  far clip plane: 200
   field of view: 60
   orthographic: 0
   orthographic size: 5
@@ -295,6 +296,20 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
+--- !u!114 &457137033
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 457137029}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 91cfbb07b04092346a524a590b0b00dc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mat: {fileID: 2100000, guid: 30c98503a1167dc4da8ea4e26355aa64, type: 2}
+  depthTexture: {fileID: 0}
 --- !u!1 &851193787
 GameObject:
   m_ObjectHideFlags: 0
@@ -479,7 +494,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1263249723}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.325, y: 1.1556134, z: 1.004}
+  m_LocalPosition: {x: 0, y: 2.63, z: -2.1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -563,15 +578,15 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1559225173}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: -10}
+  m_LocalRotation: {x: 0.17364816, y: 0, z: 0, w: 0.9848078}
+  m_LocalPosition: {x: 0, y: 5, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 457137030}
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 20, y: 0, z: 0}
 --- !u!114 &1559225177
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -584,10 +599,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1d9c64e4c2206c446b6b6f9e92d7e2d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  EnableOutline: 1
   mainCamera: {fileID: 1559225175}
   outlineCamera: {fileID: 457137032}
   purecolorShader: {fileID: 0}
-  shader: {fileID: 4800000, guid: 09835239406f51248b479d64074214f8, type: 3}
-  iterations: 3
-  blurSpread: 0.6
-  outlineColor: {r: 1, g: 0, b: 0, a: 1}
+  material: {fileID: 2100000, guid: a10eaf1877528f54896600caf84e3ef2, type: 2}

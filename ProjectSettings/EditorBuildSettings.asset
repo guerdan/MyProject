@@ -12,13 +12,13 @@ EditorBuildSettings:
     path: Assets/Scenes/ForText.unity
     guid: d7b590652c208df4bbda6f00a712bb45
   - enabled: 0
-    path: Assets/Scenes/ForTest.unity
-    guid: 34d614c653cef824292f33cbc69cf418
-  - enabled: 0
     path: Assets/Scenes/FBX/ForFBX.unity
     guid: da591beffe4b57e4c9141056e41ac4b7
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/FBX/2D_GPUSkinning.unity
     guid: bfae1575b72601644bbceb56349ed20a
+  - enabled: 1
+    path: Assets/Scenes/XLua.unity
+    guid: db36f0379e9c4914a85aa422e428a64b
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: 38218ca590a69bf4cb9baafb5d1b795d, type: 2}
