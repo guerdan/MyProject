@@ -76,11 +76,19 @@ namespace Script.Framework.UI
             rect.offsetMax = new Vector2(0, 0);
         }
 
+        // 加入界面
         public void PushPanel(IPanel panel, Action cb)
         {
             PanelDefine define = panel.PanelDefine;
             var stack = _panelStacks[define.Layer];
             stack.Push(panel, cb);
+        }
+        // 将底部界面置到顶部
+        public void ToFirst(IPanel panel, Action cb)
+        {
+            PanelDefine define = panel.PanelDefine;
+            var stack = _panelStacks[define.Layer];
+            stack.ToFirst(panel, cb);
         }
         public IPanel PopPanel(int layer, Action cb)
         {

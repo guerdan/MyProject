@@ -4,7 +4,9 @@
         {
             "name": "Attach to Unity",
             "type": "vstuc",
-            "request": "attach"
+            "request": "attach",
+            "playerConnection": true, // 启用 Player 调试
+            // "endPoint": "192.168.43.143:56860"
         },
         {
             "type": "emmylua_attach",

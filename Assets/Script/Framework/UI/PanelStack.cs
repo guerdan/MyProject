@@ -65,6 +65,7 @@ namespace Script.Framework.UI
                 return;
             }
 
+            // 从栈中移除指定的view
             List<IPanel> tempList = new List<IPanel>(_views);
             tempList.Remove(view);
             _views.Clear();
@@ -77,7 +78,7 @@ namespace Script.Framework.UI
             view.OnHide(() =>
             {
                 view.AfterHide();
-                view.Recycle();
+                view.Recycle();        //处理界面节点。决定回收还是销毁
                 cb?.Invoke();
             });
         }
@@ -103,9 +104,12 @@ namespace Script.Framework.UI
         {
             return _views.Count;
         }
+
+
+        // 从栈顶获得 index序的界面
         public IPanel GetTopIndexPanel(int index)
         {
-            if (index < 0 || index >= _views.Count ) return null;
+            if (index < 0 || index >= _views.Count) return null;
 
             Stack<IPanel> tempStack = new Stack<IPanel>();
             for (int i = 0; i < index; i++)
@@ -119,6 +123,32 @@ namespace Script.Framework.UI
             }
 
             return result;
+        }
+
+
+        public void ToFirst(IPanel view, Action cb)
+        {
+            if (!_views.Contains(view) || _views.Peek() == view)
+            {
+                cb?.Invoke();
+                return;
+            }
+
+            // 从栈中先移除指定的view，再推入view
+            List<IPanel> tempList = new List<IPanel>(_views);
+            tempList.Remove(view);
+            _views.Clear();
+            for (int i = tempList.Count - 1; i >= 0; i--)
+            {
+                _views.Push(tempList[i]);
+            }
+            _views.Push(view);
+
+            // 界面节点置顶部
+            var panel = view as BasePanel;
+            panel.transform.SetAsLastSibling();
+
+            cb?.Invoke();
         }
     }
 }

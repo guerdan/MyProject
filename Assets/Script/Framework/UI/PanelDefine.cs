@@ -1,12 +1,14 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Script.Framework.UI
 {
 
     public enum UITypeEnum
     {
-        Full,        // 全屏界面，层级0
-        PopUp,       // 弹窗界面，层级0
+        Full,        // 手游式的全屏界面，层级0
+        PopUp,       // 手游式的弹窗界面，层级0
+        WindowsPopUp,       // Windows式的弹窗界面，层级0
         TopPopUp,    // 顶层弹窗，层级1，如：战力提升弹窗
         TopSystem,   // 顶层系统通知界面，层级2，如：断线重连弹窗、转菊花、轮播通知栏
     }
@@ -32,11 +34,16 @@ namespace Script.Framework.UI
         NewStageWinPageView,
         BattleRulePopUpView,
         BattleRuleElementPopUpView,
+        LogPrintPanel,
+        PicMatchFloat,
+        DrawProcessPanel,
+        ProcessNodePanel,
     }
 
 
     /// <summary>
-    /// 面向UIManager
+    /// 初始参数是面向手游UI习惯。
+    /// WindowsPopUp的拖拽功能, 坐标保存在Content节点上面？
     /// </summary>
     public class PanelDefine
     {
@@ -45,7 +52,8 @@ namespace Script.Framework.UI
         public string Path;         //预制体路径
         public UITypeEnum Type;     //界面类型
         public UIRecycleTypeEnum RecycleType;   //回收类型
-
+        public Vector2 InitPos = new Vector2(0, 0);           //窗口的初始坐标，界面节点位置 => 依赖InitPos  
+        public bool IsSingle = true;            //单个实例，目前默认都是单例。Windows窗口都单例
         public bool ShowGrayBg = true;          //是否显示灰色背景。Full界面无此功能，其他界面有。默认为true
 
         // 是否因遮挡关系而隐藏上个界面。默认为true
@@ -96,12 +104,56 @@ namespace Script.Framework.UI
                 RecycleType = UIRecycleTypeEnum.Normal,
             },
 
-             new PanelDefine{
+            new PanelDefine{
                 Key = PanelEnum.HeroMainPanel,
                 Name = "HeroMainPanel",
                 Path = "Hero/Prefabs/HeroMainPanel",
                 Type = UITypeEnum.Full,
                 RecycleType = UIRecycleTypeEnum.Normal,
+            },
+
+            new PanelDefine{
+                Key = PanelEnum.LogPrintPanel,
+                Name = "LogPrintPanel",
+                Path = "Auto/Prefabs/LogPrintPanel",
+                Type = UITypeEnum.WindowsPopUp,
+                RecycleType = UIRecycleTypeEnum.Frequent,
+                InitPos = new Vector2(200, 0),
+                ShowGrayBg = false,
+                HideLastPanel = false,
+            },
+
+            new PanelDefine{
+                Key = PanelEnum.PicMatchFloat,
+                Name = "PicMatchFloat",
+                Path = "Auto/Prefabs/PicMatchFloat",
+                Type = UITypeEnum.WindowsPopUp,
+                RecycleType = UIRecycleTypeEnum.Frequent,
+                InitPos = new Vector2(0, 0),
+                ShowGrayBg = false,
+                HideLastPanel = false,
+            },
+
+            new PanelDefine{
+                Key = PanelEnum.DrawProcessPanel,
+                Name = "DrawProcessPanel",
+                Path = "Auto/Prefabs/DrawProcessPanel",
+                Type = UITypeEnum.WindowsPopUp,
+                RecycleType = UIRecycleTypeEnum.Frequent,
+                InitPos = new Vector2(0, 0),
+                ShowGrayBg = false,
+                HideLastPanel = false,
+            },
+
+            new PanelDefine{
+                Key = PanelEnum.ProcessNodePanel,
+                Name = "ProcessNodePanel",
+                Path = "Auto/Prefabs/ProcessNodePanel",
+                Type = UITypeEnum.WindowsPopUp,
+                RecycleType = UIRecycleTypeEnum.Frequent,
+                InitPos = new Vector2(0, 0),
+                ShowGrayBg = false,
+                HideLastPanel = false,
             },
         };
 
@@ -121,6 +173,6 @@ namespace Script.Framework.UI
                     return 0;
             }
         }
-        
+
     }
 }

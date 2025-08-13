@@ -58,10 +58,11 @@ namespace Script.Framework.AssetLoader
         /// <param name="loadComplete"></param>
         /// <param name="delegtor"> 代理对象最好就是持有者本身，也可以是更高层的管理者 </param>
         /// <param name="mode"> WithDelegator模式下delegtor不为null。其他情况delegtor为null </param>
-        void LoadAssetAsync<T>(string address, Action<T> loadComplete
-       , Object delegtor, UnloadMode mode = UnloadMode.WithDelegator) where T : Object;
         void LoadAssetAsync<T>(string address, Action<T, AsyncOperationHandle> loadComplete
-        , Object delegtor, UnloadMode mode = UnloadMode.WithDelegator) where T : Object;
+         , Object delegtor, UnloadMode mode = UnloadMode.WithDelegator) where T : Object;
+        void LoadAssetAsync<T>(string address, Action<T> loadComplete
+         , Object delegtor, UnloadMode mode = UnloadMode.WithDelegator) where T : Object;
+
 
 
         #endregion

@@ -7,6 +7,14 @@ namespace Script.Util
 {
     public static class TweenUtil
     {
+        /// <summary>
+        /// 空Tween
+        /// </summary>
+        public static Tween GetEmptyTween()
+        {
+
+            return DOTween.To(() => 0f, x => { }, 0f, 0f);
+        }
         public static Tween GetNodeScaleTween(GameObject node, float start, float end, float duration, Ease ease)
         {
             var trans = node.transform;

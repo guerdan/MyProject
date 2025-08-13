@@ -124,7 +124,7 @@ namespace Script.XBattle.AStar
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 UIParent.GetComponent<RectTransform>(),
                 pos,
-                Root.inst.cam,
+                Root.Inst.cam,
                 out Vector2 uiPos);
 
             Debug.LogWarning(uiPos);

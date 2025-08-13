@@ -1,5 +1,6 @@
 using Script.Framework;
 using Script.Framework.UI;
+using Script.Model.Auto;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -7,28 +8,18 @@ namespace Script.UI
 {
     public class Root : MonoBehaviour
     {
-        public static Root inst;
-        public Camera cam;
+        protected static Root inst;
+        public static Root Inst { get { return inst; } }
+        [HideInInspector] public Camera cam;
 
-        public Button HeroBtn;
-
-        void Awake()
+        protected void Awake()
         {
-            Root.inst = this;
+            inst = this;
             gameObject.AddComponent<GameTimer>();
         }
 
-        void OnEnable()
-        {
-            HeroBtn.onClick.AddListener(OnHeroBtnClick);
-        }
-        void OnDisable()
-        {
-            HeroBtn.onClick.RemoveAllListeners();
-        }
-
         private float intervalFor1s = 1;   // 1s间隔实例 
-        void Update()
+        protected void Update()
         {
             float delta = Time.deltaTime;
 
@@ -39,6 +30,8 @@ namespace Script.UI
                 intervalFor1s = 1;
                 (UIManager.Inst as UIManager).OnUpdate(1);
             }
+
+            ProcessNodeManager.Inst.OnUpdate(delta);
         }
 
 

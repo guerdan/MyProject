@@ -1,5 +1,6 @@
 using System;
 using DG.Tweening;
+using Script.UI.Component;
 using Script.Util;
 using UnityEngine;
 using UnityEngine.UI;
@@ -46,27 +47,33 @@ namespace Script.Framework.UI
         protected GameObject _maskBgNode;
         private PanelDefine _panelDefine;
         private int _stackIndex;
-        private bool _animEnable = true;
+        [HideInInspector] public bool _animEnable = true;
+        [HideInInspector] public bool _useScaleAnim = true;
 
 
         public PanelDefine PanelDefine { get { return _panelDefine; } set { _panelDefine = value; } }
         public int StackIndex { get { return _stackIndex; } set { _stackIndex = value; } }
         public Transform Transform { get { return transform; } }
         public Transform Content { get { return transform.Find("Content"); } }
+        public bool ShowMask { get { return _panelDefine.Type != UITypeEnum.WindowsPopUp; } }
         public bool AnimEnable { get { return _animEnable && PanelDefine.Type != UITypeEnum.Full; } }  //全屏式界面不提供默认动画，如需要自行实现
 
         public virtual void SetData(object data) { }
 
         public virtual void BeforeShow()
         {
-            if (_maskBgNode == null)
+            if (ShowMask && _maskBgNode == null)
             {
                 CreateMaskBg();
-                CloseButtonAddListener();
             }
+
+            CloseButtonAddListener();
             // AudioManager.Inst.PlaySound(AudioEnum.PanelOpen); //播放音效
             BeforeShowEvent?.Invoke(PanelDefine.Key);
             // Debug.Log($"BeforeShow Panel {PanelDefine.Name} {DateTime.UtcNow} {DateTime.UtcNow.Millisecond}");
+
+            RefreshPos();
+            GetComponentInChildren<DragPanel>()?.SetData(this);
         }
 
 
@@ -98,23 +105,28 @@ namespace Script.Framework.UI
                 return;
             }
 
-            var tween0 = TweenUtil.GetNodeScaleTween(Content.gameObject, 0.8f, 1f, OpenAnimDuration, Ease.OutBack);
+            var tween0 = _useScaleAnim ? TweenUtil.GetNodeScaleTween(Content.gameObject, 0.8f, 1f, OpenAnimDuration, Ease.OutBack)
+             : TweenUtil.GetEmptyTween();
             var tween1 = TweenUtil.GetNodeFadeTween(Content.gameObject, 0, 255, OpenAnimDuration, Ease.OutBack);
             openSeq = DOTween.Sequence().Join(tween0).Join(tween1)
                 .OnComplete(() => { cb?.Invoke(); });
 
             var last = UISceneMixin.Inst.FindPanel(PanelDefine.Layer, 1);
             var uiManager = UIManager.Inst as UIManager;
-            if (uiManager.NeedHideLast(PanelDefine, last))
+
+            if (ShowMask)
             {
-                _maskBgNode.GetComponent<Image>().color = new Color(0, 0, 0, MaskOpacity / 255);
-            }
-            else
-            {
-                var tween2 = TweenUtil.GetImageFadeTween(_maskBgNode.GetComponent<Image>(),
-                    0, MaskOpacity, OpenAnimDuration, Ease.OutBack);
-                tween2.SetEase(TweenUtil.OutBackEaseClip);
-                openSeq.Join(tween2);
+                if (uiManager.NeedHideLast(PanelDefine, last))
+                {
+                    _maskBgNode.GetComponent<Image>().color = new Color(0, 0, 0, MaskOpacity / 255);
+                }
+                else
+                {
+                    var tween2 = TweenUtil.GetImageFadeTween(_maskBgNode.GetComponent<Image>(),
+                        0, MaskOpacity, OpenAnimDuration, Ease.OutBack);
+                    tween2.SetEase(TweenUtil.OutBackEaseClip);
+                    openSeq.Join(tween2);
+                }
             }
 
             openSeq.Play();
@@ -130,24 +142,28 @@ namespace Script.Framework.UI
                 return;
             }
 
-            var tween0 = TweenUtil.GetNodeScaleTween(Content.gameObject, 1f, 0.8f, CloseAnimDuration, Ease.Linear);
+            var tween0 = _useScaleAnim ? TweenUtil.GetNodeScaleTween(Content.gameObject, 1f, 0.8f, CloseAnimDuration, Ease.Linear)
+            : TweenUtil.GetEmptyTween();
             var tween1 = TweenUtil.GetNodeFadeTween(Content.gameObject, 255, 0, CloseAnimDuration, Ease.InOutQuad);
             closeSeq = DOTween.Sequence().Join(tween0).Join(tween1)
                 .OnComplete(() => { cb?.Invoke(); });
 
             var last = UISceneMixin.Inst.PeekPanel(PanelDefine.Layer);
             var uiManager = UIManager.Inst as UIManager;
-            if (uiManager.NeedHideLast(PanelDefine, last))
-            {
-                _maskBgNode.GetComponent<Image>().color = new Color(0, 0, 0, 0);
-            }
-            else
-            {
-                var tween2 = TweenUtil.GetImageFadeTween(_maskBgNode.GetComponent<Image>(),
-                    MaskOpacity, 0, CloseAnimDuration, Ease.InOutQuad);
-                closeSeq.Join(tween2);
-            }
 
+            if (ShowMask)
+            {
+                if (uiManager.NeedHideLast(PanelDefine, last))
+                {
+                    _maskBgNode.GetComponent<Image>().color = new Color(0, 0, 0, 0);
+                }
+                else
+                {
+                    var tween2 = TweenUtil.GetImageFadeTween(_maskBgNode.GetComponent<Image>(),
+                        MaskOpacity, 0, CloseAnimDuration, Ease.InOutQuad);
+                    closeSeq.Join(tween2);
+                }
+            }
 
             closeSeq.Play();
         }
@@ -163,12 +179,12 @@ namespace Script.Framework.UI
         public void OnShowContent()
         {
             if (Content != null) Content.gameObject.SetActive(true);
-            _maskBgNode.gameObject.SetActive(true);
+            if (ShowMask) _maskBgNode.gameObject.SetActive(true);
         }
         public void OnHideContent()
         {
             if (Content != null) Content.gameObject.SetActive(false);
-            _maskBgNode.gameObject.SetActive(false);
+            if (ShowMask) _maskBgNode.gameObject.SetActive(false);
         }
 
         public void Close()
@@ -225,6 +241,11 @@ namespace Script.Framework.UI
                 if (button == null) continue;
                 button.onClick.AddListener(Close);
             }
+        }
+
+        public void RefreshPos()
+        {
+            ((RectTransform)transform).anchoredPosition = PanelDefine.InitPos;
         }
     }
 }

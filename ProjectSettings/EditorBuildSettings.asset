@@ -17,8 +17,14 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/FBX/2D_GPUSkinning.unity
     guid: bfae1575b72601644bbceb56349ed20a
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/XLua.unity
     guid: db36f0379e9c4914a85aa422e428a64b
+  - enabled: 0
+    path: Assets/Scenes/Auto/Auto.unity
+    guid: 4bac7803f7dddb94c8ede2be340e2575
+  - enabled: 1
+    path: Assets/Scenes/Auto/ExampleScene.unity
+    guid: 8f520a52dcf83fb4eb9318658e16b5f1
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: 38218ca590a69bf4cb9baafb5d1b795d, type: 2}

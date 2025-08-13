@@ -16,7 +16,19 @@ MonoBehaviour:
   m_Data:
     m_SerializedData: []
   m_GUID: fda94d65ed226e44eafa83a121cbb0f8
-  m_SerializeEntries: []
+  m_SerializeEntries:
+  - m_GUID: 7368b16ae5678f44ab8b194e2d45d25f
+    m_Address: Common/Prefabs/Component/SquareFrameUI
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: ae8b0695e7e3770438c324c173e98b38
+    m_Address: Auto/Prefabs/DrawProcessPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: a1f3e820a4899474980ff04a3f584446
+    m_Address: Auto/Prefabs/ProcessNodePanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 461c0bb45d0c65047b0497b6d6fed90a, type: 2}
   m_SchemaSet:

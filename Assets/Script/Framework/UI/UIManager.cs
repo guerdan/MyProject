@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Emit;
 using Script.Framework.AssetLoader;
 using Script.Util;
 using UnityEngine;
@@ -68,8 +69,24 @@ namespace Script.Framework.UI
             }
 
             int layer = define.Layer;
+            var type = define.Type;
             var time = DateTime.Now;
-            if (_panelCache.ContainsKey(panelKey))
+
+            // 如果是WindowsPopUp类型的界面，规则就不一样了。
+            if (type == UITypeEnum.WindowsPopUp)
+            {
+                var findPanel = UISceneMixin.Inst.FindPanel(panelKey) as BasePanel;
+                if (findPanel != null)
+                {
+                    findPanel.SetData(data);
+                    // 对已经打开过的界面，把界面置到顶部
+                    UISceneMixin.Inst.ToFirst(findPanel, null);
+                    return;
+                }
+            }
+
+
+            if (_panelCache.ContainsKey(panelKey))  //缓存
             {
                 BasePanel panel = _panelCache[panelKey];
                 DeleteCache(panelKey);
@@ -110,7 +127,14 @@ namespace Script.Framework.UI
                 list = new List<BasePanelWait>();
                 _panelStackWaits[layer] = list;
             }
-            list.Add(wait);
+
+            // 加载中又重复点了，不弹两个，只覆盖数据
+            var find = list.Find(x => x.PanelDefine.Key == define.Key);
+            if (find != null)
+                find.Data = data;
+            else
+                list.Add(wait);
+
             return wait;
         }
 
@@ -175,6 +199,7 @@ namespace Script.Framework.UI
             if (layer == 0 && last != null)
                 last.OnShowContent();
         }
+
 
         public void Recycle(BasePanel panel)
         {

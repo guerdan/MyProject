@@ -1,5 +1,6 @@
 
 using DG.Tweening;
+using Script.Util;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -32,6 +33,7 @@ namespace Script.UI.Component
         //touchstart 事件
         public void OnPointerDown(PointerEventData eventData)
         {
+            // DU.LogWarning("OnPointerDown");
             Reset();
             float scale = 1;
             rect.localScale = new Vector3(scale, scale, scale);
@@ -45,6 +47,7 @@ namespace Script.UI.Component
         // touchend 事件
         public void OnPointerUp(PointerEventData eventData)
         {
+            // DU.LogWarning("OnPointerUp");
             Reset();
             float scale = TargetScale;
             rect.localScale = new Vector3(scale, scale, scale);

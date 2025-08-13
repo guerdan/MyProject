@@ -15,7 +15,7 @@ namespace Script.Editor
 
     public class AssetManager
     {
-        private const string MenuItemPath = Utility.CustomToolsPath + "Addressable/";
+        private const string MenuItemPath = Utils.CustomToolsPath + "Addressable/";
         private const string RefreshSpriteAddressJsonFileString = "Refresh Sprite Address Json File";
         private const string Sprite2AtlasAddressPath = "Assets/AssetBundles/Other/Sprite2AtlasAddress.txt";
         private static readonly List<string> NotIncludeInAddressStrings = new List<string>
@@ -30,7 +30,7 @@ namespace Script.Editor
         [MenuItem(MenuItemPath + RefreshSpriteAddressJsonFileString)]
         public static void RefreshSpriteAddressJsonFile()
         {
-            Debug.LogWarning(string.Format(Utility.StartOperationStringFormat, RefreshSpriteAddressJsonFileString));
+            Debug.LogWarning(string.Format(Utils.StartOperationStringFormat, RefreshSpriteAddressJsonFileString));
             var spriteAtlasDictionary = new Dictionary<SpriteAtlas, AddressableAssetEntry>();
             var texture2DDictionary = new Dictionary<Texture2D, string>();
             var spriteAtlasType = typeof(SpriteAtlas);
@@ -81,7 +81,7 @@ namespace Script.Editor
 
             File.WriteAllText(Sprite2AtlasAddressPath, JsonConvert.SerializeObject(dic));
             AssetDatabase.Refresh();
-            Debug.LogWarning(string.Format(Utility.EndOperationStringFormat, RefreshSpriteAddressJsonFileString));
+            Debug.LogWarning(string.Format(Utils.EndOperationStringFormat, RefreshSpriteAddressJsonFileString));
         }
 
         private static string AssetPathToAddressPath(string assetPath)
