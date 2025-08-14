@@ -1,4 +1,5 @@
 
+using Script.Model.Auto;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -9,11 +10,13 @@ namespace Script.UI.Panel.Auto
     {
         Image img;
         string _id;
-        string _from;
-        string _to;
+        string _fromId;
+        string _toId;
+        BaseNodeData _fromData;
+        BaseNodeData _toData;
         public bool _isTrue;
         DrawProcessPanel _panel;
-        Color _normalColor;
+        SplitLineComp _map;
 
 
         public void Awake()
@@ -21,27 +24,58 @@ namespace Script.UI.Panel.Auto
             img = GetComponent<Image>();
         }
 
-        public void SetData(string from, string to, bool isTrue, DrawProcessPanel panel)
+        public void SetData(string id, DrawProcessPanel panel)
         {
-            _from = from;
-            _to = to;
-            _isTrue = isTrue;
+            _id = id;
             _panel = panel;
-            _id = $"line-{from}-{to}";
+
+            var s = id.Substring(5);
+            int first = s.IndexOf('-');
+            int second = s.IndexOf('-', first + 1);
+            _fromId = s.Substring(0, second);      // from-id
+            _toId = s.Substring(second + 1);    // to-id
+            _fromData = ProcessNodeManager.Inst.GetNode(_fromId);
+            _toData = ProcessNodeManager.Inst.GetNode(_toId);
+            _map = _panel.SplitLineComp;
+
+            _isTrue = _fromData.TrueNextNodes.Contains(_toId);
+
         }
-        
-        
-        //只刷新颜色
-        public void RefreshForSelected()
+
+
+
+        public void DrawLine()
         {
-            if (_id == _panel.MouseSelectedId)
+            var from_node_pos = _map.MapConvert(_fromData.Pos);
+            var to_node_pos = _map.MapConvert(_toData.Pos);
+            var template = _panel.NodePre.GetComponent<ProcessNodeUI>();
+
+            var from_pos = from_node_pos + (_isTrue ? template.TrueOutNodeOffset : template.FalseOutNodeOffset);
+            var to_pos = to_node_pos + template.InflowNodeOffset;
+
+            Color color;
+            if (_id == _panel.MouseSelectedId || _fromId == _panel.MouseSelectedId || _toId == _panel.MouseSelectedId)
             {
-                img.color = ProcessNodeUI.WhiteColor; // 选中时变白
+                color = ProcessNodeUI.WhiteColor;
             }
             else
             {
-                img.color = _normalColor; // 恢复正常颜色
+                if (_fromData.Status == NodeStatus.Off)
+                {
+                    color = _fromData.ExcuteTimes > 0 ? ProcessNodeUI.BrownColor : ProcessNodeUI.GreenColor;
+                    if (_toData.Status == NodeStatus.In) color = ProcessNodeUI.RedColor;
+                }
+                else
+                    color = ProcessNodeUI.RedColor;
             }
+
+            if (_fromId == _panel.MouseSelectedId)
+            {
+                Vector2 v = to_pos - from_pos;
+                from_pos += v.normalized * 10;
+            }
+
+            DrawLine(from_pos, to_pos, color);
         }
 
 
@@ -51,7 +85,6 @@ namespace Script.UI.Panel.Auto
         public void DrawLine(Vector2 from, Vector2 to, Color color, float thickness = 6)
         {
             img.color = color;
-            _normalColor = color;
             var line = GetComponent<RectTransform>();
             // 计算两点之间的中心点
             Vector2 center = (from + to) / 2f;

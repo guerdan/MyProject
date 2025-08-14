@@ -86,9 +86,8 @@ namespace Script.Model.Auto
         /// <summary>
         /// 延迟时间。相当于节点的总时长
         /// </summary>
-
         [JsonProperty("delay")]
-        public float Delay = 0;
+        public float Delay = 1;
 
         #endregion
 
@@ -153,7 +152,9 @@ namespace Script.Model.Auto
         }
 
 
-        public static string IdFromat = "node-";
+        public static string IdStart = "node-";
+        public static string LineIdStart = "line-";
+        public static string LineIdFormat(string from, string id) { return LineIdStart + $"{from}-{id}"; }
 
 
     }
@@ -220,7 +221,7 @@ namespace Script.Model.Auto
         public AutoScriptData _autoData;
 
         public Dictionary<string, BaseNodeData> _activeNodes = new Dictionary<string, BaseNodeData>();
-        public Dictionary<string, BaseNodeData> _nodeData;
+        public Dictionary<string, BaseNodeData> _nodeDatas;
 
         private bool running = false;
 
@@ -242,31 +243,29 @@ namespace Script.Model.Auto
             var settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto };
 
             _autoData = JsonConvert.DeserializeObject<AutoScriptData>(json, settings);
-            _nodeData = new Dictionary<string, BaseNodeData>();
+            _nodeDatas = new Dictionary<string, BaseNodeData>();
             for (int i = 0; i < _autoData.List.Count; i++)
             {
                 var item = _autoData.List[i];
                 item.UnSerialize();
-                _nodeData[item.Id] = item;
+                _nodeDatas[item.Id] = item;
 
 
             }
 
             // 初始化每个节点的 LastNode
-            foreach (var item in _nodeData.Values)
+            foreach (var item in _nodeDatas.Values)
             {
                 foreach (var id in item.TrueNextNodes)
                 {
-                    _nodeData[id].LastNode.Add(item.Id);
+                    _nodeDatas[id].LastNode.Add(item.Id);
                 }
 
                 foreach (var id in item.FalseNextNodes)
                 {
-                    _nodeData[id].LastNode.Add(item.Id);
+                    _nodeDatas[id].LastNode.Add(item.Id);
                 }
             }
-
-
 
         }
 
@@ -277,15 +276,15 @@ namespace Script.Model.Auto
             _autoData = new AutoScriptData
             {
                 Name = "New Auto Script",
-                FirstNode = BaseNodeData.IdFromat + "0",
+                FirstNode = BaseNodeData.IdStart + "0",
                 EndIndex = count - 1,
                 List = new List<BaseNodeData>()
             };
 
-            _nodeData = new Dictionary<string, BaseNodeData>();
+            _nodeDatas = new Dictionary<string, BaseNodeData>();
             for (int i = 0; i < count; i++)
             {
-                var id = BaseNodeData.IdFromat + $"{i}";
+                var id = BaseNodeData.IdStart + $"{i}";
                 BaseNodeData item = null;
                 if (i < 9)
                 {
@@ -296,16 +295,16 @@ namespace Script.Model.Auto
                     item = new MouseOperNode();
                     ((MouseOperNode)item).Oper = 1; // 模拟鼠标操作
                 }
-                _nodeData[id] = item;
+                _nodeDatas[id] = item;
                 item.Id = id;
                 item.Index = i;
                 item.Pos = new Vector2(200 + i * 300, 300);
                 item.Delay = 5 + Random.Range(0, 2);
 
                 if (i - 1 >= 0)
-                    item.LastNode.Add(BaseNodeData.IdFromat + $"{i - 1}");
+                    item.LastNode.Add(BaseNodeData.IdStart + $"{i - 1}");
                 if (i + 1 < count)
-                    item.TrueNextNodes.Add(BaseNodeData.IdFromat + $"{i + 1}");
+                    item.TrueNextNodes.Add(BaseNodeData.IdStart + $"{i + 1}");
             }
 
         }
@@ -333,7 +332,7 @@ namespace Script.Model.Auto
                 if (list.Count == 0)
                 {
                     //设定起点
-                    StartNode(_nodeData[_autoData.FirstNode]);
+                    StartNode(_nodeDatas[_autoData.FirstNode]);
                 }
                 else
                 {
@@ -365,9 +364,8 @@ namespace Script.Model.Auto
             List<string> nextList = result ? node.TrueNextNodes : node.FalseNextNodes;
             foreach (var id in nextList)
             {
-                StartNode(_nodeData[id]);
+                StartNode(_nodeDatas[id]);
             }
-
         }
 
         public void StartNode(BaseNodeData node)
@@ -387,7 +385,7 @@ namespace Script.Model.Auto
         {
             //_autoData.List用_nodeData重新序列化,其他字段不动
 
-            List<BaseNodeData> list = _nodeData.Values.ToList();
+            List<BaseNodeData> list = _nodeDatas.Values.ToList();
             list.Sort((a, b) =>
             {
                 return a.Index.CompareTo(b.Index);
@@ -414,16 +412,16 @@ namespace Script.Model.Auto
 
         public BaseNodeData GetNode(string id)
         {
-            return _nodeData[id];
+            return _nodeDatas[id];
         }
         public BaseNodeData CreateNode(Vector2 pos)
         {
             BaseNodeData node = new BaseNodeData();
             _autoData.EndIndex++;
-            node.Id = BaseNodeData.IdFromat + $"{_autoData.EndIndex}";
+            node.Id = BaseNodeData.IdStart + $"{_autoData.EndIndex}";
             node.Pos = pos;
 
-            _nodeData[node.Id] = node;
+            _nodeDatas[node.Id] = node;
 
             //自动将起点设为 {node.Id}
             if (_autoData.FirstNode == null)
@@ -436,35 +434,31 @@ namespace Script.Model.Auto
 
         public void DeleteNode(string id)
         {
-
-            var node = _nodeData[id];
-            _nodeData.Remove(id);
+            var node = _nodeDatas[id];
+            _nodeDatas.Remove(id);
             //删线段
             foreach (var fromId in node.LastNode)
             {
-                var fromNode = _nodeData[fromId];
+                var fromNode = _nodeDatas[fromId];
                 fromNode.TrueNextNodes.Remove(id);
                 fromNode.FalseNextNodes.Remove(id);
             }
             foreach (var toId in node.TrueNextNodes)
             {
-                var toNode = _nodeData[toId];
+                var toNode = _nodeDatas[toId];
                 toNode.LastNode.Remove(id);
             }
             foreach (var toId in node.FalseNextNodes)
             {
-                var toNode = _nodeData[toId];
+                var toNode = _nodeDatas[toId];
                 toNode.LastNode.Remove(id);
             }
-            node.LastNode.Clear();
-            node.TrueNextNodes.Clear();
-            node.FalseNextNodes.Clear();
 
             //如果被删的是起点，改StartNode
             //找没有LastNode的节点
             if (_autoData.FirstNode == id)
             {
-                List<BaseNodeData> list = _nodeData.Values.ToList();
+                List<BaseNodeData> list = _nodeDatas.Values.ToList();
                 list.Sort((a, b) =>
                 {
                     return a.Index.CompareTo(b.Index);
@@ -480,8 +474,8 @@ namespace Script.Model.Auto
 
         public void AddLine(string fromId, string toId, bool isTrue)
         {
-            _nodeData.TryGetValue(fromId, out var fromNode);
-            _nodeData.TryGetValue(toId, out var toNode);
+            var fromNode = GetNode(fromId);
+            var toNode = GetNode(toId);
 
             var list = isTrue ? fromNode.TrueNextNodes : fromNode.FalseNextNodes;
             var other = isTrue ? fromNode.FalseNextNodes : fromNode.TrueNextNodes;
@@ -495,18 +489,38 @@ namespace Script.Model.Auto
             toNode.LastNode.Add(fromId);
         }
 
-        public void DeleteLine(string fromId, string toId, bool isTrue)
+        public void DeleteLine(string fromId, string toId)
         {
-            _nodeData.TryGetValue(fromId, out var fromNode);
-            _nodeData.TryGetValue(toId, out var toNode);
+            var fromNode = GetNode(fromId);
+            var toNode = GetNode(toId);
 
-            if (isTrue)
-                fromNode.TrueNextNodes.Remove(toId);
-            else
-                fromNode.FalseNextNodes.Remove(toId);
+            fromNode.TrueNextNodes.Remove(toId);
+            fromNode.FalseNextNodes.Remove(toId);
 
 
             toNode.LastNode.Remove(fromId);
+        }
+
+
+        public HashSet<string> GetLinesByNode(string id)
+        {
+            BaseNodeData node = GetNode(id);
+
+            HashSet<string> r = new HashSet<string>();
+            foreach (var nextId in node.TrueNextNodes)
+            {
+                r.Add(BaseNodeData.LineIdFormat(id, nextId));
+            }
+            foreach (var nextId in node.FalseNextNodes)
+            {
+                r.Add(BaseNodeData.LineIdFormat(id, nextId));
+            }
+            foreach (var fromId in node.LastNode)
+            {
+                r.Add(BaseNodeData.LineIdFormat(fromId, id));
+            }
+
+            return r;
         }
 
         #endregion

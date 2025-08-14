@@ -13,10 +13,13 @@ namespace Script.Util
         private GameObject _prefab;
         private List<GameObject> _cache;
 
-        public SPool(GameObject prefab, int init_count = 0)
+        private string _nickName;
+
+        public SPool(GameObject prefab, int init_count = 0, string nickName = "")
         {
             _prefab = prefab;
             _cache = new List<GameObject>();
+            _nickName = nickName;
 
             for (int i = 0; i < init_count; i++)
             {
@@ -46,6 +49,8 @@ namespace Script.Util
         public GameObject Generate()
         {
             GameObject newOne = GameObject.Instantiate(_prefab);
+            if (_nickName != "")
+                newOne.name = _nickName;
             return newOne;
         }
 

@@ -54,6 +54,11 @@ namespace Script.UI.Panel.Auto
         public Vector2 TrueOutNodePos => rectTransform.anchoredPosition + TrueOutNode.anchoredPosition;
         public Vector2 FalseOutNodePos => rectTransform.anchoredPosition + FalseOutNode.anchoredPosition;
 
+        public Vector2 InflowNodeOffset => InflowNode.anchoredPosition;
+        public Vector2 EventNodeOffset => EventNode.anchoredPosition;
+        public Vector2 TrueOutNodeOffset => TrueOutNode.anchoredPosition;
+        public Vector2 FalseOutNodeOffset => FalseOutNode.anchoredPosition;
+        ProcessNodeManager manager => ProcessNodeManager.Inst;
         public AutoScriptData _autoData => ProcessNodeManager.Inst._autoData;
         [SerializeField] private Text Title;
 
@@ -85,19 +90,25 @@ namespace Script.UI.Panel.Auto
         {
             _data = nodeData;
             _panel = panel;
+            Reset();
             RefreshContent();
             Refresh();
+            RefreshSelected();
             SetPos();
         }
 
 
-
+        /// <summary>
+        /// 刷新内容
+        /// </summary>
         public void RefreshContent()
         {
             Title.text = _data.Id;
         }
 
-
+        /// <summary>
+        /// 每帧刷新的
+        /// </summary>
         public void Refresh()
         {
             if (_data.Status == NodeStatus.Off)
@@ -118,59 +129,12 @@ namespace Script.UI.Panel.Auto
 
             IsFirstMark.SetActive(_data.Id == _autoData.FirstNode);
         }
-
-
-
-        public void SetPos()
-        {
-            var pos = _data.Pos;
-            rectTransform.anchoredPosition = new Vector2(pos.x, _panel.CanvasCfg.H - pos.y);
-        }
-
-
-        // StatusChange事件下，节点流入到另个节点，前节点先画后节点后画
-        public void DrawLine()
+        /// <summary>
+        /// 刷新选中状态
+        /// </summary>
+        public void RefreshSelected()
         {
             bool selected = _data.Id == _panel.MouseSelectedId;
-            
-            var total_list = new List<string>();
-            total_list.AddRange(_data.TrueNextNodes);
-            total_list.AddRange(_data.FalseNextNodes);
-            int trueCount = _data.TrueNextNodes.Count;
-            _panel.RefreshLine(_data.Id, total_list, trueCount);
-
-            for (int i = 0; i < total_list.Count; i++)
-            {
-                var next_id = total_list[i];
-                var isTrue = i < trueCount;
-
-                var line = _panel.GetLine(_data.Id, next_id);
-                var next_ui = _panel.GetNode(next_id);
-
-                Color color;
-                if (_data.Id == _panel.MouseSelectedId || next_id == _panel.MouseSelectedId)
-                {
-                    color = WhiteColor;
-                }
-                else
-                {
-                    if (_data.Status == NodeStatus.Off)
-                    {
-                        color = _data.ExcuteTimes > 0 ? BrownColor : GreenColor;
-                        if (next_ui._data.Status == NodeStatus.In) color = RedColor;
-                    }
-                    else
-                        color = RedColor;
-                }
-
-                var p = isTrue ? TrueOutNodePos : FalseOutNodePos;
-                if (selected)
-                {
-                    Vector2 v = next_ui.InflowNodePos - p;
-                    p += v.normalized * 10;
-                }
-                line.GetComponent<ProcessNodeLineUI>().DrawLine(p, next_ui.InflowNodePos, color);
-            }
 
             //圈圈操作
             TrueOutNode.gameObject.SetActive(selected);
@@ -181,16 +145,24 @@ namespace Script.UI.Panel.Auto
                 FalseOutNode.GetComponent<Image>().color = _data.FalseNextNodes.Count > 0 ? WhiteColor : BrownColor;
             }
         }
-        // 自身和前节点 刷新线段ui
-        public void DrawLineSelfAndLast()
+
+        /// <summary>
+        /// 所属节点的线段刷新
+        /// </summary>
+        public void RefreshLine()
         {
-            DrawLine();
-            foreach (var id in _data.LastNode)
-            {
-                var n = _panel.GetNode(id);
-                n.DrawLine();
-            }
+            _panel.RefreshLineByNode(_data.Id);
         }
+
+        /// <summary>
+        /// 设置坐标
+        /// </summary>
+        public void SetPos()
+        {
+            var pos = _data.Pos;
+            rectTransform.anchoredPosition = new Vector2(pos.x, _panel.CanvasCfg.H - pos.y);
+        }
+
 
         // 每帧刷新
         void Tick()
@@ -201,8 +173,11 @@ namespace Script.UI.Panel.Auto
         void StatusChange(string id)
         {
             // if (_data.Id != id) return;
-            DrawLine();
+            RefreshSelected();
+            RefreshLine();
         }
+
+
 
 
         #region 操作交互
@@ -235,9 +210,7 @@ namespace Script.UI.Panel.Auto
             {
                 Vector2 clickPos;
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                    rectTransform,
-                    eventData.position,
-                    eventData.pressEventCamera,
+                    rectTransform, eventData.position, eventData.pressEventCamera,
                     out clickPos
                 );
 
@@ -257,9 +230,7 @@ namespace Script.UI.Panel.Auto
             {
                 Vector2 pointerLocalPos;
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                    rectTransform.parent as RectTransform,
-                    eventData.position,
-                    eventData.pressEventCamera,
+                    _panel.Canvas, eventData.position, eventData.pressEventCamera,
                     out pointerLocalPos
                 );
                 _dragOffset = rectTransform.anchoredPosition - pointerLocalPos;
@@ -288,17 +259,15 @@ namespace Script.UI.Panel.Auto
             //鼠标位置，以rectTransform.parent的pivot为原点
             Vector2 point;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                                rectTransform.parent as RectTransform,
-                                eventData.position,
-                                eventData.pressEventCamera,
+                                _panel.Canvas, eventData.position, eventData.pressEventCamera,
                                 out point);
 
             if (_dragStatus == ProcessNodeDragStatus.Card)
             {
                 _data.Pos = _panel.MapConvert(point + _dragOffset);
                 SetPos();
-                DrawLineSelfAndLast();
-
+                RefreshSelected();
+                RefreshLine();
             }
             else if (_dragStatus == ProcessNodeDragStatus.LineTrue || _dragStatus == ProcessNodeDragStatus.LineFalse)
             {
@@ -337,10 +306,9 @@ namespace Script.UI.Panel.Auto
                 if (hover_id != null && hover_id != _data.Id)
                 {
                     ProcessNodeManager.Inst.AddLine(_data.Id, hover_id, _dragStatus == ProcessNodeDragStatus.LineTrue);
-                    DrawLine();
+                    _panel.SyncData();
                 }
             }
-
 
 
             _dragStatus = ProcessNodeDragStatus.None;
@@ -381,6 +349,8 @@ namespace Script.UI.Panel.Auto
             touchStartTween = null;
             touchEndTween?.Kill();
             touchEndTween = null;
+
+            ScaleNode.localScale = Vector3.one;
         }
 
         bool Intersect(Vector2 pos1, Vector2 pos2, float w, float h)

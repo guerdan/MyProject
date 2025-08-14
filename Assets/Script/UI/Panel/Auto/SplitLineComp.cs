@@ -1,6 +1,7 @@
 
 using System;
 using System.Collections.Generic;
+using Script.Model.Auto;
 using Script.Util;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,7 +9,7 @@ using UnityEngine.UI;
 namespace Script.UI.Panel.Auto
 {
     /// <summary>
-    /// 滑到哪里是哪里，视野之外的不显示也不加载
+    /// 分段线组件。网格功能
     /// </summary>
     public class SplitLineComp : MonoBehaviour
     {
@@ -147,6 +148,32 @@ namespace Script.UI.Panel.Auto
             var nPos = new Vector2(x * (_contentW - _viewW), y * (_contentH - _viewH) + _viewH);
             var center = new Vector2(nPos.x + _viewW / 2, nPos.y - _viewH / 2);
             return center;
+        }
+
+        public HashSet<string> GetInViewNodeIds()
+        {
+            HashSet<string> ids = new HashSet<string>();
+
+            var pos_center = GetCenter();
+            var uiW = 170;
+            var uiH = 230;
+
+            var x_min = pos_center.x - _viewW / 2 - uiW / 2;
+            var x_max = pos_center.x + _viewW / 2 + uiW / 2;
+
+            var y_min = pos_center.y - _viewH / 2 - uiH / 2;
+            var y_max = pos_center.y + _viewH / 2 + uiH / 2;
+
+            foreach (var data in ProcessNodeManager.Inst._nodeDatas.Values)
+            {
+                var pos = MapConvert(data.Pos);
+                if (pos.x >= x_min && pos.x <= x_max && pos.y >= y_min && pos.y <= y_max)
+                {
+                    ids.Add(data.Id);
+                }
+            }
+
+            return ids;
         }
     }
 }

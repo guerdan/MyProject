@@ -59,7 +59,7 @@ namespace Script.UI.Panel.Auto
 
         void OnCreateNodeBtnClick()
         {
-            _panel.CreateNode();
+            _panel.CreateNewNode();
         }
     }
 }
