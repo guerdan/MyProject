@@ -43,7 +43,7 @@ namespace Script.UI.Panel.Auto
             }
             if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.L))
             {
-                UIManager.Inst.ShowPanel(PanelEnum.ProcessNodePanel, null);
+                UIManager.Inst.ShowPanel(PanelEnum.ProcessNodeInfoPanel, null);
             }
 
             if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.O))

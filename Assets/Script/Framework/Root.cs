@@ -31,7 +31,7 @@ namespace Script.UI
                 (UIManager.Inst as UIManager).OnUpdate(1);
             }
 
-            ProcessNodeManager.Inst.OnUpdate(delta);
+            AutoScriptManager.Inst.OnUpdate(delta);
         }
 
 

@@ -17,7 +17,7 @@ namespace Script.Util
     public static class AU
     {
         #region 鼠标API
-       
+
         /// <summary>
         /// 获取当前鼠标位置
         /// </summary>
@@ -127,7 +127,7 @@ namespace Script.Util
         }
 
 
-        public static void PostMessagePacked(IntPtr handle, KeyboardKeyEnum key, bool isRepeat, bool isDown = true)
+        public static void PostMessagePacked(IntPtr handle, KeyboardEnum key, bool isRepeat, bool isDown = true)
         {
             int repeatCount = 1;
             int scanCode = (int)MapVirtualKey((uint)key, 0);  /* 你的扫描码 */
@@ -600,22 +600,71 @@ namespace Script.Util
         SystemUp = 0x0105,   // 系统按键释放
     }
 
-    public enum KeyboardKeyEnum
+    public enum KeyboardEnum
     {
-        W = 0x57,
-        A = 0x41,
-        S = 0x53,
-        D = 0x44,
-        O = 0x4F,
         Esc = 0x1B,
-        I = 0x49,
-        P = 0x50,
-        C = 0x43,
+        Tab = 0x09,
+        CapsLock = 0x14,
+        Shift = 0x10,
+        Ctrl = 0x11,
+        Alt = 0x12,
+        Space = 0x20,
+        Enter = 0x0D,
+        Backspace = 0x08,
+        Delete = 0x2E,
+        Insert = 0x2D,
+        Home = 0x24,
+        End = 0x23,
+        PageUp = 0x21,
+        PageDown = 0x22,
+        LeftWin = 0x5B,
+        RightWin = 0x5C,
+        Menu = 0x5D,
+        // 方向键
         Up = 0x26,
         Down = 0x28,
         Left = 0x25,
         Right = 0x27,
+
+        // 主键盘上方数字
+        D0 = 0x30, // '0'
+        D1 = 0x31, // '1'
+        D2 = 0x32, // '2'
+        D3 = 0x33, // '3'
+        D4 = 0x34, // '4'
+        D5 = 0x35, // '5'
+        D6 = 0x36, // '6'
+        D7 = 0x37, // '7'
+        D8 = 0x38, // '8'
+        D9 = 0x39, // '9'
+
+        // 字母A-Z
+        A = 0x41,
+        B = 0x42,
+        C = 0x43,
+        D = 0x44,
+        E = 0x45,
+        F = 0x46,
+        G = 0x47,
+        H = 0x48,
+        I = 0x49,
+        J = 0x4A,
+        K = 0x4B,
+        L = 0x4C,
+        M = 0x4D,
+        N = 0x4E,
+        O = 0x4F,
+        P = 0x50,
+        Q = 0x51,
+        R = 0x52,
+        S = 0x53,
+        T = 0x54,
+        U = 0x55,
         V = 0x56,
+        W = 0x57,
+        X = 0x58,
+        Y = 0x59,
+        Z = 0x5A
     }
 
     #endregion

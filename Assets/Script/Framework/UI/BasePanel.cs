@@ -243,7 +243,7 @@ namespace Script.Framework.UI
             }
         }
 
-        public void RefreshPos()
+        public virtual void RefreshPos()
         {
             ((RectTransform)transform).anchoredPosition = PanelDefine.InitPos;
         }

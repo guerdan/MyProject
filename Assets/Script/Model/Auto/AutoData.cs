@@ -10,17 +10,6 @@ using Random = UnityEngine.Random;
 
 namespace Script.Model.Auto
 {
-    public class AutoData
-    {
-        public List<string> DebugLogs = new List<string>();
-
-        public AutoData()
-        {
-
-        }
-
-    }
-
     /// <summary>
     /// Off,不在执行中。In,在执行中
     /// </summary>
@@ -28,6 +17,15 @@ namespace Script.Model.Auto
     {
         Off,
         In,
+    }
+
+    public enum NodeType
+    {
+        TemplateMatchOper,   //模版匹配
+        MouseOper,          //鼠标操作
+        KeyBoardOper,       //键盘操作
+        AssignOper,         //赋值操作
+        ListenEvent,        //监听事件
     }
 
     /// <summary>
@@ -66,6 +64,10 @@ namespace Script.Model.Auto
         #region 序列化
         [JsonProperty("id")]
         public string Id;                  // id，用于查找
+        [JsonProperty("name")]
+        public string Name = "默认名";                 // 名称
+        [JsonProperty("description")]
+        public string Description = "";          // 备注
         [JsonProperty("pos")]
         public string Pos_Ser;                  // 序列化坐标
         /// <summary>
@@ -151,6 +153,17 @@ namespace Script.Model.Auto
             Pos_Ser = $"({Math.Round(Pos.x / 100, 3)},{Math.Round(Pos.y / 100, 3)})";
         }
 
+        public NodeType GetNodeType()
+        {
+            if (this is TemplateMatchOperNode) return NodeType.TemplateMatchOper;
+            if (this is MouseOperNode) return NodeType.MouseOper;
+            if (this is KeyBoardOperNode) return NodeType.KeyBoardOper;
+            if (this is AssignOperNode) return NodeType.AssignOper;
+            if (this is ListenEventNode) return NodeType.ListenEvent;
+
+            return NodeType.TemplateMatchOper;
+        }
+
 
         public static string IdStart = "node-";
         public static string LineIdStart = "line-";
@@ -159,23 +172,56 @@ namespace Script.Model.Auto
 
     }
 
+    public class TemplateMatchOperNode : BaseNodeData
+    {
+
+        [JsonProperty("template_path")]
+        public string TemplatePath = "";
+        [JsonProperty("region_formula")]
+        public string RegionFormula = "";
+        [JsonProperty("threshold")]
+        public float Threshold;
+        [JsonProperty("count")]
+        public int Count;
+
+
+    }
     public class MouseOperNode : BaseNodeData
     {
 
-        [JsonProperty("oper")]
-        public int Oper;
+        [JsonProperty("is_left")]
+        public bool isLeft = true;
 
-        // public MouseOperNode(string id) : base(id)
-        // {
-
-        // }
+        public MouseOperNode()
+        {
+            Name = "鼠标";
+        }
     }
     public class KeyBoardOperNode : BaseNodeData
     {
-        // public KeyBoardOperNode(string id) : base(id)
-        // {
+        [JsonProperty("key")]
+        public string Key = "";
 
-        // }
+        public KeyBoardOperNode()
+        {
+            Name = "键盘";
+            Key = AutoDataShowConfig.GetKeyboardName(AutoDataShowConfig.DefaultKeyboardEnum);
+        }
+    }
+
+    /// <summary>
+    /// 赋值操作-节点
+    /// </summary>
+    public class AssignOperNode : BaseNodeData
+    {
+        [JsonProperty("formula")]
+        public string Formula = "";
+
+        public AssignOperNode()
+        {
+            Name = "赋值";
+            Delay = 0;
+        }
     }
 
     /// <summary>
@@ -203,14 +249,14 @@ namespace Script.Model.Auto
     /// <summary>
     /// 所有面板上的节点都是实例，只有一份。如果不是一份的话，可视化就很麻烦了。
     /// </summary>
-    public class ProcessNodeManager
+    public class AutoScriptManager
     {
-        private static ProcessNodeManager _inst;
-        public static ProcessNodeManager Inst
+        private static AutoScriptManager _inst;
+        public static AutoScriptManager Inst
         {
             get
             {
-                if (_inst == null) _inst = new ProcessNodeManager();
+                if (_inst == null) _inst = new AutoScriptManager();
                 return _inst;
             }
         }
@@ -226,7 +272,7 @@ namespace Script.Model.Auto
         private bool running = false;
 
 
-        ProcessNodeManager()
+        AutoScriptManager()
         {
             Init();
         }
@@ -288,12 +334,12 @@ namespace Script.Model.Auto
                 BaseNodeData item = null;
                 if (i < 9)
                 {
-                    item = new BaseNodeData();
+                    item = new TemplateMatchOperNode();
                 }
                 else
                 {
                     item = new MouseOperNode();
-                    ((MouseOperNode)item).Oper = 1; // 模拟鼠标操作
+                    ((MouseOperNode)item).isLeft = true; // 模拟鼠标操作
                 }
                 _nodeDatas[id] = item;
                 item.Id = id;
@@ -414,19 +460,48 @@ namespace Script.Model.Auto
         {
             return _nodeDatas[id];
         }
-        public BaseNodeData CreateNode(Vector2 pos)
+
+        /// <summary>
+        /// pos:画布位置；id:如果为空则用顺延id来创建
+        /// </summary>
+        public BaseNodeData CreateNode(NodeType type, Vector2 pos, string id = null)
         {
-            BaseNodeData node = new BaseNodeData();
-            _autoData.EndIndex++;
-            node.Id = BaseNodeData.IdStart + $"{_autoData.EndIndex}";
+            BaseNodeData node = null;
+            switch (type)
+            {
+                case NodeType.TemplateMatchOper:
+                    node = new TemplateMatchOperNode();
+                    break;
+                case NodeType.MouseOper:
+                    node = new MouseOperNode();
+                    break;
+                case NodeType.KeyBoardOper:
+                    node = new KeyBoardOperNode();
+                    break;
+                case NodeType.AssignOper:
+                    node = new AssignOperNode();
+                    break;
+                case NodeType.ListenEvent:
+                    node = new ListenEventNode();
+                    break;
+            }
+
+
+            if (string.IsNullOrEmpty(id))
+            {
+                id = BaseNodeData.IdStart + $"{_autoData.EndIndex}";
+            }
+            node.Id = id;
             node.Pos = pos;
 
-            _nodeDatas[node.Id] = node;
 
-            //自动将起点设为 {node.Id}
+            _autoData.EndIndex++;
+            _nodeDatas[id] = node;
+
+            //若删除的为起点，自动将起点设为 {node.Id}
             if (_autoData.FirstNode == null)
             {
-                _autoData.FirstNode = node.Id;
+                _autoData.FirstNode = id;
             }
 
             return node;
@@ -528,8 +603,199 @@ namespace Script.Model.Auto
 
     #endregion
 
+    #region UI
+
+    public class AutoDataShowConfig
+    {
+        public static List<NodeType> NodeTypes = new List<NodeType>()
+        {
+            NodeType.TemplateMatchOper,
+            NodeType.MouseOper,
+            NodeType.KeyBoardOper,
+            NodeType.AssignOper,
+            NodeType.ListenEvent,
+        };
+
+        public static Dictionary<NodeType, string> NodeTypeNames = new Dictionary<NodeType, string>()
+        {
+            { NodeType.TemplateMatchOper, "模版匹配" },
+            { NodeType.MouseOper, "鼠标" },
+            { NodeType.KeyBoardOper, "键盘" },
+            { NodeType.AssignOper, "赋值" },
+            { NodeType.ListenEvent, "监听" },
+        };
+
+        public static List<string> GetNodeTypeNameList()
+        {
+            var list = new List<string>();
+            foreach (var type in NodeTypes)
+            {
+                list.Add(NodeTypeNames[type]);
+            }
+
+            return list;
+        }
+
+        public static string GetNodeId(BaseNodeData node)
+        {
+            return "id:" + node.Id.Substring(5);
+        }
+
+        #region 键
+        public static Dictionary<KeyboardEnum, string> KeyboardEnum2Name = new Dictionary<KeyboardEnum, string>()
+        {
+            { KeyboardEnum.Esc, "Esc" },
+            { KeyboardEnum.Tab, "Tab" },
+            { KeyboardEnum.CapsLock, "CapsLock" },
+            { KeyboardEnum.Shift, "Shift" },
+            { KeyboardEnum.Ctrl, "Ctrl" },
+            { KeyboardEnum.Alt, "Alt" },
+            { KeyboardEnum.Space, "Space" },
+            { KeyboardEnum.Enter, "Enter" },
+            { KeyboardEnum.Backspace, "Backspace" },
+            { KeyboardEnum.Delete, "Delete" },
+            { KeyboardEnum.Insert, "Insert" },
+            { KeyboardEnum.Home, "Home" },
+            { KeyboardEnum.End, "End" },
+            { KeyboardEnum.PageUp, "PageUp" },
+            { KeyboardEnum.PageDown, "PageDown" },
+            { KeyboardEnum.LeftWin, "Win" },
+            { KeyboardEnum.Menu, "Menu" },
+            { KeyboardEnum.Up, "Up" },
+            { KeyboardEnum.Down, "Down" },
+            { KeyboardEnum.Left, "Left" },
+            { KeyboardEnum.Right, "Right" },
+            { KeyboardEnum.D0, "0" },
+            { KeyboardEnum.D1, "1" },
+            { KeyboardEnum.D2, "2" },
+            { KeyboardEnum.D3, "3" },
+            { KeyboardEnum.D4, "4" },
+            { KeyboardEnum.D5, "5" },
+            { KeyboardEnum.D6, "6" },
+            { KeyboardEnum.D7, "7" },
+            { KeyboardEnum.D8, "8" },
+            { KeyboardEnum.D9, "9" },
+            { KeyboardEnum.A, "A" },
+            { KeyboardEnum.B, "B" },
+            { KeyboardEnum.C, "C" },
+            { KeyboardEnum.D, "D" },
+            { KeyboardEnum.E, "E" },
+            { KeyboardEnum.F, "F" },
+            { KeyboardEnum.G, "G" },
+            { KeyboardEnum.H, "H" },
+            { KeyboardEnum.I, "I" },
+            { KeyboardEnum.J, "J" },
+            { KeyboardEnum.K, "K" },
+            { KeyboardEnum.L, "L" },
+            { KeyboardEnum.M, "M" },
+            { KeyboardEnum.N, "N" },
+            { KeyboardEnum.O, "O" },
+            { KeyboardEnum.P, "P" },
+            { KeyboardEnum.Q, "Q" },
+            { KeyboardEnum.R, "R" },
+            { KeyboardEnum.S, "S" },
+            { KeyboardEnum.T, "T" },
+            { KeyboardEnum.U, "U" },
+            { KeyboardEnum.V, "V" },
+            { KeyboardEnum.W, "W" },
+            { KeyboardEnum.X, "X" },
+            { KeyboardEnum.Y, "Y" },
+            { KeyboardEnum.Z, "Z" },
+        };
+        public static Dictionary<string, KeyboardEnum> _keyboardName2Enum;
+        public static Dictionary<string, KeyboardEnum> _keyboardLowercaseName2Enum;
+        public static Dictionary<string, KeyboardEnum> KeyboardName2Enum
+        {
+            get
+            {
+                if (_keyboardName2Enum == null)
+                {
+                    _keyboardName2Enum = new Dictionary<string, KeyboardEnum>();
+                    foreach (var kvp in KeyboardEnum2Name)
+                    {
+                        _keyboardName2Enum[kvp.Value] = kvp.Key;
+                    }
+                }
+                return _keyboardName2Enum;
+            }
+        }
+        public static Dictionary<string, KeyboardEnum> KeyboardLowercaseName2Enum
+        {
+            get
+            {
+                if (_keyboardLowercaseName2Enum == null)
+                {
+                    _keyboardLowercaseName2Enum = new Dictionary<string, KeyboardEnum>();
+                    foreach (var kvp in KeyboardEnum2Name)
+                    {
+                        _keyboardLowercaseName2Enum[kvp.Value.ToLower()] = kvp.Key;
+                    }
+                }
+                return _keyboardLowercaseName2Enum;
+            }
+        }
+
+        public static KeyboardEnum DefaultKeyboardEnum = KeyboardEnum.Space; // 默认键盘枚举
+
+        public static string GetKeyboardName(KeyboardEnum key)
+        {
+            if (KeyboardEnum2Name.TryGetValue(key, out var name))
+            {
+                return name;
+            }
+            return "未存在";
+        }
+        public static KeyboardEnum GetKeyboardEnum(string name)
+        {
+
+            if (KeyboardName2Enum.TryGetValue(name, out var key))
+            {
+                return key;
+            }
+
+            return DefaultKeyboardEnum;
+        }
+
+        public static List<string> GetKeyboardMatchList(string search)
+        {
+
+            List<string> r = new List<string>();
+            search = search.ToLower();
+
+            if (string.IsNullOrEmpty(search))
+            {
+                return r;
+            }
+            else
+            {
+                foreach (var kvp in KeyboardLowercaseName2Enum)
+                {
+                    if (kvp.Key.Contains(search))
+                    {
+                        var s = GetKeyboardName(kvp.Value);
+                        r.Add(s);
+                    }
+                }
+            }
+
+            r.Sort((a, b) =>
+            {
+                if (a.Length != b.Length)
+                    return a.Length.CompareTo(b.Length);
+                else
+                    return string.Compare(a, b, StringComparison.Ordinal);
+            });
+
+            r = r.Count > 5 ? r.GetRange(0, 5) : r; // 限制返回数量为5个
+
+            return r;
+        }
+
+        #endregion
+    }
 
 
 
+    #endregion
 
 }

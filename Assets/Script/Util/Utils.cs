@@ -47,6 +47,16 @@ namespace Script.Util
         {
             return new Rect(rect.X, -rect.Y, rect.Width, rect.Height);
         }
+        public static void SetActive(GameObject go, bool show)
+        {
+            if (go != null)
+                go.SetActive(show);
+        }
+        public static void SetActive(Component comp, bool show)
+        {
+            if (comp != null)
+                comp.gameObject.SetActive(show);
+        }
 
 
         public static Color ParseHtmlString(string htmlColor)
@@ -67,6 +77,47 @@ namespace Script.Util
 
 
             return color;
+        }
+
+        /// <summary>
+        /// UI下，非相同父节点的位置复制
+        /// </summary>
+        public static Vector2 GetPos(RectTransform actor, RectTransform target, Vector2 offset)
+        {
+            // 1. 获取 nodeA 在世界空间的位置
+            Vector3 worldPos = target.position;
+
+            // 2. 将 worldPos 转为 parentB 下的本地坐标
+            Vector2 localPoint;
+            RectTransform parentRect = actor.parent.GetComponent<RectTransform>();
+            Canvas canvas = actor.GetComponentInParent<Canvas>();
+            Camera cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+            Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(cam, worldPos);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRect, screenPoint, cam, out localPoint);
+
+            return localPoint + offset;
+        }
+
+        /// <summary>
+        /// UI下，获取child相对于父节点的本地位置
+        /// 先只实现锚点重合的情况
+        /// </summary>
+        public static Vector2 GetRelativePosToParent(RectTransform child)
+        {
+            var pos = child.anchoredPosition;
+            if (child.anchorMin != child.anchorMax)
+                return pos;
+
+            var parent = child.parent as RectTransform;
+            var size = parent.rect;
+            var anchor = child.anchorMin;
+
+            pos = pos + new Vector2(
+                (anchor.x - 0.5f) * size.width,
+                (anchor.y - 0.5f) * size.height
+            );   
+
+            return pos;
         }
     }
 

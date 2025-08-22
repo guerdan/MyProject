@@ -164,7 +164,7 @@ namespace Script.UI.Panel.Auto
             var y_min = pos_center.y - _viewH / 2 - uiH / 2;
             var y_max = pos_center.y + _viewH / 2 + uiH / 2;
 
-            foreach (var data in ProcessNodeManager.Inst._nodeDatas.Values)
+            foreach (var data in AutoScriptManager.Inst._nodeDatas.Values)
             {
                 var pos = MapConvert(data.Pos);
                 if (pos.x >= x_min && pos.x <= x_max && pos.y >= y_min && pos.y <= y_max)

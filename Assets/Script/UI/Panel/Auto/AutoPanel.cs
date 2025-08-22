@@ -46,7 +46,6 @@ namespace Script.UI.Panel.Auto
             {
             }, 1);
 
-            OCVExample.Inst.Init();
 
             // template.SetActive(false);
             // listComp.OnGetItemSize = GetItemSize;
@@ -173,24 +172,24 @@ namespace Script.UI.Panel.Auto
         /// <summary>
         /// 监听几个按键
         /// </summary>
-        private KeyboardKeyEnum[] list = new KeyboardKeyEnum[]
+        private KeyboardEnum[] list = new KeyboardEnum[]
         {
             // KeyboardKeyEnum.W,
             // KeyboardKeyEnum.A,
-            KeyboardKeyEnum.S,
-            KeyboardKeyEnum.D,
-            KeyboardKeyEnum.C,
-            KeyboardKeyEnum.I,
-            KeyboardKeyEnum.P,
-            KeyboardKeyEnum.O,
-            KeyboardKeyEnum.Esc,
-            KeyboardKeyEnum.Up,
-            KeyboardKeyEnum.Down,
-            KeyboardKeyEnum.Left,
-            KeyboardKeyEnum.Right,
-            KeyboardKeyEnum.V,
+            KeyboardEnum.S,
+            KeyboardEnum.D,
+            KeyboardEnum.C,
+            KeyboardEnum.I,
+            KeyboardEnum.P,
+            KeyboardEnum.O,
+            KeyboardEnum.Esc,
+            KeyboardEnum.Up,
+            KeyboardEnum.Down,
+            KeyboardEnum.Left,
+            KeyboardEnum.Right,
+            KeyboardEnum.V,
         };
-        private HashSet<KeyboardKeyEnum> repeatKeySet = new HashSet<KeyboardKeyEnum>();
+        private HashSet<KeyboardEnum> repeatKeySet = new HashSet<KeyboardEnum>();
 
         // 按键回调
         void KeyboardRecord(KeyboardHookEnum action, AU.KBDLLHOOKSTRUCT hookStruct)
@@ -226,14 +225,14 @@ namespace Script.UI.Panel.Auto
 
         }
 
-        private void KeyOper(KeyboardKeyEnum key, AU.KBDLLHOOKSTRUCT hookStruct, bool isDown = true)
+        private void KeyOper(KeyboardEnum key, AU.KBDLLHOOKSTRUCT hookStruct, bool isDown = true)
         {
             if (hookStruct.vkCode != (uint)key) return;
             if (isDown)
             {
-                if (key == KeyboardKeyEnum.V)
+                if (key == KeyboardEnum.V)
                 {
-                    key = KeyboardKeyEnum.W;
+                    key = KeyboardEnum.W;
                     // AU.SendKeyPress((int)KeyboardKeyEnum.W);
                 }
 
@@ -244,9 +243,9 @@ namespace Script.UI.Panel.Auto
             }
             else
             {
-                if (key == KeyboardKeyEnum.V)
+                if (key == KeyboardEnum.V)
                 {
-                    key = KeyboardKeyEnum.W;
+                    key = KeyboardEnum.W;
                     // AU.SendInputKeyDown((int)KeyboardKeyEnum.A, false);
                 }
                 // else
@@ -286,10 +285,7 @@ namespace Script.UI.Panel.Auto
             string path = Path.Combine(Application.streamingAssetsPath, "pic_chuan.png");
             // 15ms  耗时还好
             var bitmap = AU.CaptureWindow(selectedWin, path);
-            // 15ms
-            var mat = OCVExample.BitmapToMat(bitmap);
 
-            OCVExample.ShowMat(mat);
         }
 
 

@@ -37,7 +37,7 @@ namespace Script.Framework.UI
         LogPrintPanel,
         PicMatchFloat,
         DrawProcessPanel,
-        ProcessNodePanel,
+        ProcessNodeInfoPanel,
     }
 
 
@@ -146,9 +146,9 @@ namespace Script.Framework.UI
             },
 
             new PanelDefine{
-                Key = PanelEnum.ProcessNodePanel,
-                Name = "ProcessNodePanel",
-                Path = "Auto/Prefabs/ProcessNodePanel",
+                Key = PanelEnum.ProcessNodeInfoPanel,
+                Name = "ProcessNodeInfoPanel",
+                Path = "Auto/Prefabs/ProcessNodeInfoPanel",
                 Type = UITypeEnum.WindowsPopUp,
                 RecycleType = UIRecycleTypeEnum.Frequent,
                 InitPos = new Vector2(0, 0),

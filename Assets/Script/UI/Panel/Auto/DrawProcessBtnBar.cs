@@ -38,7 +38,7 @@ namespace Script.UI.Panel.Auto
 
         void RefreshBtn()
         {
-            var isRuning = ProcessNodeManager.Inst.IsRuning();
+            var isRuning = AutoScriptManager.Inst.IsRuning();
             var path = "Common/Sprites/New/" + (isRuning ? "b_stop" : "b_start");
             AssetUtil.SetImage(path, RunBtn.GetComponent<Image>());
 
@@ -46,13 +46,13 @@ namespace Script.UI.Panel.Auto
 
         void OnRunBtnClick()
         {
-            if (ProcessNodeManager.Inst.IsRuning())
+            if (AutoScriptManager.Inst.IsRuning())
             {
-                ProcessNodeManager.Inst.Stop();
+                AutoScriptManager.Inst.Stop();
             }
             else
             {
-                ProcessNodeManager.Inst.Start();
+                AutoScriptManager.Inst.Start();
             }
             RefreshBtn();
         }

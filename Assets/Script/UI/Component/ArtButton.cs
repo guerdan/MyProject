@@ -15,6 +15,8 @@ namespace Script.UI.Component
         public float TargetScale = 0.85f;
         public float ScalingDuration = 0.1f;
 
+        public float ClickRegionMultiple = 1f;
+
         private RectTransform rect;
         private Image image;
         private Vector2 originalSize;
@@ -28,9 +30,10 @@ namespace Script.UI.Component
             originalSize = rect.sizeDelta;
             var button = GetComponent<Button>();
             button.transition = Selectable.Transition.None;
+            FillRaycastRegion();
         }
 
-        //touchstart 事件
+        //按下 事件
         public void OnPointerDown(PointerEventData eventData)
         {
             // DU.LogWarning("OnPointerDown");
@@ -39,12 +42,12 @@ namespace Script.UI.Component
             rect.localScale = new Vector3(scale, scale, scale);
             touchStartTween = DOTween.To(() => scale, x => { scale = x; }, TargetScale, ScalingDuration).OnUpdate(() =>
             {
-                FillRaycastRegion(scale);
+                FillRaycastRegion();
                 rect.localScale = new Vector3(scale, scale, scale);
             });
         }
 
-        // touchend 事件
+        // 松开 事件
         public void OnPointerUp(PointerEventData eventData)
         {
             // DU.LogWarning("OnPointerUp");
@@ -53,16 +56,16 @@ namespace Script.UI.Component
             rect.localScale = new Vector3(scale, scale, scale);
             touchEndTween = DOTween.To(() => scale, x => { scale = x; }, 1, ScalingDuration).OnUpdate(() =>
             {
-                FillRaycastRegion(scale);
+                FillRaycastRegion();
                 rect.localScale = new Vector3(scale, scale, scale);
             });
         }
 
-        // 缩小时，填充点击区域，优化体验
-        private void FillRaycastRegion(float scale)
+        // 填充点击区域，优化体验
+        private void FillRaycastRegion()
         {
-            if (scale >= 1) return;
-            var delta = originalSize * (1 - scale);
+            var scale = transform.localScale.x;
+            var delta = originalSize * (ClickRegionMultiple - scale);
             var pivot = rect.pivot;
             //左 下 右 上
             image.raycastPadding = new Vector4(

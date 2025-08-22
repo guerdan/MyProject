@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Script.Framework.UI;
 using Script.Model.Auto;
+using Script.UI.Panel.Auto.Node;
 using Script.Util;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -48,11 +49,16 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private ScrollRect ScrollRect;
         [SerializeField] public RectTransform Canvas;
         [SerializeField] public SplitLineComp SplitLineComp;          //分段线组件
-        [SerializeField] public GameObject NodePre; //节点预制件
         [SerializeField] private GameObject LinePre; //线段预制件
         [SerializeField] public Transform NodeParent; //节点父物体
         [SerializeField] private Transform LineParent; //线段父物体
         [SerializeField] private DrawProcessBtnBar BtnBar;
+
+        [Header("各式节点预制件")]
+        [SerializeField] public GameObject CommonNodePre;   //普通节点
+        [SerializeField] public GameObject MouseNodePre;    //鼠标节点
+        [SerializeField] public GameObject KeyboardNodePre; //键盘节点
+        [SerializeField] public GameObject AssignNodePre;   //赋值节点
 
         [NonSerialized] public CanvasConfig CanvasCfg;
         //当前选中的节点 格式：
@@ -61,9 +67,13 @@ namespace Script.UI.Panel.Auto
         [NonSerialized] public string MouseSelectedId;
         [NonSerialized] public string MouseHoverId;       //悬浮的节点
 
-        ProcessNodeManager manager => ProcessNodeManager.Inst;
-        Dictionary<string, BaseNodeData> _nodeDatas => ProcessNodeManager.Inst._nodeDatas;
-        SPool _nodeUIPool;
+        public AutoScriptManager manager => AutoScriptManager.Inst;
+        Dictionary<string, BaseNodeData> _nodeDatas => AutoScriptManager.Inst._nodeDatas;
+        SPool _commonNodeUIPool;
+        SPool _mouseNodeUIPool;
+        SPool _keyboardNodeUIPool;
+        SPool _assignNodeUIPool;
+
         SPool _linePool;
         GameObject _tempLine; //拖拽时的临时线段
 
@@ -77,15 +87,21 @@ namespace Script.UI.Panel.Auto
             ScrollRect.onValueChanged.AddListener(OnScrolling);
 
             //初始化预制件
-            NodePre.SetActive(false);
             LinePre.gameObject.SetActive(false);
+            CommonNodePre.SetActive(false);
+            MouseNodePre.SetActive(false);
+            KeyboardNodePre.SetActive(false);
+            AssignNodePre.SetActive(false);
 
             var trans_line = LinePre.GetComponent<RectTransform>();
             trans_line.anchorMin = new Vector2(0, 0);
             trans_line.anchorMax = new Vector2(0, 0);
 
-            _nodeUIPool = new SPool(NodePre, 0, "NodeUI");
             _linePool = new SPool(LinePre, 0, "LineUI");
+            _commonNodeUIPool = new SPool(CommonNodePre, 0, "C_NodeUI");
+            _mouseNodeUIPool = new SPool(MouseNodePre, 0, "M_NodeUI");
+            _keyboardNodeUIPool = new SPool(KeyboardNodePre, 0, "K_NodeUI");
+            _assignNodeUIPool = new SPool(AssignNodePre, 0, "A_NodeUI");
         }
 
         public override void SetData(object data)
@@ -122,6 +138,15 @@ namespace Script.UI.Panel.Auto
 
         void Update()
         {
+            //上方有界面就应该跳过
+            BasePanel last = UISceneMixin.Inst.PeekPanel(PanelDefine.Layer) as BasePanel;
+            if (last.PanelDefine.Key != PanelDefine.Key)
+            {
+                return;
+            }
+
+
+
             if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.S))
             {
                 manager.Save();
@@ -156,12 +181,11 @@ namespace Script.UI.Panel.Auto
 
         #region 节点
         // 只显示在视窗内的节点 (ok)
-        // 完全同步节点，完全同步线段
+        // 完全同步节点(id对应的方案)，完全同步线段
         public void SyncData()
         {
             HashSet<string> node_ids = SplitLineComp.GetInViewNodeIds();
             HashSet<string> lines_ids = new HashSet<string>();
-
 
             // 删节点
             foreach (var id in _nodeUIMap.Keys.ToList())
@@ -169,7 +193,7 @@ namespace Script.UI.Panel.Auto
                 if (!node_ids.Contains(id))
                 {
                     var ui = _nodeUIMap[id];
-                    _nodeUIPool.Push(ui.gameObject);
+                    PushToPool(ui);
                     _nodeUIMap.Remove(id);
                 }
             }
@@ -178,14 +202,14 @@ namespace Script.UI.Panel.Auto
             foreach (var id in node_ids)
             {
                 // 增节点
-                if (!_nodeUIMap.TryGetValue(id, out var ui))
+                if (!_nodeUIMap.ContainsKey(id))
                 {
-                    var go = _nodeUIPool.Pop();
-                    go.transform.SetParent(NodeParent, false);
-                    ui = go.GetComponent<ProcessNodeUI>();
-                    _nodeUIMap[id] = ui;
-                    ui.SetData(_nodeDatas[id], this);
-
+                    var data = _nodeDatas[id];
+                    var type = data.GetNodeType();
+                    var nodeUI = GetFromPool(type);
+                    nodeUI.transform.SetParent(NodeParent, false);
+                    _nodeUIMap[id] = nodeUI;
+                    nodeUI.SetData(data, this);
                 }
 
                 // 统计所有的线段
@@ -204,7 +228,7 @@ namespace Script.UI.Panel.Auto
                     _lineUIMap.Remove(id);
                 }
             }
-           
+
             // 增线段
             foreach (var id in lines_ids)
             {
@@ -232,12 +256,12 @@ namespace Script.UI.Panel.Auto
         public void CreateNewNode()
         {
             var pos = SplitLineComp.MapConvert(SplitLineComp.GetCenter());
-            var data = manager.CreateNode(pos);
+            var data = manager.CreateNode(NodeType.TemplateMatchOper, pos);
             SyncData();
 
             // 确保新节点在最上层
             var new_ui = _nodeUIMap[data.Id];
-            new_ui.transform.SetAsLastSibling(); 
+            new_ui.transform.SetAsLastSibling();
         }
         // 删除节点功能
         public void DeleteNode(string id)
@@ -248,6 +272,87 @@ namespace Script.UI.Panel.Auto
             manager.DeleteNode(id);
             SyncData();
         }
+
+        // 刷新节点功能
+        public void RefreshNode(string id)
+        {
+            if (id == null) return;
+            if (!_nodeUIMap.TryGetValue(id, out var nodeUI)) return;
+
+            // UI层主动删除节点
+            _nodeUIMap.Remove(id);
+            PushToPool(nodeUI);
+            // 刷新出新节点
+            SyncData();
+        }
+
+        /// <summary>
+        /// 从对象池中拿ui
+        /// </summary>
+        public ProcessNodeUI GetFromPool(NodeType type)
+        {
+            GameObject go = null;
+            switch (type)
+            {
+                case NodeType.TemplateMatchOper:
+                    go = _commonNodeUIPool.Pop();
+                    break;
+                case NodeType.MouseOper:
+                    go = _mouseNodeUIPool.Pop();
+                    break;
+                case NodeType.KeyBoardOper:
+                    go = _keyboardNodeUIPool.Pop();
+                    break;
+                case NodeType.AssignOper:
+                    go = _assignNodeUIPool.Pop();
+                    break;
+            }
+            return go.GetComponent<ProcessNodeUI>();
+        }
+        /// <summary>
+        /// 把ui还给对象池 
+        /// </summary>
+        public void PushToPool(ProcessNodeUI nodeUI)
+        {
+            var type = nodeUI._data.GetNodeType();
+            switch (type)
+            {
+                case NodeType.TemplateMatchOper:
+                    _commonNodeUIPool.Push(nodeUI.gameObject);
+                    break;
+                case NodeType.MouseOper:
+                    _mouseNodeUIPool.Push(nodeUI.gameObject);
+                    break;
+                case NodeType.KeyBoardOper:
+                    _keyboardNodeUIPool.Push(nodeUI.gameObject);
+                    break;
+                case NodeType.AssignOper:
+                    _assignNodeUIPool.Push(nodeUI.gameObject);
+                    break;
+            }
+        }
+        /// <summary>
+        /// 拿预制件
+        /// </summary>
+        public GameObject GetPrefab(NodeType type)
+        {
+            switch (type)
+            {
+                case NodeType.TemplateMatchOper:
+                    return CommonNodePre;
+                case NodeType.MouseOper:
+                    return MouseNodePre;
+                case NodeType.KeyBoardOper:
+                    return KeyboardNodePre;
+                case NodeType.AssignOper:
+                    return AssignNodePre;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(type), type, null);
+            }
+        }
+
+
+
 
         // 刷新选中状态
         public void RefreshUISelectedStatus(string id)
@@ -324,11 +429,6 @@ namespace Script.UI.Panel.Auto
             _tempLine.SetActive(false);
         }
 
-
         #endregion
-
-
-
-
     }
 }
