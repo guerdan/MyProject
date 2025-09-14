@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Script.Framework.UI;
 using Script.Model.Auto;
+using Script.UI.Component;
 using Script.UI.Panel.Auto.Node;
 using Script.Util;
 using Unity.VisualScripting;
@@ -40,36 +41,54 @@ namespace Script.UI.Panel.Auto
     /// 线段ui维护机制：用户增/删操作 => 通知逻辑并直接增/删线段ui
     /// 
     /// 
-    /// todo：
-    /// 1.节点实际功能
     /// </summary>
     public class DrawProcessPanel : BasePanel
     {
+        public AutoScriptManager manager => AutoScriptManager.Inst;
+
         [SerializeField] private Text Title;
+        [SerializeField] private Button TitleEditBtn;
         [SerializeField] private ScrollRect ScrollRect;
         [SerializeField] public RectTransform Canvas;
-        [SerializeField] public SplitLineComp SplitLineComp;          //分段线组件
-        [SerializeField] private GameObject LinePre; //线段预制件
-        [SerializeField] public Transform NodeParent; //节点父物体
-        [SerializeField] private Transform LineParent; //线段父物体
+        [SerializeField] public SplitLineComp Map;          //分段线组件, 现在是地图的地位
+        [SerializeField] private GameObject LinePre;        //线段预制件
+        [SerializeField] public Transform NodeParent;       //节点父物体
+        [SerializeField] private Transform LineParent;      //线段父物体
         [SerializeField] private DrawProcessBtnBar BtnBar;
+        [SerializeField] public KeywordTipsComp TipsComp;  //提示词组件
+
 
         [Header("各式节点预制件")]
-        [SerializeField] public GameObject CommonNodePre;   //普通节点
+        [SerializeField] public GameObject TemplateMatchPre;   //普通节点
         [SerializeField] public GameObject MouseNodePre;    //鼠标节点
         [SerializeField] public GameObject KeyboardNodePre; //键盘节点
         [SerializeField] public GameObject AssignNodePre;   //赋值节点
 
-        [NonSerialized] public CanvasConfig CanvasCfg;
+        public static event Action OnMouseSelected;
+        private string _mouseSelectedId;
         //当前选中的节点 格式：
         //节点id: "node-{index}"
         //线段id: "line-{from}-{to}"
-        [NonSerialized] public string MouseSelectedId;
-        [NonSerialized] public string MouseHoverId;       //悬浮的节点
+        public string MouseSelectedId
+        {
+            get => _mouseSelectedId; set
+            {
+                var last = _mouseSelectedId;
+                _mouseSelectedId = value;
+                RefreshUISelectedStatus(last);
+                RefreshUISelectedStatus(_mouseSelectedId);
+                OnMouseSelected?.Invoke();
+            }
+        }
 
-        public AutoScriptManager manager => AutoScriptManager.Inst;
-        Dictionary<string, BaseNodeData> _nodeDatas => AutoScriptManager.Inst._nodeDatas;
-        SPool _commonNodeUIPool;
+        [NonSerialized] public CanvasConfig CanvasCfg;
+
+        [NonSerialized] public string MouseHoverId;         //悬浮的节点
+
+        [NonSerialized] public string _id;                                  //脚本id
+        [NonSerialized] public AutoScriptData _scriptData;                  //脚本运行时数据
+
+        SPool _templateMatchNodeUIPool;
         SPool _mouseNodeUIPool;
         SPool _keyboardNodeUIPool;
         SPool _assignNodeUIPool;
@@ -82,13 +101,17 @@ namespace Script.UI.Panel.Auto
         //Dic<id,实体> id = "line-{from}-{to}"，from和to线段的两端节点作为key,设计前提是两节点间最多一根线
         Dictionary<string, GameObject> _lineUIMap = new Dictionary<string, GameObject>();
 
+        DateTime _lastSaveTime;
+
+
         void Awake()
         {
+            TitleEditBtn.onClick.AddListener(OnTitleEditBtnClick);
             ScrollRect.onValueChanged.AddListener(OnScrolling);
 
             //初始化预制件
             LinePre.gameObject.SetActive(false);
-            CommonNodePre.SetActive(false);
+            TemplateMatchPre.SetActive(false);
             MouseNodePre.SetActive(false);
             KeyboardNodePre.SetActive(false);
             AssignNodePre.SetActive(false);
@@ -98,7 +121,7 @@ namespace Script.UI.Panel.Auto
             trans_line.anchorMax = new Vector2(0, 0);
 
             _linePool = new SPool(LinePre, 0, "LineUI");
-            _commonNodeUIPool = new SPool(CommonNodePre, 0, "C_NodeUI");
+            _templateMatchNodeUIPool = new SPool(TemplateMatchPre, 0, "C_NodeUI");
             _mouseNodeUIPool = new SPool(MouseNodePre, 0, "M_NodeUI");
             _keyboardNodeUIPool = new SPool(KeyboardNodePre, 0, "K_NodeUI");
             _assignNodeUIPool = new SPool(AssignNodePre, 0, "A_NodeUI");
@@ -107,6 +130,10 @@ namespace Script.UI.Panel.Auto
         public override void SetData(object data)
         {
             _useScaleAnim = false;
+
+            _id = data as string;
+            _scriptData = manager.GetScriptData(_id);
+            _lastSaveTime = DateTime.Now;
             Init();
         }
 
@@ -114,44 +141,60 @@ namespace Script.UI.Panel.Auto
         {
             CanvasCfg = new CanvasConfig(4000, 4000);
 
-            SplitLineComp.SetData(300);  //绘制栅格
+            Map.SetData(this, 300);  //绘制栅格
             BtnBar.SetData(this);
 
             //生成流程的节点
             OnScrolling(ScrollRect.normalizedPosition);
 
-            Title.text = $"绘制面板：{manager._autoData.Name}";
+            Title.text = $"绘制面板：{_scriptData.Config.Name}";
         }
 
 
-
-        public Vector2 MapConvert(Vector2 pos)
+        void OnTitleEditBtnClick()
         {
-            return new Vector2(pos.x, CanvasCfg.H - pos.y);
-        }
+            Action<string, string> OnConfirm = (string name, string _) =>
+            {
+                manager.RenameScript(_id, name);
+                Title.text = $"绘制面板：{_scriptData.Config.Name}";
+            };
 
+            EditNamePanelParam param = new EditNamePanelParam
+            {
+                Target = Title.rectTransform,
+                Offset = new Vector2(0, -30),
+                PanelTitle = "重命名脚本",
+                Region0Title = "脚本名",
+                Region0Text = _scriptData.Config.Name,
+                OnConfirm = OnConfirm,
+            };
+
+            UIManager.Inst.ShowPanel(PanelEnum.EditNamePanel, param);
+        }
         void OnScrolling(Vector2 pos)
         {
             SyncData();
         }
 
+        #region Update
+        public bool HoldCtrl;
 
         void Update()
         {
+
             //上方有界面就应该跳过
             BasePanel last = UISceneMixin.Inst.PeekPanel(PanelDefine.Layer) as BasePanel;
-            if (last.PanelDefine.Key != PanelDefine.Key)
+            if (last && last.PanelDefine.Key != PanelDefine.Key)
             {
                 return;
             }
 
-
-
             if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.S))
             {
-                manager.Save();
+                manager.SaveScript(_id);
             }
-            if (Input.GetKeyDown(KeyCode.Backspace))
+
+            if (Input.GetKeyDown(KeyCode.Backspace) || Input.GetKeyDown(KeyCode.Delete))
             {
                 if (MouseSelectedId != null)
                 {
@@ -174,17 +217,20 @@ namespace Script.UI.Panel.Auto
                         MouseSelectedId = null;
                     }
                 }
-
             }
+
+            // 按着Ctrl键，点击节点出引用
+            HoldCtrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+
         }
 
-
+        #endregion
         #region 节点
         // 只显示在视窗内的节点 (ok)
         // 完全同步节点(id对应的方案)，完全同步线段
         public void SyncData()
         {
-            HashSet<string> node_ids = SplitLineComp.GetInViewNodeIds();
+            HashSet<string> node_ids = Map.GetInViewNodeIds();
             HashSet<string> lines_ids = new HashSet<string>();
 
             // 删节点
@@ -204,8 +250,8 @@ namespace Script.UI.Panel.Auto
                 // 增节点
                 if (!_nodeUIMap.ContainsKey(id))
                 {
-                    var data = _nodeDatas[id];
-                    var type = data.GetNodeType();
+                    var data = _scriptData.NodeDatas[id];
+                    var type = data.NodeType;
                     var nodeUI = GetFromPool(type);
                     nodeUI.transform.SetParent(NodeParent, false);
                     _nodeUIMap[id] = nodeUI;
@@ -213,7 +259,7 @@ namespace Script.UI.Panel.Auto
                 }
 
                 // 统计所有的线段
-                lines_ids.AddRange(manager.GetLinesByNode(id));
+                lines_ids.AddRange(manager.GetLinesByNode(_scriptData, id));
             }
 
 
@@ -255,8 +301,8 @@ namespace Script.UI.Panel.Auto
         // 创建新节点功能
         public void CreateNewNode()
         {
-            var pos = SplitLineComp.MapConvert(SplitLineComp.GetCenter());
-            var data = manager.CreateNode(NodeType.TemplateMatchOper, pos);
+            var pos = Map.MapConvert(Map.GetCenter());
+            var data = manager.CreateNode(_scriptData, NodeType.TemplateMatchOper, pos);
             SyncData();
 
             // 确保新节点在最上层
@@ -269,7 +315,7 @@ namespace Script.UI.Panel.Auto
             if (id == null) return;
             if (!_nodeUIMap.ContainsKey(id)) return;
             // 逻辑先更新，ui后更新
-            manager.DeleteNode(id);
+            manager.DeleteNode(_scriptData, id);
             SyncData();
         }
 
@@ -289,24 +335,46 @@ namespace Script.UI.Panel.Auto
         /// <summary>
         /// 从对象池中拿ui
         /// </summary>
-        public ProcessNodeUI GetFromPool(NodeType type)
+        public void GetPool(NodeType type, out SPool pool, out GameObject prefab)
         {
-            GameObject go = null;
+            pool = null;
+            prefab = null;
             switch (type)
             {
                 case NodeType.TemplateMatchOper:
-                    go = _commonNodeUIPool.Pop();
+                    pool = _templateMatchNodeUIPool;
+                    prefab = TemplateMatchPre;
                     break;
+
                 case NodeType.MouseOper:
-                    go = _mouseNodeUIPool.Pop();
+                    pool = _mouseNodeUIPool;
+                    prefab = MouseNodePre;
                     break;
+
                 case NodeType.KeyBoardOper:
-                    go = _keyboardNodeUIPool.Pop();
+                    pool = _keyboardNodeUIPool;
+                    prefab = KeyboardNodePre;
                     break;
+
                 case NodeType.AssignOper:
-                    go = _assignNodeUIPool.Pop();
+                case NodeType.ConditionOper:
+                case NodeType.TriggerEvent:
+                case NodeType.ListenEvent:
+                    pool = _assignNodeUIPool;
+                    prefab = AssignNodePre;
                     break;
+
             }
+        }
+
+        /// <summary>
+        /// 从对象池中拿ui
+        /// </summary>
+        public ProcessNodeUI GetFromPool(NodeType type)
+        {
+            GetPool(type, out var pool, out var _);
+            GameObject go = pool.Pop();
+
             return go.GetComponent<ProcessNodeUI>();
         }
         /// <summary>
@@ -314,44 +382,10 @@ namespace Script.UI.Panel.Auto
         /// </summary>
         public void PushToPool(ProcessNodeUI nodeUI)
         {
-            var type = nodeUI._data.GetNodeType();
-            switch (type)
-            {
-                case NodeType.TemplateMatchOper:
-                    _commonNodeUIPool.Push(nodeUI.gameObject);
-                    break;
-                case NodeType.MouseOper:
-                    _mouseNodeUIPool.Push(nodeUI.gameObject);
-                    break;
-                case NodeType.KeyBoardOper:
-                    _keyboardNodeUIPool.Push(nodeUI.gameObject);
-                    break;
-                case NodeType.AssignOper:
-                    _assignNodeUIPool.Push(nodeUI.gameObject);
-                    break;
-            }
+            var type = nodeUI._data.NodeType;
+            GetPool(type, out var pool, out var _);
+            pool.Push(nodeUI.gameObject);
         }
-        /// <summary>
-        /// 拿预制件
-        /// </summary>
-        public GameObject GetPrefab(NodeType type)
-        {
-            switch (type)
-            {
-                case NodeType.TemplateMatchOper:
-                    return CommonNodePre;
-                case NodeType.MouseOper:
-                    return MouseNodePre;
-                case NodeType.KeyBoardOper:
-                    return KeyboardNodePre;
-                case NodeType.AssignOper:
-                    return AssignNodePre;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(type), type, null);
-            }
-        }
-
-
 
 
         // 刷新选中状态
@@ -384,12 +418,11 @@ namespace Script.UI.Panel.Auto
         #region 线段
 
 
-
         // 按id列表刷新线段
         public void RefreshLineByNode(string node_id)
         {
 
-            var line_ids = manager.GetLinesByNode(node_id);
+            var line_ids = manager.GetLinesByNode(_scriptData, node_id);
 
             foreach (var id in line_ids)
             {
@@ -401,13 +434,10 @@ namespace Script.UI.Panel.Auto
             }
         }
 
-
-
-
         // 数据层面删线段
         public void DeleteLine(string from_id, string to_id)
         {
-            manager.DeleteLine(from_id, to_id);
+            manager.DeleteLine(_scriptData, from_id, to_id);
             SyncData();
         }
 
@@ -429,6 +459,94 @@ namespace Script.UI.Panel.Auto
             _tempLine.SetActive(false);
         }
 
+        // 
+        Dictionary<NodeType, Vector2[]> _lineEndPosCache;
+
+        // type: 0-in, 1-out_true, 2-out_false  ,画布(0,0)为原点下的坐标
+        public Vector2 GetLineEndPos(BaseNodeData nData, int type)
+        {
+            if (_lineEndPosCache == null)
+            {
+                _lineEndPosCache = new Dictionary<NodeType, Vector2[]>();
+                foreach (var t in AutoDataUIConfig.NodeTypes)
+                {
+                    GetPool(t, out var _, out var go);
+
+                    if (t == NodeType.ConditionOper)
+                    {
+                        var template = go.GetComponent<AssignNodeUI>();
+                        var l = new Vector2[3];
+                        _lineEndPosCache[t] = l;
+                        l[0] = Utils.GetRelativePosToParent(template.InflowNode);
+                        l[1] = Utils.GetRelativePosToParent(template.TopCircle.GetComponent<RectTransform>());
+                        l[2] = Utils.GetRelativePosToParent(template.BottomCircle.GetComponent<RectTransform>());
+                    }
+                    else
+                    {
+                        GetLineEndOwnership(t, out bool in_own, out bool out_true_own, out bool out_false_own);
+                        var template = go.GetComponent<ProcessNodeUI>();
+                        var l = new Vector2[3];
+                        _lineEndPosCache[t] = l;
+                        if (in_own) l[0] = Utils.GetRelativePosToParent(template.InflowNode);
+                        if (out_true_own) l[1] = Utils.GetRelativePosToParent(template.TrueOutNode);
+                        if (out_false_own) l[2] = Utils.GetRelativePosToParent(template.FalseOutNode);
+                    }
+                }
+            }
+
+            var list = _lineEndPosCache[nData.NodeType];
+            return Map.MapConvert(nData.Pos) + list[type];
+        }
+
+        public void GetLineEndOwnership(NodeType type, out bool in_has, out bool out_true_has, out bool out_false_has)
+        {
+            switch (type)
+            {
+                case NodeType.TemplateMatchOper:
+                case NodeType.ConditionOper:
+                    in_has = true;
+                    out_true_has = true;
+                    out_false_has = true;
+                    break;
+                case NodeType.MouseOper:
+                case NodeType.KeyBoardOper:
+                case NodeType.AssignOper:
+                    in_has = true;
+                    out_true_has = true;
+                    out_false_has = false;
+                    break;
+                case NodeType.TriggerEvent:
+                    in_has = true;
+                    out_true_has = false;
+                    out_false_has = false;
+                    break;
+                case NodeType.ListenEvent:
+                    in_has = false;
+                    out_true_has = true;
+                    out_false_has = false;
+                    break;
+                default:
+                    in_has = false;
+                    out_true_has = false;
+                    out_false_has = false;
+                    break;
+            }
+        }
         #endregion
+
+        void OnDisable()
+        {
+            manager.SaveScript(_id);
+        }
+
+        void LateUpdate()
+        {
+            var now = DateTime.Now;
+            if ((now - _lastSaveTime).TotalSeconds >= 2 * 60)
+            {
+                manager.SaveScript(_id);
+                _lastSaveTime = now;
+            }
+        }
     }
 }

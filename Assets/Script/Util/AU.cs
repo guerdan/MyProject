@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Text;
 // using Palmmedia.ReportGenerator.Core.Reporting.Builders.Rendering;
@@ -8,13 +9,12 @@ using UnityEngine;   //交互操作库
 
 
 
-
 namespace Script.Util
 {
     /// <summary>
-    /// Auto-Utils，简称AU，负责封装win接口
+    /// Win-Utils，简称AU，负责封装win接口
     /// </summary>
-    public static class AU
+    public static class WU
     {
         #region 鼠标API
 
@@ -49,6 +49,8 @@ namespace Script.Util
         public const uint MOUSEEVENTF_MIDDLEDOWN = 0x0020;
         public const uint MOUSEEVENTF_MIDDLEUP = 0x0040;
         public const uint MOUSEEVENTF_WHEEL = 0x0800;
+        public const uint MOUSEEVENTF_MOVE = 0x0001;
+        public const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
 
         [DllImport("user32.dll")]
         public static extern IntPtr WindowFromPoint(Point point);
@@ -139,7 +141,7 @@ namespace Script.Util
             PostMessage(handle, (uint)flag, (IntPtr)key, (IntPtr)lParam);
         }
 
-        public static void keybd_eventPacked(int vkCode, bool isDown = true)
+        public static void keybd_event_packed(int vkCode, bool isDown = true)
         {
             var flag = isDown ? 0 : KEYEVENTF_KEYUP;
             keybd_event((byte)vkCode, 0, (uint)flag, UIntPtr.Zero);
@@ -428,7 +430,7 @@ namespace Script.Util
 
         [DllImport("gdi32.dll")]
         public static extern bool DeleteDC(IntPtr hdc);
-        public static Bitmap CaptureWindow(IntPtr hWnd, string filePath)
+        public static Bitmap CaptureWindowByHWnd(IntPtr hWnd, string filePath)
         {
             // IntPtr hdcSrc = GetWindowDC(hWnd);
             // IntPtr hdcDest = CreateCompatibleDC(hdcSrc);
@@ -464,6 +466,27 @@ namespace Script.Util
 
             return screenBmp;
         }
+        // 25ms
+        public static Bitmap CaptureWindow(CVRect rect)
+        {
+
+            int left = (int)Math.Floor(rect.x);
+            int top = (int)Math.Floor(rect.y);
+            int width = (int)Math.Ceiling(rect.w);
+            int height = (int)Math.Ceiling(rect.h);
+
+            Bitmap screenBmp = new Bitmap(width, height);
+            using (System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(screenBmp))
+            {
+                //第1、2个参数：屏幕起始坐标（如 0,0）
+                //第3、4个参数：目标 Bitmap 的起始坐标（如 0,0）
+                //第5个参数：复制的区域大小
+                g.CopyFromScreen(left, top, 0, 0, screenBmp.Size);
+            }
+
+            return screenBmp;
+        }
+
 
         #endregion
 
@@ -572,7 +595,7 @@ namespace Script.Util
         public static string PrintHandle(IntPtr hWnd)
         {
             // 测试屏幕绘制
-            IntPtr exStyle = AU.GetWindowLong(hWnd, AU.GWL_EXSTYLE);
+            IntPtr exStyle = WU.GetWindowLong(hWnd, WU.GWL_EXSTYLE);
             string p = $"窗口句柄: {hWnd}, 样式: {exStyle}, 标题: {GetWindowTitle(hWnd)}"
             + $", 区域: {GetWindowRect(hWnd)}, 可见: {IsWindowVisible(hWnd)}";
 

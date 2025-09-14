@@ -13,6 +13,7 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private Button CreateNodeBtn; //创建节点按钮
 
         DrawProcessPanel _panel;
+
         void Awake()
         {
         }
@@ -38,7 +39,7 @@ namespace Script.UI.Panel.Auto
 
         void RefreshBtn()
         {
-            var isRuning = AutoScriptManager.Inst.IsRuning();
+            var isRuning = AutoScriptManager.Inst.IsRuning(_panel._id);
             var path = "Common/Sprites/New/" + (isRuning ? "b_stop" : "b_start");
             AssetUtil.SetImage(path, RunBtn.GetComponent<Image>());
 
@@ -46,13 +47,13 @@ namespace Script.UI.Panel.Auto
 
         void OnRunBtnClick()
         {
-            if (AutoScriptManager.Inst.IsRuning())
+            if (AutoScriptManager.Inst.IsRuning(_panel._id))
             {
-                AutoScriptManager.Inst.Stop();
+                AutoScriptManager.Inst.StopScript(_panel._id);
             }
             else
             {
-                AutoScriptManager.Inst.Start();
+                AutoScriptManager.Inst.StartScript(_panel._id);
             }
             RefreshBtn();
         }

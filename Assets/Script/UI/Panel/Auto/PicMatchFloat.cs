@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using OpenCvSharp;
 using Script.Framework.AssetLoader;
@@ -17,8 +18,8 @@ namespace Script.UI.Panel.Auto
     {
         [SerializeField] private RectTransform NInput;
         [SerializeField] private RectTransform NTemplate;
-        [SerializeField] private Image IInput;
-        [SerializeField] private Image ITemplate;
+        [SerializeField] private ImageLoadComp IInput;
+        [SerializeField] private ImageLoadComp ITemplate;
         [SerializeField] private float threshold = 0.9f;
 
         private List<SquareFrameUI> frameUIList = new List<SquareFrameUI>();
@@ -42,11 +43,9 @@ namespace Script.UI.Panel.Auto
             inputPath = Path.Combine(Application.streamingAssetsPath, inputPath);
             templatePath = Path.Combine(Application.streamingAssetsPath, templatePath);
 
-            bool complete0 = false;
-            bool complete1 = false;
+
             Action reSize = () =>
             {
-                if (!(complete0 && complete1)) return;
                 float w0 = NInput.sizeDelta.x;
                 float h0 = NInput.sizeDelta.y;
                 float w1 = NTemplate.sizeDelta.x;
@@ -54,72 +53,67 @@ namespace Script.UI.Panel.Auto
                 ((RectTransform)transform).sizeDelta = new Vector2(w0 + 360, h0 + 130);
             };
 
-            StartCoroutine(LoadSpriteInStreaming(inputPath, (spr) =>
-            {
-                IInput.sprite = spr;
-                NInput.sizeDelta = new Vector2(spr.rect.width, spr.rect.height);
-                complete0 = true;
-                reSize();
-            }));
-            StartCoroutine(LoadSpriteInStreaming(templatePath, (spr) =>
-            {
-                ITemplate.sprite = spr;
-                NTemplate.sizeDelta = new Vector2(spr.rect.width, spr.rect.height);
-                complete1 = true;
-                reSize();
-            }));
+            IInput.SetData(inputPath);
+            ITemplate.SetData(templatePath);
 
+            reSize();
 
             DU.StartTimer();
             // 匹配结果
-            Mat result = IU.MatchTemplate1(inputPath, templatePath, out var matI, out var matT);
+            var matI = IU.GetMat(inputPath);
+            var matT = IU.GetMat(templatePath, true);
+            Mat result = IU.MatchTemplate1(matI, matT);
             DU.Log(DU.StopTimer($"MatchTemplate"));
 
 
             DU.StartTimer();
 
-            var result_list = IU.Draw1(result, matT.Width, matT.Height, threshold);
+            var result_list = IU.FindResult(result, matT.Width, matT.Height, threshold);
 
             AssetManager.Inst.LoadAssetAsync<GameObject>(PathUtil.SquareFrameUIPath, (go) =>
             {
                 Utils.RefreshItemListByCount(frameUIList, result_list.Count, go, NInput, (item, index) =>
                 {
                     var matchResult = result_list[index];
-                    item.SetData(matchResult.Score, Utils.ConvertRect(matchResult.Rect));
+                    item.SetData(matchResult.Score, matchResult.Rect);
                 });
             }, this);
-
-
-            result_list.ForEach(matchResult =>
-            {
-                var rect = matchResult.Rect;
-                // 在原图上画出匹配区域
-                Cv2.Rectangle(matI, rect, Scalar.Red, 2);
-                // 在左上角标注分数
-                Cv2.PutText(matI, DU.FloatFormat(matchResult.Score, 2), new OpenCvSharp.Point(rect.X, rect.Y + 15),
-                    HersheyFonts.HersheySimplex, 0.6, Scalar.Yellow, 2);
-
-            });
-
             DU.Log(DU.StopTimer($"筛选"));
+
+
+            // result_list.ForEach(matchResult =>
+            // {
+            //     var rect = matchResult.Rect;
+            //     var r = new OpenCvSharp.Rect((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
+            //     // 在原图上画出匹配区域
+            //     Cv2.Rectangle(matI, r, Scalar.Red, 2);
+            //     // 在左上角标注分数
+            //     Cv2.PutText(matI, DU.FloatFormat(matchResult.Score, 2), new OpenCvSharp.Point(r.X, r.Y + 15),
+            //         HersheyFonts.HersheySimplex, 0.6, Scalar.Yellow, 2);
+
+            // });
+
 
             // 找到最佳匹配位置
             // Cv2.MinMaxLoc(result, out double minVal, out double maxVal, out OpenCvSharp.Point minLoc, out OpenCvSharp.Point maxLoc);
 
             // Cv2.ImShow("Match Result", matI);
+            _bitmap = WU.CaptureWindow(new CVRect(0, 0, Screen.width, Screen.height));
+
+
+            // Cv2.ImShow("Match Result", cap0);
         }
 
-        // 资源加载何时释放，托管的没有引用就释放。
-        public IEnumerator LoadSpriteInStreaming(string fileName, Action<Sprite> cb)
+        Bitmap _bitmap;
+
+
+        public override void Close()
         {
-            byte[] bytes = File.ReadAllBytes(fileName);
-            Texture2D tex = new Texture2D(2, 2);
-            tex.LoadImage(bytes);
-            var sprite = Sprite.Create(tex, new UnityEngine.Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
-            cb(sprite);
-            yield break;
-        }
+            base.Close();
+            Mat cap0 = IU.BitmapToMat(_bitmap);
+            Cv2.ImShow("Match Result", cap0);
 
+        }
 
     }
 }

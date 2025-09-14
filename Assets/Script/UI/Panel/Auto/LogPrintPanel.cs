@@ -28,10 +28,10 @@ namespace Script.UI.Panel.Auto
             return template;
         }
 
-        private Rect GetItemSize(int index)
+        private Vector2 GetItemSize(int index)
         {
-            var width = template.GetComponent<RectTransform>().rect.width;
-            return new Rect(0, 0, width, textsHieght[index]);
+            var width = template.GetComponent<RectTransform>().rect.size.x;
+            return new Vector2(width, textsHieght[index]);
         }
 
         private void UpdateItem(GameObject item, int index)
@@ -64,7 +64,7 @@ namespace Script.UI.Panel.Auto
             }
 
             // 设置数据源
-            listComp.reloadData(data.Count);
+            listComp.ReloadData(data.Count);
             listComp.ScrollToItemVertical(data.Count - 1);
         }
     }

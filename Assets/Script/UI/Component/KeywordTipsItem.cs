@@ -12,23 +12,35 @@ namespace Script.UI.Component
         [SerializeField] private Image Bg;
         [SerializeField] private Text Text;
 
+
         string _str;
         int _index;
         Action<int> _onSelect;
         KeywordTipsComp _parent;
+        bool _hover;
 
-        public void SetData(string str, int index, Action<int> onSelect, KeywordTipsComp parent)
+        public void SetData(string str, int index, Action<int> onSelect, float width, KeywordTipsComp parent)
         {
             _str = str;
             _index = index;
             _onSelect = onSelect;
             _parent = parent;
             Text.text = str;
+
+            var rect = GetComponent<RectTransform>();
+            rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
+
+            Refresh();
         }
 
         public void Refresh()
         {
             if (_index == _parent.SelectIndex)
+            {
+                Bg.color = Utils.ParseHtmlString("#BBBBBB");
+                Text.color = Utils.ParseHtmlString("#222222");
+            }
+            else if (_hover)
             {
                 Bg.color = Utils.ParseHtmlString("#DDDDDD");
                 Text.color = Utils.ParseHtmlString("#494949");
@@ -36,21 +48,22 @@ namespace Script.UI.Component
             else
             {
                 Bg.color = new Color(0, 0, 0, 0);
-                Text.color = Utils.ParseHtmlString("#878787");
+                Text.color = Utils.ParseHtmlString("#666666");
             }
         }
 
         //鼠标悬浮进入事件
         public void OnPointerEnter(PointerEventData eventData)
         {
-            _parent.SelectIndex = _index;
-            _parent.Refresh();
+            _hover = true;
+            Refresh();
         }
 
         //鼠标悬浮离开事件
         public void OnPointerExit(PointerEventData eventData)
         {
-           
+            _hover = false;
+            Refresh();
         }
         //鼠标按下事件
         public void OnPointerDown(PointerEventData eventData)

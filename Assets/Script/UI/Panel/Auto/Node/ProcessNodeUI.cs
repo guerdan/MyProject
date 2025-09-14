@@ -3,11 +3,11 @@ using Script.Model.Auto;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
-using DG.Tweening;
 using Script.Util;
 using Script.Framework.UI;
 using System;
 using System.Collections.Generic;
+using Script.UI.Component;
 
 namespace Script.UI.Panel.Auto.Node
 {
@@ -37,7 +37,7 @@ namespace Script.UI.Panel.Auto.Node
         }
 
         [Header("通用")]
-        [SerializeField] private RectTransform ScaleNode;
+        [SerializeField] private ScaleArtComp ScaleNode;
         [SerializeField] public RectTransform InflowNode;
         // [SerializeField] private RectTransform EventNode;     //决定不要了,拆离出来单独做个事件接收节点
         [SerializeField] public RectTransform TrueOutNode;
@@ -47,28 +47,29 @@ namespace Script.UI.Panel.Auto.Node
         [SerializeField] private GameObject IsFirstMark;      //起点标记
 
 
-        public RectTransform rectTransform => (RectTransform)transform;
+        public RectTransform selfR => (RectTransform)transform;
         public AutoScriptManager manager => AutoScriptManager.Inst;
-        public AutoScriptData _autoData => AutoScriptManager.Inst._autoData;
 
 
         [HideInInspector] public BaseNodeData _data;
         [HideInInspector] public NodeType _type;
         protected DrawProcessPanel _panel;
-
+        AutoScriptData _scriptData;
 
         void Awake()
         {
-            rectTransform.anchorMin = new Vector2(0, 0);
-            rectTransform.anchorMax = new Vector2(0, 0);
+            selfR.anchorMin = new Vector2(0, 0);
+            selfR.anchorMax = new Vector2(0, 0);
+            // 初始化组件。子层级会阻拦事件传入父层级
+            ScaleNode.SetData(OnPointerEnter, OnPointerExit);
         }
-        void OnEnable()
+        protected virtual void OnEnable()
         {
             AutoScriptManager.Inst.Tick += Tick;
             AutoScriptManager.Inst.StatusChange += StatusChange;
         }
 
-        void OnDisable()
+        protected virtual void OnDisable()
         {
             AutoScriptManager.Inst.Tick -= Tick;
             AutoScriptManager.Inst.StatusChange -= StatusChange;
@@ -79,8 +80,8 @@ namespace Script.UI.Panel.Auto.Node
         {
             _data = nodeData;
             _panel = panel;
-            _type = _data.GetNodeType();
-            Reset();
+            _type = _data.NodeType;
+            _scriptData = panel._scriptData;
             RefreshContent();
             Refresh();
             RefreshSelected();
@@ -99,61 +100,57 @@ namespace Script.UI.Panel.Auto.Node
         public void Refresh()
         {
             bool selected = _data.Id == _panel.MouseSelectedId;
-            bool show_progress = _type != NodeType.AssignOper && _type != NodeType.ListenEvent;
-            if (show_progress)
+            // bool show_progress = _type != NodeType.AssignOper && _type != NodeType.ListenEvent;
+            // 这个样式空闲时要框
+            bool type1 = _type == NodeType.TemplateMatchOper;
+
+            if (_data.Status == NodeStatus.Off)
             {
-                if (_data.Status == NodeStatus.Off)
+                if (type1)
                 {
-                    if (_type == NodeType.MouseOper)
-                    {
-                        Utils.SetActive(OutlineF, false);
-                        Utils.SetActive(OutlineB, selected);
+                    Utils.SetActive(OutlineF, false);
+                    if (selected)
                         OutlineB.color = WhiteColor;
-                    }
                     else
-                    {
-                        Utils.SetActive(OutlineF, false);
-                        if (selected)
-                            OutlineB.color = WhiteColor;
-                        else
-                            OutlineB.color = _data.ExcuteTimes > 0 ? BrownColor : GreenColor;
-                    }
+                        OutlineB.color = _data.ExcuteTimes > 0 ? BrownColor : GreenColor;
                 }
                 else
                 {
-                    Utils.SetActive(OutlineF, true);
-                    Utils.SetActive(OutlineB, true);
-                    OutlineF.color = RedColor;
-                    OutlineF.fillAmount = _data.Timer / _data.Delay;
-                    OutlineB.color = RedBgColor;
+                    Utils.SetActive(OutlineF, false);
+                    Utils.SetActive(OutlineB, selected);
+                    OutlineB.color = WhiteColor;
                 }
             }
             else
             {
-                // 只使用选中功能
-                Utils.SetActive(OutlineB, selected);
-                OutlineB.color = WhiteColor;
+                Utils.SetActive(OutlineF, true);
+                Utils.SetActive(OutlineB, true);
+                OutlineF.color = RedColor;
+                OutlineF.fillAmount = _data.Timer / _data.Delay;
+                OutlineB.color = RedBgColor;
             }
 
 
-            Utils.SetActive(IsFirstMark, _data.Id == _autoData.FirstNode);
+            Utils.SetActive(IsFirstMark, _data.Id == _scriptData.Config.FirstNode);
         }
+
+
 
         /// <summary>
         /// 刷新选中状态
         /// </summary>
-        public void RefreshSelected()
+        public virtual void RefreshSelected()
         {
             bool selected = _data.Id == _panel.MouseSelectedId;
+            _panel.GetLineEndOwnership(_data.NodeType, out bool _, out bool has_true, out bool has_false);
 
             //圈圈操作
-            Utils.SetActive(TrueOutNode, selected);
-            Utils.SetActive(FalseOutNode, selected);
+            Utils.SetActive(TrueOutNode, selected && has_true);
+            Utils.SetActive(FalseOutNode, selected && has_false);
             if (selected)
             {
-                TrueOutNode.GetComponent<Image>().color = _data.TrueNextNodes.Count > 0 ? WhiteColor : BrownColor;
-                if (FalseOutNode)
-                    FalseOutNode.GetComponent<Image>().color = _data.FalseNextNodes.Count > 0 ? WhiteColor : BrownColor;
+                if (has_true) TrueOutNode.GetComponent<Image>().color = _data.TrueNextNodes.Count > 0 ? WhiteColor : BrownColor;
+                if (has_false) FalseOutNode.GetComponent<Image>().color = _data.FalseNextNodes.Count > 0 ? WhiteColor : BrownColor;
             }
         }
 
@@ -171,7 +168,7 @@ namespace Script.UI.Panel.Auto.Node
         public void SetPos()
         {
             var pos = _data.Pos;
-            rectTransform.anchoredPosition = new Vector2(pos.x, _panel.CanvasCfg.H - pos.y);
+            selfR.anchoredPosition = new Vector2(pos.x, _panel.CanvasCfg.H - pos.y);
         }
 
 
@@ -192,14 +189,11 @@ namespace Script.UI.Panel.Auto.Node
 
 
         #region 操作交互
-        private readonly float BiggerScale = 1.07f;
-        private readonly float ScalingDuration = 0.1f;
-        private Tween touchStartTween;
-        private Tween touchEndTween;
         private ProcessNodeDragStatus _dragStatus = ProcessNodeDragStatus.None;
-        private bool _startDrag = false;
+        private bool _inDragging = false;
         private Vector2 _dragOffset;
         private bool _doubleClick = false;
+        protected bool _finishOneClick = false;
 
         // PointerDown > BeginDrag > Drag > PointerUp > EndDrag
         // BeginDrag在用户PointerDown后的下一帧才触发，一帧的位移会被忽略
@@ -207,32 +201,40 @@ namespace Script.UI.Panel.Auto.Node
         {
             // DU.LogWarning("PointerDown");
             _doubleClick = _panel.MouseSelectedId == _data.Id;
+            _finishOneClick = false;
 
             // 节点变白色调
             {
 
                 string pre = _panel.MouseSelectedId;
                 _panel.MouseSelectedId = _data.Id;
-                // 通知刷新旧选中的ui 和新选中的ui
-                _panel.RefreshUISelectedStatus(pre);
-                _panel.RefreshUISelectedStatus(_panel.MouseSelectedId);
+
             }
 
             // 检测是否点击在 TrueOutNode 的区域，矩形30X30范围，用于拖拽连线
             {
                 Vector2 clickPos;
+                // 这个接口按pivot为原点，所以是画布(0,1)为原点下的坐标
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                    rectTransform, eventData.position, eventData.pressEventCamera,
+                    _panel.Canvas, eventData.position, eventData.pressEventCamera,
                     out clickPos
                 );
+                // 故加个画布Height
+                clickPos += new Vector2(0, _panel.Map.ContentH);
+                _panel.GetLineEndOwnership(_data.NodeType, out bool _, out bool out_true_own,
+                    out bool out_false_own);
 
-                Vector2 truePos = rectTransform.InverseTransformPoint(TrueOutNode.transform.position);
-                bool trueIntersect = Intersect(clickPos, truePos, 30, 30);
-                if (trueIntersect) _dragStatus = ProcessNodeDragStatus.LineTrue;
-
-                if (FalseOutNode)
+                // 画布(0,0)为原点下的坐标
+                if (out_true_own)
                 {
-                    Vector2 falsePos = rectTransform.InverseTransformPoint(FalseOutNode.transform.position);
+                    Vector2 truePos = _panel.GetLineEndPos(_data, 1);
+                    bool trueIntersect = Intersect(clickPos, truePos, 30, 30);
+                    if (trueIntersect) _dragStatus = ProcessNodeDragStatus.LineTrue;
+                }
+
+                if (out_false_own)
+                {
+                    Vector2 falsePos = _panel.GetLineEndPos(_data, 2);
                     bool falseIntersect = Intersect(clickPos, falsePos, 30, 30);
                     if (falseIntersect) _dragStatus = ProcessNodeDragStatus.LineFalse;
                 }
@@ -249,30 +251,42 @@ namespace Script.UI.Panel.Auto.Node
                     _panel.Canvas, eventData.position, eventData.pressEventCamera,
                     out pointerLocalPos
                 );
-                _dragOffset = rectTransform.anchoredPosition - pointerLocalPos;
+                _dragOffset = selfR.anchoredPosition - pointerLocalPos;
                 _dragStatus = ProcessNodeDragStatus.Card;
             }
         }
 
         // 双击出界面。
-        public void OnPointerUp(PointerEventData eventData)
+        public virtual void OnPointerUp(PointerEventData eventData)
         {
             // DU.LogWarning("OnPointerUp");
-            if (_startDrag) return;
-            if (!_doubleClick) return;
-            var datas = new List<object>();
-            datas.Add(_data);
-            datas.Add(rectTransform);
-            datas.Add(new Tuple<float, float>(0, -120));
-            datas.Add(_panel);
-            UIManager.Inst.ShowPanel(PanelEnum.ProcessNodeInfoPanel, datas);
+            _finishOneClick = true;
+
+            if (_inDragging) return;
+
+            // 按住Ctrl再点击节点出引用
+            bool already = false;
+            if (_panel.HoldCtrl)
+            {
+                already = HoldCtrlAndClick();
+            }
+
+            // 选中之后的点击，出详情
+            if (_doubleClick && !already)
+            {
+                var datas = new List<object>();
+                datas.Add(_data);
+                datas.Add(selfR);
+                datas.Add(_panel);
+                UIManager.Inst.ShowPanel(PanelEnum.ProcessNodeInfoPanel, datas);
+            }
         }
 
 
         public void OnBeginDrag(PointerEventData eventData)
         {
             // DU.LogWarning("BeginDrag");
-            _startDrag = true;
+            _inDragging = true;
         }
 
         public void OnDrag(PointerEventData eventData)
@@ -285,16 +299,17 @@ namespace Script.UI.Panel.Auto.Node
 
             if (_dragStatus == ProcessNodeDragStatus.Card)
             {
-                _data.Pos = _panel.MapConvert(point + _dragOffset);
+                _data.Pos = _panel.Map.MapConvert(point + _dragOffset);
                 SetPos();
                 RefreshLine();
             }
             else if (_dragStatus == ProcessNodeDragStatus.LineTrue || _dragStatus == ProcessNodeDragStatus.LineFalse)
             {
-                var from = _dragStatus == ProcessNodeDragStatus.LineTrue ? GetChildNodePos(TrueOutNode) : GetChildNodePos(FalseOutNode);
+                var from = _panel.GetLineEndPos(_data, _dragStatus == ProcessNodeDragStatus.LineTrue ? 1 : 2);
                 string hover_id = _panel.MouseHoverId;
+                bool has_in = GetTargetHasIn(hover_id);
 
-                if (hover_id != null && hover_id != _data.Id &&
+                if (hover_id != null && hover_id != _data.Id && has_in &&
                 !_data.TrueNextNodes.Contains(hover_id) && !_data.FalseNextNodes.Contains(hover_id))
                 {
                     // 有悬浮节点，画到悬浮节点入口
@@ -320,13 +335,14 @@ namespace Script.UI.Panel.Auto.Node
             // DU.LogWarning("OnEndDrag");
             if (_dragStatus == ProcessNodeDragStatus.LineTrue || _dragStatus == ProcessNodeDragStatus.LineFalse)
             {
-
                 _panel.HideLineForDrag();
                 string hover_id = _panel.MouseHoverId;
+                bool in_own = GetTargetHasIn(hover_id);
 
-                if (hover_id != null && hover_id != _data.Id)
+                if (hover_id != null && hover_id != _data.Id && in_own)
                 {
-                    AutoScriptManager.Inst.AddLine(_data.Id, hover_id, _dragStatus == ProcessNodeDragStatus.LineTrue);
+                    AutoScriptManager.Inst.AddLine(_scriptData, _data.Id, hover_id,
+                        _dragStatus == ProcessNodeDragStatus.LineTrue);
                     RefreshSelected();
                     _panel.SyncData();
                 }
@@ -334,47 +350,32 @@ namespace Script.UI.Panel.Auto.Node
 
 
             _dragStatus = ProcessNodeDragStatus.None;
-            _startDrag = false;
+            _inDragging = false;
         }
 
-
         //鼠标悬浮进入事件
-        public void OnPointerEnter(PointerEventData eventData)
+        public virtual void OnPointerEnter(PointerEventData eventData)
         {
             _panel.MouseHoverId = _data.Id;
-
-            Reset();
-            float scale = 1;
-            ScaleNode.localScale = new Vector3(scale, scale, scale);
-            touchStartTween = DOTween.To(() => scale, x => { scale = x; }, BiggerScale, ScalingDuration).OnUpdate(() =>
-            {
-                ScaleNode.localScale = new Vector3(scale, scale, scale);
-            });
         }
 
         //鼠标悬浮离开事件
-        public void OnPointerExit(PointerEventData eventData)
+        public virtual void OnPointerExit(PointerEventData eventData)
         {
             _panel.MouseHoverId = null;
-
-            Reset();
-            float scale = BiggerScale;
-            ScaleNode.localScale = new Vector3(scale, scale, scale);
-            touchEndTween = DOTween.To(() => scale, x => { scale = x; }, 1, ScalingDuration).OnUpdate(() =>
-            {
-                ScaleNode.localScale = new Vector3(scale, scale, scale);
-            });
         }
 
-        private void Reset()
+        bool GetTargetHasIn(string id)
         {
-            touchStartTween?.Kill();
-            touchStartTween = null;
-            touchEndTween?.Kill();
-            touchEndTween = null;
+            if (id == null) return false;
 
-            ScaleNode.localScale = Vector3.one;
+            bool has_in = false;
+            var ui = _panel.GetNode(id);
+            if (ui)
+                _panel.GetLineEndOwnership(ui._data.NodeType, out has_in, out bool _, out bool _);
+            return has_in;
         }
+
 
         bool Intersect(Vector2 pos1, Vector2 pos2, float w, float h)
         {
@@ -382,8 +383,54 @@ namespace Script.UI.Panel.Auto.Node
             return Math.Abs(delta.x) < w / 2 && Math.Abs(delta.y) < h / 2;
         }
 
-        Vector2 GetChildNodePos(RectTransform child) {
-            return rectTransform.anchoredPosition + Utils.GetRelativePosToParent(child);
+        Vector2 GetChildNodePos(RectTransform child)
+        {
+            return selfR.anchoredPosition + Utils.GetRelativePosToParent(child);
+        }
+
+        bool HoldCtrlAndClick()
+        {
+            if (_data.NodeType == NodeType.TriggerEvent || _data.NodeType == NodeType.ListenEvent)
+            {
+                var TipsComp = _panel.TipsComp;
+
+                List<BaseNodeData> match_list = null;
+                if (_data.NodeType == NodeType.TriggerEvent)
+                {
+                    var data = _data as TriggerEventNode;
+                    match_list = _scriptData.GetListenNodes(data.EventName).ConvertAll(m => m as BaseNodeData);
+                }
+                else if (_data.NodeType == NodeType.ListenEvent)
+                {
+                    var data = _data as ListenEventNode;
+                    match_list = _scriptData.GetEditTriggerNodes(data.EventName).ConvertAll(m => m as BaseNodeData);
+                }
+
+                
+                TipsComp.gameObject.SetActive(true);
+                TipsComp.SetData(match_list.ConvertAll(m => m.Name),
+                index =>
+                {
+                    _panel.Map.ScrollToNode(match_list[index].Id);
+                });
+
+                // 设置位置
+                var tipsCompRectT = TipsComp.GetComponent<RectTransform>();
+                tipsCompRectT.SetParent(_panel.Canvas, false);
+                var pos = Utils.GetPos(tipsCompRectT, selfR, default);
+                // 还得考虑 target的minAnchor和maxAnchor。
+                var anchor = selfR.anchorMin;
+                var parentRect = selfR.parent as RectTransform;
+                pos = pos + new Vector2(
+                    (anchor.x - 0.5f) * parentRect.rect.width,
+                    (0.5f - anchor.y) * parentRect.rect.height
+                );
+                pos = pos + new Vector2(selfR.rect.width / 2 + 5, selfR.rect.height / 2 - 5);
+
+                tipsCompRectT.anchoredPosition = pos;
+                return true;
+            }
+            return false;
         }
 
         #endregion

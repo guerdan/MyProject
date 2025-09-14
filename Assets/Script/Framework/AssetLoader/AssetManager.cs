@@ -103,19 +103,9 @@ namespace Script.Framework.AssetLoader
 
     public class AssetManager : IAssetManager
     {
-
-
         private static IAssetManager _inst;
         public static IAssetManager Inst
-        {
-            get
-            {
-                if (_inst == null) _inst = new AssetManager();
-                return _inst;
-
-
-            }
-        }
+        { get { if (_inst == null) _inst = new AssetManager(); return _inst; } }
 
 
         // <实例, <资源地址, handle>字典> 代理对象销毁时释放相关handle。

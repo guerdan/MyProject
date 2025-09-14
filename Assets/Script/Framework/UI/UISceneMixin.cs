@@ -115,6 +115,7 @@ namespace Script.Framework.UI
             return stack.GetTopIndexPanel(topIndex);
         }
 
+        // 有关闭动画，并且正在关闭的，不要取
         public IPanel PeekPanel(int layer)
         {
             var stack = _panelStacks[layer];

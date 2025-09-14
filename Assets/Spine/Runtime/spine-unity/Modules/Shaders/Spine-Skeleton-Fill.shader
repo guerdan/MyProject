@@ -65,7 +65,7 @@ Shader "Spine/Skeleton Fill" {
 				rawColor.rgb *= rawColor.a;
 				#endif
 
-				float3 finalColor = lerp((rawColor.rgb * i.vertexColor.rgb * _Color.rgb), (_FillColor.rgb * finalAlpha), _FillPhase); // make sure to PMA _FillColor.
+				float3 finalColor = lerp((rawColor.rgb * i.vertexColor.rgb * ng.rgb), (_FillColor.rgb * finalAlpha), _FillPhase); // make sure to PMA _FillColor.
 				return fixed4(finalColor, finalAlpha);
 			}
 			ENDCG

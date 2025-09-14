@@ -73,7 +73,7 @@ namespace Script.Framework.UI
             var time = DateTime.Now;
 
             // 如果是WindowsPopUp类型的界面，规则就不一样了。
-            if (type == UITypeEnum.WindowsPopUp)
+            if (type == UITypeEnum.WindowsPopUp || define.IsSingle)
             {
                 var findPanel = UISceneMixin.Inst.FindPanel(panelKey) as BasePanel;
                 if (findPanel != null)

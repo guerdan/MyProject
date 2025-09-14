@@ -232,9 +232,17 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1582011078324815179, guid: 83bbde2a0d67dde47b24a6d55ff41709, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 1648947627502579118, guid: 83bbde2a0d67dde47b24a6d55ff41709, type: 3}
       propertyPath: m_Name
       value: PanelBg_Pop0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1648947627502579118, guid: 83bbde2a0d67dde47b24a6d55ff41709, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 83bbde2a0d67dde47b24a6d55ff41709, type: 3}

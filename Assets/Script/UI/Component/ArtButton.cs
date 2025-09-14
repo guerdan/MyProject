@@ -7,7 +7,9 @@ using UnityEngine.UI;
 
 namespace Script.UI.Component
 {
-    // 按钮节点可以透明图，子节点挂实际图片
+    /// <summary>
+    /// 按钮节点可以透明图，子节点挂实际图片。 能保证点击区域的效果
+    /// </summary>
     [RequireComponent(typeof(Image))]
     [RequireComponent(typeof(Button))]
     public class ArtButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
@@ -22,6 +24,7 @@ namespace Script.UI.Component
         private Vector2 originalSize;
         private Tween touchStartTween;
         private Tween touchEndTween;
+
 
         private void Awake()
         {
@@ -64,6 +67,7 @@ namespace Script.UI.Component
         // 填充点击区域，优化体验
         private void FillRaycastRegion()
         {
+            if (image == null) return;
             var scale = transform.localScale.x;
             var delta = originalSize * (ClickRegionMultiple - scale);
             var pivot = rect.pivot;

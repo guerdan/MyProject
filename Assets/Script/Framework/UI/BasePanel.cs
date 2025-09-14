@@ -3,6 +3,7 @@ using DG.Tweening;
 using Script.UI.Component;
 using Script.Util;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Script.Framework.UI
@@ -12,6 +13,7 @@ namespace Script.Framework.UI
         PanelDefine PanelDefine { get; set; }
         int StackIndex { get; set; }
         Transform Transform { get; }
+        bool Display { get; }
         void SetData(object data);
         void BeforeShow();
         void OnShow(Action cb);
@@ -25,7 +27,7 @@ namespace Script.Framework.UI
         void OnHideContent();
 
     }
-    public class BasePanel : MonoBehaviour, IPanel
+    public class BasePanel : MonoBehaviour, IPanel, IPointerDownHandler, IPointerUpHandler
     {
 
         [SerializeField] public Button[] CloseButtons;
@@ -36,8 +38,7 @@ namespace Script.Framework.UI
         public static event Action<PanelEnum> AfterHideEvent;
         protected const float OpenAnimDuration = 0.4f;
         protected const float CloseAnimDuration = 0.1f;
-        // protected const float MaskOpacity = 85;
-        protected const float MaskOpacity = 220;
+        protected const float MaskOpacity = 200;        //手游220
 
         protected bool display = false;      //打开状态
         protected Sequence openSeq;          //弹窗打开动画
@@ -47,21 +48,25 @@ namespace Script.Framework.UI
         protected GameObject _maskBgNode;
         private PanelDefine _panelDefine;
         private int _stackIndex;
-        [HideInInspector] public bool _animEnable = true;
-        [HideInInspector] public bool _useScaleAnim = true;
+
+        protected bool _animEnable = true;
+        protected bool _useScaleAnim = true;
 
 
+        public bool Display { get { return display; }}
         public PanelDefine PanelDefine { get { return _panelDefine; } set { _panelDefine = value; } }
         public int StackIndex { get { return _stackIndex; } set { _stackIndex = value; } }
         public Transform Transform { get { return transform; } }
         public Transform Content { get { return transform.Find("Content"); } }
-        public bool ShowMask { get { return _panelDefine.Type != UITypeEnum.WindowsPopUp; } }
+        public bool ShowMask { get { return _panelDefine.ClickOutWinClose; } }
         public bool AnimEnable { get { return _animEnable && PanelDefine.Type != UITypeEnum.Full; } }  //全屏式界面不提供默认动画，如需要自行实现
 
         public virtual void SetData(object data) { }
 
         public virtual void BeforeShow()
         {
+            display = true;
+
             if (ShowMask && _maskBgNode == null)
             {
                 CreateMaskBg();
@@ -79,7 +84,6 @@ namespace Script.Framework.UI
 
         public virtual void AfterShow()
         {
-            display = true;
             AfterShowEvent?.Invoke(PanelDefine.Key);
         }
 
@@ -187,7 +191,7 @@ namespace Script.Framework.UI
             if (ShowMask) _maskBgNode.gameObject.SetActive(false);
         }
 
-        public void Close()
+        public virtual void Close()
         {
             if (!display) return;
             UIManager.Inst.PopPanel(PanelDefine.Layer);
@@ -215,10 +219,8 @@ namespace Script.Framework.UI
             var img = _maskBgNode.AddComponent<Image>();
             _maskBgNode.transform.SetParent(transform, false);
             _maskBgNode.transform.SetAsFirstSibling();
-            rect.anchorMin = new Vector2(0, 0);
-            rect.anchorMax = new Vector2(1, 1);
-            rect.offsetMin = new Vector2(0, 0);
-            rect.offsetMax = new Vector2(0, 0);
+            rect.sizeDelta = new Vector2(1920 * 2, 1080 * 2);
+
             img.raycastTarget = true;
 
             if (PanelDefine.Type == UITypeEnum.Full)
@@ -246,6 +248,15 @@ namespace Script.Framework.UI
         public virtual void RefreshPos()
         {
             ((RectTransform)transform).anchoredPosition = PanelDefine.InitPos;
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+        }
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            UISceneMixin.Inst.ToFirst(this, null);
+            // DU.LogWarning($"ToFirst {PanelDefine.Name}");
         }
     }
 }

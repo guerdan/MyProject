@@ -42,7 +42,7 @@
     <UnityVersion>2021.3.6f1</UnityVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Analyzer Include="C:\Users\hp\.vscode\extensions\visualstudiotoolsforunity.vstuc-1.1.2\Analyzers\Microsoft.Unity.Analyzers.dll" />
+    <Analyzer Include="C:\Users\hp\.vscode\extensions\visualstudiotoolsforunity.vstuc-1.1.3\Analyzers\Microsoft.Unity.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Script\Util\AUImpl.cs" />
@@ -56,7 +56,6 @@
     <Compile Include="Assets\XLua\Tutorial\LoadLuaScript\Loader\CustomLoader.cs" />
     <Compile Include="Assets\Script\Framework\UI\PanelDefine.cs" />
     <Compile Include="Assets\Script\Render\GPUSkinning\GPUSkinning2DSample.cs" />
-    <Compile Include="Assets\Script\UI\Panel\Auto\ProcessNodeUI.cs" />
     <Compile Include="Assets\Script\Util\SPool.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_DebugWrap.cs" />
     <Compile Include="Assets\Script\Render\GPUSkinning\AnimClip2Tex.cs" />
@@ -65,6 +64,7 @@
     <Compile Include="Assets\Script\UI\Panel\Hero\HeroMainPanel.cs" />
     <Compile Include="Assets\Script\Util\DU.cs" />
     <Compile Include="Assets\XLua\Examples\06_Coroutine\CoroutineTest.cs" />
+    <Compile Include="Assets\Script\Model\Auto\RPNCalculator.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\AutoPanel.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_Vector3Wrap.cs" />
     <Compile Include="Assets\Script\Framework\UI\UISceneMixin.cs" />
@@ -93,9 +93,11 @@
     <Compile Include="Assets\XLua\Src\LuaFunction.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\Node\TemplateMatchNodeUI.cs" />
     <Compile Include="Assets\XLua\Src\ObjectCasters.cs" />
+    <Compile Include="Assets\Script\Model\Auto\AutoRunData.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_ColorWrap.cs" />
     <Compile Include="Assets\XLua\Src\SignatureLoader.cs" />
     <Compile Include="Assets\Script\Util\TweenUtil.cs" />
+    <Compile Include="Assets\Script\UI\Panel\Auto\ScriptManagerScriptItem.cs" />
     <Compile Include="Assets\XLua\Src\TypeExtensions.cs" />
     <Compile Include="Assets\Script\UI\Component\ArtButton.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_TimeWrap.cs" />
@@ -105,9 +107,12 @@
     <Compile Include="Assets\Script\Framework\AssetLoader\AssetManager.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_BehaviourWrap.cs" />
     <Compile Include="Assets\Script\Util\Utils.cs" />
+    <Compile Include="Assets\Script\UI\Panel\Auto\ScriptManagerFolderItem.cs" />
     <Compile Include="Assets\Script\UI\Component\VirtualListComp.cs" />
+    <Compile Include="Assets\Script\UI\Component\CustomInputField.cs" />
     <Compile Include="Assets\Script\Util\EditDisabledAttribute.cs" />
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\DragObject.cs" />
+    <Compile Include="Assets\Script\Framework\AssetLoader\ImageManager.cs" />
     <Compile Include="Assets\XLua\Src\CodeEmit.cs" />
     <Compile Include="Assets\Script\Test\PerformanceTestClass.cs" />
     <Compile Include="Assets\XLua\Gen\PackUnpack.cs" />
@@ -118,6 +123,7 @@
     <Compile Include="Assets\XLua\Gen\Tutorial_ICalcWrap.cs" />
     <Compile Include="Assets\XLua\Gen\Tutorial_DerivedClassExtensionsWrap.cs" />
     <Compile Include="Assets\Script\XLua\XLuaManager.cs" />
+    <Compile Include="Assets\Script\UI\Component\ImageLoadComp.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_ResourcesWrap.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_BoundsWrap.cs" />
     <Compile Include="Assets\XLua\Gen\XLuaTest_FooExtensionWrap.cs" />
@@ -129,17 +135,21 @@
     <Compile Include="Assets\XLua\Src\ObjectTranslatorPool.cs" />
     <Compile Include="Assets\XLua\Src\LuaTable.cs" />
     <Compile Include="Assets\XLua\Examples\01_Helloworld\Helloworld.cs" />
+    <Compile Include="Assets\Script\UI\Panel\Auto\ScriptManagerPanel.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_Vector4Wrap.cs" />
     <Compile Include="Assets\Script\UI\Component\MoveRect.cs" />
     <Compile Include="Assets\Script\UI\Component\SelectBoxComp.cs" />
+    <Compile Include="Assets\Script\UI\Component\ScaleArtComp.cs" />
     <Compile Include="Assets\Script\UI\Component\MPBStart.cs" />
     <Compile Include="Assets\XLua\Tutorial\LoadLuaScript\ByFile\ByFile.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_KeyframeWrap.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_Ray2DWrap.cs" />
     <Compile Include="Assets\Script\UI\Component\KeywordTipsComp.cs" />
+    <Compile Include="Assets\Script\UI\Panel\Auto\ImageSourcePanel.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\DrawProcessBtnBar.cs" />
     <Compile Include="Assets\Script\Render\OutlineRender\CameraDepthRender.cs" />
     <Compile Include="Assets\XLua\Src\Utils.cs" />
+    <Compile Include="Assets\Script\UI\Panel\Auto\EditNamePanel.cs" />
     <Compile Include="Assets\XLua\Gen\System_Collections_IEnumeratorBridge.cs" />
     <Compile Include="Assets\XLua\Gen\XLuaGenAutoRegister.cs" />
     <Compile Include="Assets\XLua\Gen\XLuaTest_PeddingWrap.cs" />
@@ -169,8 +179,10 @@
     <Compile Include="Assets\XLua\Src\ObjectPool.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_AnimationCurveWrap.cs" />
     <Compile Include="Assets\XLua\Gen\Tutorial_CSCallLua_ItfDBridge.cs" />
+    <Compile Include="Assets\Script\UI\Panel\Auto\ImageInfoPanel.cs" />
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\GameManager.cs" />
     <Compile Include="Assets\Script\Render\GPUSkinning\GPUSkinUtil.cs" />
+    <Compile Include="Assets\Script\UI\Component\InputTextComp.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\LogPrintItem.cs" />
     <Compile Include="Assets\XLua\Gen\UnityEngine_LightWrap.cs" />
     <Compile Include="Assets\XLua\Gen\XLuaTest_NoGcWrap.cs" />
@@ -195,6 +207,7 @@
     <Compile Include="Assets\Script\UI\Component\MoveParent.cs" />
     <Compile Include="Assets\XLua\Src\ObjectTranslator.cs" />
     <Compile Include="Assets\Script\Test\ForFBXTest.cs" />
+    <Compile Include="Assets\Script\UI\Panel\Auto\TemplateMatchDrawResultPanel.cs" />
     <Compile Include="Assets\XLua\Src\LuaEnv.cs" />
     <Compile Include="Assets\Script\UI\Panel\Hero\HeroDetailPanel.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\Node\ProcessNodeUI.cs" />
@@ -204,6 +217,7 @@
     <Compile Include="Assets\XLua\Examples\ExampleGenConfig.cs" />
     <Compile Include="Assets\XLua\Gen\XLuaTest_MyStructWrap.cs" />
     <Compile Include="Assets\Script\UI\Component\CheckBox.cs" />
+    <Compile Include="Assets\Script\Model\Auto\AutoDataUIConfig.cs" />
     <Compile Include="Assets\Script\UI\Component\LoadingProgressUI.cs" />
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\ObjectSpawner.cs" />
     <Compile Include="Assets\Script\Util\EditDisabledDrawer.cs" />
@@ -214,8 +228,10 @@
     <Compile Include="Assets\Script\Framework\Web\WebUtil.cs" />
     <Compile Include="Assets\Script\UI\Component\KeywordTipsItem.cs" />
     <Compile Include="Assets\XLua\Examples\09_GenericMethod\GenericMethodExample.cs" />
+    <Compile Include="Assets\Script\Model\Auto\AutoRunDataFormula.cs" />
     <Compile Include="Assets\XLua\Src\GenericDelegateBridge.cs" />
     <Compile Include="Assets\Script\Framework\Root.cs" />
+    <Compile Include="Assets\Script\UI\Component\InputTextProComp.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\LogPrintPanel.cs" />
     <Compile Include="Assets\XLua\Src\CopyByValue.cs" />
     <Compile Include="Assets\XLua\Src\StaticLuaCallbacks.cs" />
@@ -228,8 +244,8 @@
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\TransparentWindow.cs" />
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\DragWindow.cs" />
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\WindowBoundsCollider2D.cs" />
+    <Compile Include="Assets\Script\UI\Component\OutlineEx.cs" />
     <Compile Include="Assets\XLua\Gen\XLuaTest_FooWrap.cs" />
-    <Compile Include="Assets\Script\UI\Component\InputTextComp.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\XLua\Examples\07_AsyncTest\Resources\async_test.lua.txt" />
@@ -302,6 +318,7 @@
     <None Include="Assets\Render Style\Line\Shaders\Blend.cginc" />
     <None Include="Assets\Render Style\Line\Shaders\Detect Line\UVDetect.shader" />
     <None Include="Assets\XLua\Examples\14_HotfixAsyncAwait\Resources\AsyncMethod3.lua.txt" />
+    <None Include="Assets\Shader\OutlineEx.shader" />
     <None Include="Assets\TextMesh Pro\Shaders\TMPro_Surface.cginc" />
     <None Include="Assets\Packages\OpenCvSharp4.4.10.0.20241108\lib\netstandard2.1\OpenCvSharp.dll" />
     <None Include="Assets\Shader\uv1.shader" />

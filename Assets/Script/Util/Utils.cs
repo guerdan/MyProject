@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace Script.Util
 {
-    public class Utils
+    public static class Utils
     {
 
         public const string CustomToolsPath = "CustomTools/";
@@ -80,10 +82,16 @@ namespace Script.Util
         }
 
         /// <summary>
-        /// UI下，非相同父节点的位置复制
+        /// UI下，非相同父节点的位置复制。
+        /// 解耦target.pivot
+        /// use_pivot = false时，表示用target的(0.5,0.5)作为参考点
         /// </summary>
-        public static Vector2 GetPos(RectTransform actor, RectTransform target, Vector2 offset)
+        public static Vector2 GetPos(RectTransform actor, RectTransform target, Vector2 offset, bool use_pivot = false)
         {
+            Vector2 pivot_offset = new Vector2(
+                (0.5f - target.pivot.x) * target.rect.width,
+                (0.5f - target.pivot.y) * target.rect.height
+            );
             // 1. 获取 nodeA 在世界空间的位置
             Vector3 worldPos = target.position;
 
@@ -95,7 +103,10 @@ namespace Script.Util
             Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(cam, worldPos);
             RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRect, screenPoint, cam, out localPoint);
 
-            return localPoint + offset;
+            if (use_pivot)
+                return localPoint + offset;
+            else
+                return localPoint + pivot_offset + offset;
         }
 
         /// <summary>
@@ -115,94 +126,52 @@ namespace Script.Util
             pos = pos + new Vector2(
                 (anchor.x - 0.5f) * size.width,
                 (anchor.y - 0.5f) * size.height
-            );   
+            );
 
             return pos;
         }
+
+
+
+        /// <summary>
+        /// 判断 target 的 RectTransform 区域与 eventData.position 是否相交
+        /// </summary>
+        public static bool IsPointerOverUIObject(GameObject target, Canvas canvas)
+        {
+            PointerEventData eventData = new PointerEventData(EventSystem.current);
+            eventData.position = Input.mousePosition;
+            if (target == null || canvas == null || eventData == null) return false;
+            RectTransform rectTransform = target.GetComponent<RectTransform>();
+            if (rectTransform == null) return false;
+            Camera cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+            return RectTransformUtility.RectangleContainsScreenPoint(rectTransform, eventData.position, cam);
+        }
+
+
+        public static void CommonSort(List<string> list)
+        {
+            list.Sort((a, b) =>
+            {
+                if (a.Length != b.Length)
+                    return a.Length.CompareTo(b.Length);
+                else
+                    return string.Compare(a, b, StringComparison.Ordinal);
+            });
+        }
+
+
+        /// <summary>
+        /// 能够控制点击穿透的接口
+        /// </summary>
+        public static void SetCanClick(GameObject target, bool canClick)
+        {
+            var canvasGroup = target.GetComponent<CanvasGroup>();
+            if (!(canvasGroup))
+                canvasGroup = target.AddComponent<CanvasGroup>();
+            canvasGroup.blocksRaycasts = canClick;
+        }
+
+
     }
 
-    /// <summary>
-    /// 只适用于总控显隐 => 一句代码控制所有个体显隐
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    public class UICacheList<T> : List<T> where T : Component
-    {
-
-        private int _activeCount = 0;
-        private GameObject _prefab;
-        private Transform _parent;
-
-        /// <summary>
-        /// 更新全部
-        /// </summary>
-        public void RefreshItemListByCount(int activeCount, GameObject prefab,
-        Transform parent, Action<T, int> process)
-        {
-            //如果没有什么特别组件而想存成List<GameObject>，就改用存List<Transform>或者List<RectTransform>以达到相同的效果
-            if (prefab == null) return;
-
-            _activeCount = activeCount;
-            _prefab = prefab;
-            _parent = parent;
-
-            int need = _activeCount - Count;
-            for (int i = 0; i < need; i++)
-            {
-                GameObject go = GameObject.Instantiate(prefab, parent, false);
-                go.transform.localScale = Vector3.one;
-                Add(go.GetComponent<T>());
-            }
-
-            for (int i = 0; i < Count; i++)
-            {
-                T item = this[i];
-                bool show = i < _activeCount;
-                item.gameObject.SetActive(show);
-
-                if (show && process != null)
-                    process(item, i);
-            }
-
-        }
-        /// <summary>
-        /// 只更新新加入的
-        /// </summary>
-        public void AddItem(int addCount, Action<T, int> process)
-        {
-            int startIndex = _activeCount;
-            _activeCount += addCount;
-
-            int need = _activeCount - Count;
-            for (int i = 0; i < need; i++)
-            {
-                GameObject go = GameObject.Instantiate(_prefab, _parent, false);
-                go.transform.localScale = Vector3.one;
-                Add(go.GetComponent<T>());
-            }
-
-            for (int i = startIndex; i < Count; i++)
-            {
-                T item = this[i];
-                bool show = i < _activeCount;
-                item.gameObject.SetActive(show);
-
-                if (show && process != null)
-                    process(item, i);
-            }
-        }
-
-        /// <summary>
-        /// 删除指定的对象
-        /// </summary>
-        /// <param name="item"></param>
-        public void RemoveItem(T item)
-        {
-            var index = IndexOf(item);
-            if (index < 0) return;
-            item.gameObject.SetActive(false);
-            _activeCount--;
-            Remove(item);
-            Add(item);
-        }
-    }
 }

@@ -11,12 +11,8 @@ namespace Script.UI.Component
 
     public class VirtualListComp : MonoBehaviour
     {
-        public class VirtualListViewItemChild
-        {
-            GameObject node = null;
-            Vector3 originPos = Vector3.zero;
-            int zIndex = 0;
-        }
+
+        #region  item实例
 
         /// <summary>
         /// item实例
@@ -26,8 +22,6 @@ namespace Script.UI.Component
             public GameObject inst = null;
             private RectTransform node = null;
             public GameObject template = null;
-            private List<VirtualListViewItemChild> children = new List<VirtualListViewItemChild>();
-
 
             public void setItemTemplate(GameObject inst, GameObject template)
             {
@@ -51,10 +45,6 @@ namespace Script.UI.Component
                 node.anchoredPosition = pos;
             }
 
-            public List<VirtualListViewItemChild> getChildren()
-            {
-                return children;
-            }
 
             public void setSiblingIndex(int index)
             {
@@ -66,17 +56,22 @@ namespace Script.UI.Component
             }
         }
 
+        #endregion
+
+        #region  Item的预设坑位
         /// <summary>
-        /// Item的预设坑位
+        /// item的预设坑位
         /// </summary>
         public class VirtualListCompItem
         {
             public VirtualListCompItemNode node = null;
             public int idx = -1;
             public Vector3 pos = Vector3.zero;
-            public Rect size = Rect.zero;
+            public Vector2 size = Vector2.zero;
         }
 
+        #endregion
+        Scrollbar bar;
 
         [SerializeField] private int paddingTop = 0; //顶边距
         [SerializeField] private int paddingRight = 0; //右边距
@@ -86,7 +81,7 @@ namespace Script.UI.Component
         [SerializeField] private int spacingY = 0; //行距
 
 
-        private Func<int, Rect> getItemSize = null;
+        private Func<int, Vector2> getItemSize = null;
         private Func<int, GameObject> getItemTemplate = null;
         private Action<GameObject, int> updateItem = null;
         // private Action<GameObject, int> clickItem = null;
@@ -94,14 +89,14 @@ namespace Script.UI.Component
         // private Action scrollEnd = null;
 
         //item大小回调
-        public Func<int, Rect> OnGetItemSize { set { this.getItemSize = value; } }
+        public Func<int, Vector2> OnGetItemSize { set { this.getItemSize = value; } }
         //item模板回调
         public Func<int, GameObject> OnGetItemTemplate { set { this.getItemTemplate = value; } }
         //item更新回调
         public Action<GameObject, int> OnUpdateItem { set { this.updateItem = value; } }
 
         private readonly int _bufferZone = 10; //缓冲区大小
-        private ScrollRect _scrollView = null;
+        public ScrollRect _scrollView = null;
         private bool _horizontal;
         private RectTransform _scrollViewRect;
         private RectTransform _scrollContent;
@@ -126,8 +121,23 @@ namespace Script.UI.Component
             this._scrollContent = this._scrollView.content;
             // 内容的锚点在左上角
             this._scrollContent.pivot = new Vector2(0, 1);
+            // 代码设置锚点时，ui会移动
             this._scrollContent.anchorMin = new Vector2(0, 1);
             this._scrollContent.anchorMax = new Vector2(0, 1);
+
+            var rect = _scrollContent.rect;
+            if (_horizontal)
+            {
+                float y = -(_scrollViewRect.rect.width - _scrollContent.rect.width) / 2;
+                _scrollContent.anchoredPosition = new Vector2(0, y);
+            }
+            else
+            {
+                float x = (_scrollViewRect.rect.width - _scrollContent.rect.width) / 2;
+                _scrollContent.anchoredPosition = new Vector2(x, 0);
+            }
+
+
 
             // 监听滑动事件
             this._scrollView.onValueChanged.AddListener(OnScrolling);
@@ -161,7 +171,7 @@ namespace Script.UI.Component
 
             if (this._needReload)
             {
-                this.doReload();
+                this.DoReload();
             }
         }
 
@@ -175,7 +185,7 @@ namespace Script.UI.Component
 
 
         //刷新列表
-        public void reloadData(int itemCount, bool reset_pos = true)
+        public void ReloadData(int itemCount, bool reset_pos = true)
         {
             _itemCount = itemCount;
 
@@ -197,11 +207,11 @@ namespace Script.UI.Component
                     _scrollView.verticalNormalizedPosition = 1;
                 }
             }
-            doReload();
+            DoReload();
         }
 
         //更新列表数据
-        public void updateData()
+        public void UpdateData()
         {
             if (!this._inited)
             {
@@ -212,7 +222,7 @@ namespace Script.UI.Component
             this.UpdateItems(true);
         }
 
-        private void doReload()
+        private void DoReload()
         {
             var needCount = _itemCount;
 
@@ -258,12 +268,12 @@ namespace Script.UI.Component
                 //设置大小
                 if (_horizontal)
                 {
-                    var totalWidth = lastItem.pos.x + lastItem.size.width / 2 + paddingRight;
+                    var totalWidth = lastItem.pos.x + lastItem.size.x / 2 + paddingRight;
                     _scrollContent.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, totalWidth);
                 }
                 else
                 {
-                    var totalHeight = Math.Abs(lastItem.pos.y - lastItem.size.height / 2 - paddingBottom);
+                    var totalHeight = Math.Abs(lastItem.pos.y - lastItem.size.y / 2 - paddingBottom);
                     _scrollContent.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, totalHeight);
                 }
             }
@@ -277,7 +287,7 @@ namespace Script.UI.Component
             if (idx == 0)
             {
                 //第一个单元格位置
-                item.pos = new Vector3(paddingLeft + item.size.width / 2, -paddingTop - item.size.height / 2, 0);
+                item.pos = new Vector3(paddingLeft + item.size.x / 2, -paddingTop - item.size.y / 2, 0);
             }
             else
             {
@@ -289,40 +299,40 @@ namespace Script.UI.Component
                     //上一个单元格位置
                     float startY = itemPre.pos.y - itemPre.size.y / 2;
                     float startX = 0;
-                    if (Math.Abs(startY - item.size.height - paddingBottom) > _scrollContent.rect.height)
+                    if (Math.Abs(startY - item.size.y - paddingBottom) > _scrollContent.rect.height)
                     {
                         //新列开始
                         startY = -paddingTop;
-                        startX = itemPre.pos.x + itemPre.size.width / 2;
+                        startX = itemPre.pos.x + itemPre.size.x / 2;
                         startX += spacingX;
                     }
                     else
                     {
-                        startX = itemPre.pos.x - itemPre.size.width / 2;
+                        startX = itemPre.pos.x - itemPre.size.x / 2;
                         startY -= spacingY;
                     }
 
-                    item.pos = new Vector3(startX + item.size.width / 2, startY - item.size.height / 2, 0);
+                    item.pos = new Vector3(startX + item.size.x / 2, startY - item.size.y / 2, 0);
                 }
                 else
                 {
                     //上一个单元格位置
-                    float startX = itemPre.pos.x + itemPre.size.width / 2;
+                    float startX = itemPre.pos.x + itemPre.size.x / 2;
                     float startY = 0;
-                    if (startX + item.size.width + paddingRight > _scrollContent.rect.width)
+                    if (startX + item.size.x + paddingRight > _scrollContent.rect.width)
                     {
                         //新行开始
                         startX = paddingLeft;
-                        startY = itemPre.pos.y - itemPre.size.height / 2;
+                        startY = itemPre.pos.y - itemPre.size.y / 2;
                         startY -= spacingY;
                     }
                     else
                     {
-                        startY = itemPre.pos.y + itemPre.size.height / 2;
+                        startY = itemPre.pos.y + itemPre.size.y / 2;
                         startX += spacingX;
                     }
 
-                    item.pos = new Vector3(startX + item.size.width / 2, startY - item.size.height / 2, 0);
+                    item.pos = new Vector3(startX + item.size.x / 2, startY - item.size.y / 2, 0);
                 }
             }
         }
@@ -450,12 +460,12 @@ namespace Script.UI.Component
             //rect的x、y值代表UI元素左下角到轴点（Pivot）的相对位置
             if (_horizontal)
             {
-                if (item.pos.x - item.size.width / 2 > offset + _scrollViewRect.rect.width + _bufferZone)
+                if (item.pos.x - item.size.x / 2 > offset + _scrollViewRect.rect.width + _bufferZone)
                 {
                     //检查是否超过右部可视区域
                     isItemInView = false;
                 }
-                else if (item.pos.x + item.size.width / 2 < offset - _bufferZone)
+                else if (item.pos.x + item.size.x / 2 < offset - _bufferZone)
                 {
                     //检查是否超过左部可视区域
                     isItemInView = false;
@@ -463,12 +473,12 @@ namespace Script.UI.Component
             }
             else
             {
-                if (item.pos.y + item.size.height / 2 < offset - _scrollViewRect.rect.height - _bufferZone)
+                if (item.pos.y + item.size.y / 2 < offset - _scrollViewRect.rect.height - _bufferZone)
                 {
                     //检查是否超过下部可视区域
                     isItemInView = false;
                 }
-                else if (item.pos.y - item.size.height / 2 > offset + _bufferZone)
+                else if (item.pos.y - item.size.y / 2 > offset + _bufferZone)
                 {
                     //检查是否超过上部可视区域
                     isItemInView = false;
@@ -502,6 +512,7 @@ namespace Script.UI.Component
                         //在虚拟列表同时有多种item的情况下，如果item种类变了需要换重新换item
                         FreeNode(item);
                         item.node = GetNode(item);
+                        item.node.inst.SetActive(true);
                         item.node.SetPosition(item.pos);
                         updateItem(item.node.inst, item.idx);
                     }
@@ -563,13 +574,70 @@ namespace Script.UI.Component
 
 
         //竖着滚动到目标项位置, 效果为：目标项上部在ScrollView的左上角
-        public void ScrollToItemVertical(int index,int offset = 0)
+        public void ScrollToItemVertical(int index, int offset = 0)
         {
             var item = _itemList[index];
             if (item == null) return;
             var y = item.pos.y;
-            _scrollView.verticalNormalizedPosition = 1 - (-y - item.size.height/2 + offset) / (_scrollContent.rect.height - _scrollViewRect.rect.height);
-            updateData();
+            var item_h = item.size.y;
+            var view_h = _scrollViewRect.rect.height;
+            var content_h = _scrollContent.rect.height;
+            // content_h + y - item_h/2 + view_h = (content_h - view_h) * normalY + view_h
+            // (content_h + y - view_h)  / (content_h - view_h) = normalY
+            // content_h + y = item到左下角的坐标
+
+            float normalY = (content_h + y - view_h + offset + item_h / 2) / (content_h - view_h);
+            _scrollView.verticalNormalizedPosition = Mathf.Clamp(normalY, 0, 1);
+
+            UpdateData();
+        }
+        /// <summary>
+        /// 调整使Item在视野中。效果为:如果Item在视野外，就滚动到它刚好在视野内。
+        /// 例如在下侧消失，就会滚动使它在View的下侧边缘；在上侧消失，就会滚动使它在View的上侧边缘
+        /// </summary>
+        public void AdjustItemInViewVertical(int index)
+        {
+            var item = _itemList[index];
+            if (item == null) return;
+            var y = item.pos.y;
+            var item_h = item.size.y;
+            var view_h = _scrollViewRect.rect.height;
+            var content_h = _scrollContent.rect.height;
+
+            float normalY0 = (content_h + y - view_h + item_h / 2) / (content_h - view_h); //上侧边缘,更小
+            float normalY1 = (content_h + y - item_h / 2) / (content_h - view_h); // 下侧边缘，更大
+            float cur_normalY = _scrollView.verticalNormalizedPosition;
+
+            if (cur_normalY < normalY0)
+            {
+                _scrollView.verticalNormalizedPosition = Mathf.Clamp(normalY0, 0, 1);
+                UpdateData();
+            }
+            else if (cur_normalY > normalY1)
+            {
+                _scrollView.verticalNormalizedPosition = Mathf.Clamp(normalY1, 0, 1);
+                UpdateData();
+            }
+        }
+
+
+        /// <summary>
+        /// 同步Content的Size与ScrollRect的一致
+        /// </summary>
+        public void SyncContentSize()
+        {
+            if (_horizontal)
+            {
+                float h = _scrollViewRect.rect.height;
+                _scrollContent.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, h);
+                _scrollContent.anchoredPosition = new Vector2(_scrollContent.anchoredPosition.x, 0);
+            }
+            else
+            {
+                float w = _scrollViewRect.rect.width;
+                _scrollContent.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, w);
+                _scrollContent.anchoredPosition = new Vector2(0, _scrollContent.anchoredPosition.y);
+            }
         }
     }
 

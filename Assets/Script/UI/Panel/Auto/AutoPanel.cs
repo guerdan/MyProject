@@ -1,10 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Text;
 using Script.Framework;
-using Script.Framework.UI;
 using Script.UI.Component;
 using Script.Util;
 using UnityEngine;
@@ -87,20 +84,20 @@ namespace Script.UI.Panel.Auto
 
         void TestMouseClick()
         {
-            AU.EnumWindows((hWnd, lParam) =>
+            WU.EnumWindows((hWnd, lParam) =>
             {
                 // 检查窗口是否可见
-                if (AU.IsWindowVisible(hWnd))
+                if (WU.IsWindowVisible(hWnd))
                 {
                     StringBuilder sb = new StringBuilder(256);
-                    AU.GetWindowText(hWnd, sb, sb.Capacity);
+                    WU.GetWindowText(hWnd, sb, sb.Capacity);
                     string title = sb.ToString();
 
                     if (!string.IsNullOrEmpty(title))
                     {
-                        IntPtr exStyle = AU.GetWindowLong(hWnd, AU.GWL_EXSTYLE);
+                        IntPtr exStyle = WU.GetWindowLong(hWnd, WU.GWL_EXSTYLE);
                         // 筛选应用程序窗口
-                        if (exStyle.ToInt64() == AU.WS_EX_APPWINDOW)
+                        if (exStyle.ToInt64() == WU.WS_EX_APPWINDOW)
                         {
                             Debug.Log($"任务栏窗口句柄: {hWnd}, 标题: {title}");
                         }
@@ -112,15 +109,15 @@ namespace Script.UI.Panel.Auto
 
 
 
-            IntPtr hWnd = AU.FindWindow(null, "win接口.md - Typora");
+            IntPtr hWnd = WU.FindWindow(null, "win接口.md - Typora");
             if (hWnd == IntPtr.Zero)
             {
                 Debug.Log("未找到窗口");
                 return;
             }
             Debug.Log($"窗口句柄: {hWnd}");
-            DU.Log(AU.GetWindowRect(hWnd));
-            AU.SimulateMouseClick(hWnd, 220, 170);
+            DU.Log(WU.GetWindowRect(hWnd));
+            WU.SimulateMouseClick(hWnd, 220, 170);
         }
 
 
@@ -128,7 +125,7 @@ namespace Script.UI.Panel.Auto
 
         void Update()
         {
-            
+
         }
 
 
@@ -138,14 +135,14 @@ namespace Script.UI.Panel.Auto
 
         #region 
 
-        void MouseRecord(MouseHookEnum action, AU.MSLLHOOKSTRUCT hookStruct)
+        void MouseRecord(MouseHookEnum action, WU.MSLLHOOKSTRUCT hookStruct)
         {
 
             // 判断鼠标事件类型
             if (action == MouseHookEnum.LeftUp)
             {
-                IntPtr win = AU.WindowFromPoint(hookStruct.pt);
-                string p = AU.PrintHandle(win);
+                IntPtr win = WU.WindowFromPoint(hookStruct.pt);
+                string p = WU.PrintHandle(win);
 
                 if (selectSwitch)
                 {
@@ -192,7 +189,7 @@ namespace Script.UI.Panel.Auto
         private HashSet<KeyboardEnum> repeatKeySet = new HashSet<KeyboardEnum>();
 
         // 按键回调
-        void KeyboardRecord(KeyboardHookEnum action, AU.KBDLLHOOKSTRUCT hookStruct)
+        void KeyboardRecord(KeyboardHookEnum action, WU.KBDLLHOOKSTRUCT hookStruct)
         {
             if (!syncOperSwitch) return;
 
@@ -225,7 +222,7 @@ namespace Script.UI.Panel.Auto
 
         }
 
-        private void KeyOper(KeyboardEnum key, AU.KBDLLHOOKSTRUCT hookStruct, bool isDown = true)
+        private void KeyOper(KeyboardEnum key, WU.KBDLLHOOKSTRUCT hookStruct, bool isDown = true)
         {
             if (hookStruct.vkCode != (uint)key) return;
             if (isDown)
@@ -238,7 +235,7 @@ namespace Script.UI.Panel.Auto
 
                 bool repeat = repeatKeySet.Contains(key);
                 // AU.PostMessagePacked(selectedWin, key, repeat);
-                AU.keybd_eventPacked((int)key);
+                WU.keybd_event_packed((int)key);
                 repeatKeySet.Add(key);
             }
             else
@@ -251,7 +248,7 @@ namespace Script.UI.Panel.Auto
                 // else
                 // {
                 // AU.PostMessagePacked(selectedWin, key, true, false);
-                AU.keybd_eventPacked((int)key, false);
+                WU.keybd_event_packed((int)key, false);
                 repeatKeySet.Remove(key);
                 // }
 
@@ -282,9 +279,9 @@ namespace Script.UI.Panel.Auto
             // Debug.Log("step 2: " + stopwatch.ElapsedMilliseconds + " ms");
 
 
-            string path = Path.Combine(Application.streamingAssetsPath, "pic_chuan.png");
-            // 15ms  耗时还好
-            var bitmap = AU.CaptureWindow(selectedWin, path);
+            // string path = Path.Combine(Application.streamingAssetsPath, "pic_chuan.png");
+            // // 15ms  耗时还好
+            // var bitmap = AU.CaptureWindowByHWnd(selectedWin, path);
 
         }
 

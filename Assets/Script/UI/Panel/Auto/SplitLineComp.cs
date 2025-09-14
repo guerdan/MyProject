@@ -1,6 +1,7 @@
 
 using System;
 using System.Collections.Generic;
+using DG.Tweening;
 using Script.Model.Auto;
 using Script.Util;
 using UnityEngine;
@@ -17,20 +18,25 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private GameObject linePrefab;
         [SerializeField] private GameObject textPrefab;
 
+        public float ContentW => _contentW;
+        public float ContentH => _contentH;
+
+        protected DrawProcessPanel _panel;
         private RectTransform _trans;
         private List<RectTransform> _wLineList = new List<RectTransform>();
         private List<RectTransform> _wTextList = new List<RectTransform>();
         private List<RectTransform> _hLineList = new List<RectTransform>();
         private List<RectTransform> _hTextList = new List<RectTransform>();
 
+        [SerializeField] float _lineLong = 40;
         float _viewW = 0;
         float _viewH = 0;
         float _contentW = 0;
         float _contentH = 0;
         float _spacing = 0;
         float _thickness = 0;
-        [SerializeField] float _lineLong = 40;
 
+        Tween _scrollToNodeTween;
         void Awake()
         {
             scrollRect.onValueChanged.AddListener(OnScrolling);
@@ -50,8 +56,9 @@ namespace Script.UI.Panel.Auto
 
         }
 
-        public void SetData(float spacing, float thickness = 2)
+        public void SetData(DrawProcessPanel panel, float spacing, float thickness = 2)
         {
+            _panel = panel;
             var contentR = scrollRect.content.GetComponent<RectTransform>();
             _contentW = contentR.rect.width;
             _contentH = contentR.rect.height;
@@ -150,6 +157,25 @@ namespace Script.UI.Panel.Auto
             return center;
         }
 
+        public void ScrollToNode(string node_id)
+        {
+            _panel._scriptData.NodeDatas.TryGetValue(node_id, out var nodeData);
+            var node_pos = MapConvert(nodeData.Pos);
+
+            var x = (node_pos.x - _viewW / 2) / (_contentW - _viewW);
+            var y = (node_pos.y - _viewH / 2) / (_contentH - _viewH);
+
+
+            var end = new Vector2(x, y);
+            var value = scrollRect.normalizedPosition;
+            var duration = 0.3f;
+            _scrollToNodeTween?.Kill();
+            _scrollToNodeTween = DOTween.To(() => value, v => { value = v; }, end, duration).OnUpdate(() =>
+            {
+                scrollRect.normalizedPosition = value;
+            }).SetEase(Ease.InOutExpo);
+        }
+
         public HashSet<string> GetInViewNodeIds()
         {
             HashSet<string> ids = new HashSet<string>();
@@ -164,7 +190,7 @@ namespace Script.UI.Panel.Auto
             var y_min = pos_center.y - _viewH / 2 - uiH / 2;
             var y_max = pos_center.y + _viewH / 2 + uiH / 2;
 
-            foreach (var data in AutoScriptManager.Inst._nodeDatas.Values)
+            foreach (var data in _panel._scriptData.NodeDatas.Values)
             {
                 var pos = MapConvert(data.Pos);
                 if (pos.x >= x_min && pos.x <= x_max && pos.y >= y_min && pos.y <= y_max)

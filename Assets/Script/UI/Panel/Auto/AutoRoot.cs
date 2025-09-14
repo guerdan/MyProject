@@ -1,8 +1,13 @@
 
 
 
+using System;
 using System.Collections.Generic;
+using System.Drawing;
 using Script.Framework.UI;
+using Script.Model.Auto;
+using Script.Util;
+using Unity.VisualScripting;
 using UnityEngine;
 
 namespace Script.UI.Panel.Auto
@@ -19,7 +24,13 @@ namespace Script.UI.Panel.Auto
         {
             base.Awake();
             inst = this;
+
+            // 获取 System.Drawing 的加载路径
+            // string assemblyPath = typeof(Bitmap).Assembly.Location;
+            // DU.LogWarning($"System.Drawing.dll is loaded from: {assemblyPath}");
         }
+
+ 
 
 
         void Update()
@@ -27,26 +38,26 @@ namespace Script.UI.Panel.Auto
             base.Update();
 
             // 监听 右Ctrl + 小键盘1
-            if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.Keypad1))
-            {
-                UIManager.Inst.ShowPanel(PanelEnum.HeroDetailPanel, null);
-            }
+            // if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.Keypad1))
+            // {
+            //     UIManager.Inst.ShowPanel(PanelEnum.HeroDetailPanel, null);
+            // }
 
             if (Input.GetKeyDown(KeyCode.Escape))
             {
                 Quit();
             }
 
-            if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.D))
+            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.D))
             {
-                UIManager.Inst.ShowPanel(PanelEnum.DrawProcessPanel, null);
+                // UIManager.Inst.ShowPanel(PanelEnum.DrawProcessPanel, $"{AutoScriptConfig.IdStart}0");
             }
-            if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.L))
+            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.L))
             {
                 UIManager.Inst.ShowPanel(PanelEnum.ProcessNodeInfoPanel, null);
             }
 
-            if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.O))
+            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.O))
             {
                 //模拟数据
                 var data = new List<string>();
@@ -65,6 +76,18 @@ namespace Script.UI.Panel.Auto
                 }
                 UIManager.Inst.ShowPanel(PanelEnum.LogPrintPanel, data);
             }
+
+            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.A))
+            {
+                var data = new List<string>() { "MatchInput/folder.png", "MatchTemplate/folder_transparent.png" };
+                UIManager.Inst.ShowPanel(PanelEnum.PicMatchFloat, data);
+            }
+
+            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.S))
+            {
+                UIManager.Inst.ShowPanel(PanelEnum.ScriptManagerPanel, null);
+            }
+
 
         }
 

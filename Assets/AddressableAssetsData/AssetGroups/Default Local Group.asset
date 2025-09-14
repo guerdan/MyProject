@@ -29,6 +29,26 @@ MonoBehaviour:
     m_Address: Auto/Prefabs/ProcessNodeInfoPanel
     m_ReadOnly: 0
     m_SerializedLabels: []
+  - m_GUID: c56fc2e9f8bed0147945d06804bc256f
+    m_Address: Common/Prefabs/Panel/EditNamePanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 8b8a98a24de26044585bf56266e52729
+    m_Address: Common/Prefabs/Panel/ImageInfoPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 08de6758a8a0062438190f63c0f64a55
+    m_Address: Common/Prefabs/Panel/ImageSourcePanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 1896c1decb95f1c4ba64fac090c62136
+    m_Address: Auto/Prefabs/ScriptManagerPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 9df1ef09fb6218d40a66bfc435766c9b
+    m_Address: Auto/Prefabs/TemplateMatchDrawResultPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 461c0bb45d0c65047b0497b6d6fed90a, type: 2}
   m_SchemaSet:

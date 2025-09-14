@@ -174,11 +174,11 @@ public class TransparentWindow : MonoBehaviour
 	public void MinimizeWindow()
 	{
 		DU.Log("TransparentWindow MinimizeWindow");
-		AU.ShowWindow(hwnd, AU.SW_MINIMIZE);
+		WU.ShowWindow(hwnd, WU.SW_MINIMIZE);
 	}
 	public void ShowWindow()
 	{
-		AU.ShowWindow(hwnd, AU.SW_SHOW);
+		WU.ShowWindow(hwnd, WU.SW_SHOW);
 	}
 
 	public static void DragWindow()

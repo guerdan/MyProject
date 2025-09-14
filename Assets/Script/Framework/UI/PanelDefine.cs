@@ -38,6 +38,11 @@ namespace Script.Framework.UI
         PicMatchFloat,
         DrawProcessPanel,
         ProcessNodeInfoPanel,
+        EditNamePanel,
+        ImageInfoPanel,
+        ImageSourcePanel,
+        ScriptManagerPanel,
+        TemplateMatchDrawResultPanel,
     }
 
 
@@ -51,10 +56,11 @@ namespace Script.Framework.UI
         public string Name;         //名字
         public string Path;         //预制体路径
         public UITypeEnum Type;     //界面类型
-        public UIRecycleTypeEnum RecycleType;   //回收类型
-        public Vector2 InitPos = new Vector2(0, 0);           //窗口的初始坐标，界面节点位置 => 依赖InitPos  
-        public bool IsSingle = true;            //单个实例，目前默认都是单例。Windows窗口都单例
-        public bool ShowGrayBg = true;          //是否显示灰色背景。Full界面无此功能，其他界面有。默认为true
+        public UIRecycleTypeEnum RecycleType;               //回收类型
+        public Vector2 InitPos = new Vector2(0, 0);         //窗口的初始坐标，界面节点位置 => 依赖InitPos  
+        public bool IsSingle = true;                        //单个实例，目前默认都是单例。Windows窗口都单例
+
+        public bool ClickOutWinClose = false;               //点击窗外就关闭的功能。默认为false
 
         // 是否因遮挡关系而隐藏上个界面。默认为true
         // 打开一个Full界面，栈中的界面全隐藏
@@ -64,8 +70,6 @@ namespace Script.Framework.UI
         // public bool TopSingle = true;   // 最上层只能弹出一份弹窗，防连点。默认为true。如果加载时屏蔽，实例出来后也屏蔽，那就无懈可击
 
         public int Layer { get { return PanelUtil.GetLayer(Type); } }
-        public bool GetShowGrayBg { get { return Type != UITypeEnum.Full && ShowGrayBg; } }
-
     }
 
     /// <summary>
@@ -102,6 +106,7 @@ namespace Script.Framework.UI
                 Path = "Hero/Prefabs/HeroDetailPanel",
                 Type = UITypeEnum.PopUp,
                 RecycleType = UIRecycleTypeEnum.Normal,
+                ClickOutWinClose = true,
             },
 
             new PanelDefine{
@@ -119,7 +124,6 @@ namespace Script.Framework.UI
                 Type = UITypeEnum.WindowsPopUp,
                 RecycleType = UIRecycleTypeEnum.Frequent,
                 InitPos = new Vector2(200, 0),
-                ShowGrayBg = false,
                 HideLastPanel = false,
             },
 
@@ -130,7 +134,6 @@ namespace Script.Framework.UI
                 Type = UITypeEnum.WindowsPopUp,
                 RecycleType = UIRecycleTypeEnum.Frequent,
                 InitPos = new Vector2(0, 0),
-                ShowGrayBg = false,
                 HideLastPanel = false,
             },
 
@@ -141,7 +144,6 @@ namespace Script.Framework.UI
                 Type = UITypeEnum.WindowsPopUp,
                 RecycleType = UIRecycleTypeEnum.Frequent,
                 InitPos = new Vector2(0, 0),
-                ShowGrayBg = false,
                 HideLastPanel = false,
             },
 
@@ -152,7 +154,58 @@ namespace Script.Framework.UI
                 Type = UITypeEnum.WindowsPopUp,
                 RecycleType = UIRecycleTypeEnum.Frequent,
                 InitPos = new Vector2(0, 0),
-                ShowGrayBg = false,
+                HideLastPanel = false,
+            },
+
+            new PanelDefine{
+                Key = PanelEnum.EditNamePanel,
+                Name = "EditNamePanel",
+                Path = "Common/Prefabs/Panel/EditNamePanel",
+                Type = UITypeEnum.WindowsPopUp,
+                RecycleType = UIRecycleTypeEnum.Frequent,
+                InitPos = new Vector2(0, 0),
+                HideLastPanel = false,
+                ClickOutWinClose = true,
+            },
+
+            new PanelDefine{
+                Key = PanelEnum.ImageInfoPanel,
+                Name = "ImageInfoPanel",
+                Path = "Common/Prefabs/Panel/ImageInfoPanel",
+                Type = UITypeEnum.WindowsPopUp,
+                RecycleType = UIRecycleTypeEnum.Frequent,
+                InitPos = new Vector2(0, 0),
+                HideLastPanel = false,
+                ClickOutWinClose = true,
+            },
+
+            new PanelDefine{
+                Key = PanelEnum.ImageSourcePanel,
+                Name = "ImageSourcePanel",
+                Path = "Common/Prefabs/Panel/ImageSourcePanel",
+                Type = UITypeEnum.WindowsPopUp,
+                RecycleType = UIRecycleTypeEnum.Frequent,
+                InitPos = new Vector2(0, 0),
+                HideLastPanel = false,
+            },
+
+            new PanelDefine{
+                Key = PanelEnum.ScriptManagerPanel,
+                Name = "ScriptManagerPanel",
+                Path = "Auto/Prefabs/ScriptManagerPanel",
+                Type = UITypeEnum.WindowsPopUp,
+                RecycleType = UIRecycleTypeEnum.Frequent,
+                InitPos = new Vector2(0, 0),
+                HideLastPanel = false,
+            },
+
+            new PanelDefine{
+                Key = PanelEnum.TemplateMatchDrawResultPanel,
+                Name = "TemplateMatchDrawResultPanel",
+                Path = "Auto/Prefabs/TemplateMatchDrawResultPanel",
+                Type = UITypeEnum.TopPopUp,
+                RecycleType = UIRecycleTypeEnum.Frequent,
+                InitPos = new Vector2(0, 0),
                 HideLastPanel = false,
             },
         };

@@ -8,7 +8,7 @@ namespace Script.Util
 {
     public static class Draft
     {
-
+         
         // 自己写。结果与opencv接口是一致的。
         // 耗时8600ms 优化跟不上。 我估计官方是用窗口思想优化的 只动变的
         // 优化了一版 4300ms。应该就是思路上的优化了。窗口移动时只用关注删行和新行，优化计算总和。
@@ -261,9 +261,9 @@ namespace Script.Util
 
 
 
-        public static List<MatchResult> Draw1(Mat result, float[,] rf, int wT, int hT, float threshold = 0.9f)
+        public static List<CVMatchResult> Draw1(Mat result, float[,] rf, int wT, int hT, float threshold = 0.9f)
         {
-            List<MatchResult> matchResults = new List<MatchResult>();
+            List<CVMatchResult> matchResults = new List<CVMatchResult>();
             int hR, wR;
             if (result != null)
             {
@@ -319,8 +319,8 @@ namespace Script.Util
                         }
 
                         // 得到匹配结果
-                        var rect = new OpenCvSharp.Rect(tx, ty, wT, hT);
-                        var r = new MatchResult
+                        var rect = new CVRect(tx, ty, wT, hT);
+                        var r = new CVMatchResult
                         {
                             Rect = rect,
                             Score = score

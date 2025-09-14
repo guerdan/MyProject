@@ -1,6 +1,8 @@
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text;
 using UnityEngine;
 
 namespace Script.Util
@@ -57,7 +59,7 @@ namespace Script.Util
             stopwatch.Start();
         }
 
-        public static string StopTimer(string message = "")
+        public static string StopTimer(string message = "", int logType = 0)
         {
             if (stopwatch == null)
             {
@@ -65,7 +67,49 @@ namespace Script.Util
             }
 
             stopwatch.Stop();
-            return $"{message} 耗时: {stopwatch.ElapsedMilliseconds} ms";
+            string str = $"{message} 耗时: {stopwatch.ElapsedMilliseconds} ms";
+            if (logType == 1)
+                Log(str);
+            else if (logType == 2)
+                LogWarning(str);
+            else if (logType == 3)
+                LogError(str);
+
+            return str;
+        }
+
+        public static string RunWithTimer(Action action, string message = "", int logType = 1)
+        {
+            var pre = DateTime.Now;
+
+            action.Invoke();
+
+            var back = DateTime.Now;
+
+            string str = $"{message} 耗时: {(back - pre).TotalMilliseconds} ms";
+            if (logType == 1)
+                Log(str);
+            else if (logType == 2)
+                LogWarning(str);
+            else if (logType == 3)
+                LogError(str);
+
+            return str;
+        }
+
+
+        public static string GetListString(List<string> list)
+        {
+            var result = new StringBuilder();
+            result.Append("[");
+            for (int i = 0; i < list.Count; i++)
+            {
+                result.Append(list[i]);
+                if (i < list.Count - 1)
+                    result.Append(", ");
+            }
+            result.Append("]");
+            return result.ToString();
         }
     }
 }

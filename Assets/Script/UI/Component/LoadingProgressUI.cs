@@ -5,6 +5,7 @@ using DG.Tweening;
 using Script.Util;
 using UnityEngine;
 
+
 namespace Script.UI.Component
 {
     public class LoadingProgressUI : MonoBehaviour

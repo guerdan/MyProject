@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Script.Framework.UI
@@ -98,7 +99,15 @@ namespace Script.Framework.UI
 
         public IPanel Peek()
         {
-            return _views.Count > 0 ? _views.Peek() : null;
+            foreach (var view in _views)
+            {
+                if (view.Display)
+                {
+                    return view;
+                }
+            }
+
+            return null;
         }
         public int GetCount()
         {

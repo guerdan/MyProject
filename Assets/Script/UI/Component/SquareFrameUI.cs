@@ -16,24 +16,37 @@ namespace Script.UI.Component
         [SerializeField] private RectTransform rightUI;
         [SerializeField] private Text textUI;
 
-        public void SetData(float score, Rect rect, float width = 2)
+        public void SetData(float score, CVRect rect, Color color = default, float border_width = 2, bool showText = true)
         {
-            textUI.text = DU.FloatFormat(score,2);
+            if (showText)
+                textUI.text = DU.FloatFormat(score, 2);
+            else
+                textUI.text = "";
 
             RectTransform trans = (RectTransform)transform;
             // 4个边框UI的位置依赖于此节点
             trans.anchorMin = new Vector2(0, 1);
             trans.anchorMax = new Vector2(0, 1);
             trans.pivot = new Vector2(0, 1);
-            trans.sizeDelta = new Vector2(rect.width, rect.height);
-            trans.anchoredPosition = new Vector2(rect.x, rect.y);
+            trans.sizeDelta = new Vector2(rect.w, rect.h);
+            trans.anchoredPosition = new Vector2(rect.x, -rect.y);
 
-            topUI.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, width);
-            bottomUI.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, width);
-            leftUI.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
-            rightUI.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
+            topUI.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, border_width);
+            bottomUI.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, border_width);
+            leftUI.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, border_width);
+            rightUI.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, border_width);
             // bottomUI.sizeDelta = new Vector2(0, width);  // 或者这样写
 
+            color = color == default ? Color.red : color;
+            SetColor(color);
+        }
+
+        void SetColor(Color color)
+        {
+            topUI.GetComponent<Image>().color = color;
+            bottomUI.GetComponent<Image>().color = color;
+            leftUI.GetComponent<Image>().color = color;
+            rightUI.GetComponent<Image>().color = color;
         }
 
     }

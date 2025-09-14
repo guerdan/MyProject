@@ -8,6 +8,9 @@ using UnityEngine.UI;
 
 namespace Script.UI.Panel.Auto
 {
+    /// <summary>
+    /// 锚点为(0,0)
+    /// </summary>
     public class ProcessNodeLineUI : MonoBehaviour, IPointerDownHandler
     {
         Image img;
@@ -18,8 +21,6 @@ namespace Script.UI.Panel.Auto
         BaseNodeData _toData;
         public bool _isTrue;
         DrawProcessPanel _panel;
-        SplitLineComp _map;
-
 
         public void Awake()
         {
@@ -36,28 +37,20 @@ namespace Script.UI.Panel.Auto
             int second = s.IndexOf('-', first + 1);
             _fromId = s.Substring(0, second);      // from-id
             _toId = s.Substring(second + 1);    // to-id
-            _fromData = AutoScriptManager.Inst.GetNode(_fromId);
-            _toData = AutoScriptManager.Inst.GetNode(_toId);
-            _map = _panel.SplitLineComp;
 
+            _fromData = AutoScriptManager.Inst.GetNode(_panel._scriptData, _fromId);
+            _toData = AutoScriptManager.Inst.GetNode(_panel._scriptData, _toId);
             _isTrue = _fromData.TrueNextNodes.Contains(_toId);
 
         }
-
 
         /// <summary>
         /// 动态剔除功能，要考虑到线段可能没有to节点但也要显示。
         /// </summary>
         public void DrawLine()
         {
-            var from_node_pos = _map.MapConvert(_fromData.Pos);
-            var to_node_pos = _map.MapConvert(_toData.Pos);
-
-            var from_template = _panel.GetPrefab(_fromData.GetNodeType()).GetComponent<ProcessNodeUI>();
-            var to_template = _panel.GetPrefab(_toData.GetNodeType()).GetComponent<ProcessNodeUI>();
-
-            var from_pos = from_node_pos + (_isTrue ? Utils.GetRelativePosToParent(from_template.TrueOutNode) : Utils.GetRelativePosToParent(from_template.FalseOutNode));
-            var to_pos = to_node_pos + Utils.GetRelativePosToParent(to_template.InflowNode);
+            var from_end = _panel.GetLineEndPos(_fromData, _isTrue ? 1 : 2);
+            var to_end = _panel.GetLineEndPos(_toData, 0);
 
             Color color;
             if (_id == _panel.MouseSelectedId || _fromId == _panel.MouseSelectedId || _toId == _panel.MouseSelectedId)
@@ -77,11 +70,11 @@ namespace Script.UI.Panel.Auto
 
             if (_fromId == _panel.MouseSelectedId)
             {
-                Vector2 v = to_pos - from_pos;
-                from_pos += v.normalized * 10;
+                Vector2 v = to_end - from_end;
+                from_end += v.normalized * 10;
             }
 
-            DrawLine(from_pos, to_pos, color);
+            DrawLine(from_end, to_end, color);
         }
 
 
@@ -118,13 +111,7 @@ namespace Script.UI.Panel.Auto
         // 选中线段，此线段变白
         public void OnPointerDown(PointerEventData eventData)
         {
-            string pre = _panel.MouseSelectedId;
             _panel.MouseSelectedId = _id;
-            // 通知刷新旧选中的ui 和新选中的ui
-            _panel.RefreshUISelectedStatus(pre);
-            _panel.RefreshUISelectedStatus(_panel.MouseSelectedId);
-
         }
-
     }
 }
