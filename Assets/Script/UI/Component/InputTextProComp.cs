@@ -240,10 +240,11 @@ namespace Script.UI.Component
             Utils.SetActive(_tipsComp, true);
             var textGen = textComp.cachedTextGenerator;
 
-            // 获取光标当前的占位
+            // 获取光标当前的占位, 为字符的右上角坐标
             var charInfo = textGen.characters[caretPos - 1];
-            // 字符的右上角本地坐标
+            // 加点偏移，然后因字体缩放而除2。
             localPos = charInfo.cursorPos - new Vector2(0, textComp.fontSize + 6);
+            localPos = localPos / 2;
             // DU.LogWarning(localPos);
 
             var tipsCompRectT = _tipsComp.GetComponent<RectTransform>();

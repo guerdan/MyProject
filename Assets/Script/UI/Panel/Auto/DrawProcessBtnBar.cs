@@ -1,5 +1,6 @@
 
 using Script.Framework.AssetLoader;
+using Script.Framework.UI;
 using Script.Model.Auto;
 using Script.Util;
 using UnityEngine;
@@ -23,12 +24,14 @@ namespace Script.UI.Panel.Auto
         {
             RunBtn.onClick.AddListener(OnRunBtnClick);
             CreateNodeBtn.onClick.AddListener(OnCreateNodeBtnClick);
+            AutoScriptManager.Inst.OnScriptEnd += RefreshBtn;
         }
 
         void OnDisable()
         {
             RunBtn.onClick.RemoveListener(OnRunBtnClick);
             CreateNodeBtn.onClick.RemoveListener(OnCreateNodeBtnClick);
+            AutoScriptManager.Inst.OnScriptEnd -= RefreshBtn;
         }
 
         public void SetData(DrawProcessPanel panel)
@@ -36,6 +39,7 @@ namespace Script.UI.Panel.Auto
             _panel = panel;
             RefreshBtn();
         }
+
 
         void RefreshBtn()
         {
@@ -54,6 +58,9 @@ namespace Script.UI.Panel.Auto
             else
             {
                 AutoScriptManager.Inst.StartScript(_panel._id);
+                UIManager.Inst.PopPanel(PanelEnum.ScriptManagerPanel);
+                UIManager.Inst.PopPanel(PanelEnum.DrawProcessPanel);
+                UIManager.Inst.PopPanel(PanelEnum.ProcessNodeInfoPanel);
             }
             RefreshBtn();
         }

@@ -42,6 +42,7 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private InputTextComp CountInput;
         [SerializeField] private InputTextProComp RegionInput;
         [SerializeField] private CheckBox RegionCheck;
+        [SerializeField] private CheckBox SaveCaptureCheck;
 
         [Header("鼠标操作")]
         [SerializeField] private GameObject MouseOperGO;
@@ -152,6 +153,7 @@ namespace Script.UI.Panel.Auto
             RefreshFoldStatus();
 
             TemplateMatchGO.SetActive(_nodeType == NodeType.TemplateMatchOper);
+            SaveCaptureCheck.transform.parent.gameObject.SetActive(_nodeType == NodeType.TemplateMatchOper);
             MouseOperGO.SetActive(_nodeType == NodeType.MouseOper);
             KeyboardOperGO.SetActive(_nodeType == NodeType.KeyBoardOper);
             AssignOperGO.SetActive(_nodeType == NodeType.AssignOper);
@@ -208,14 +210,9 @@ namespace Script.UI.Panel.Auto
                 return;
             }
             _nodeType = nodeType;
-            var oldData = _data;
             //更新数据
             manager.DeleteNode(_scriptData, _data.Id);
             _data = manager.CreateNode(_scriptData, nodeType, _data.Pos, _data.Id);
-
-            //给它复制下基本信息
-            _data.Name = oldData.Name;
-            _data.Description = oldData.Description;
 
             Refresh();
             RefreshDrawPanel();
@@ -292,6 +289,11 @@ namespace Script.UI.Panel.Auto
 
                 CountInput.SetText(data.Count.ToString());
             });
+          
+            SaveCaptureCheck.SetData(data.SaveCaptureToLocal, (isOn) =>
+            {
+                data.SaveCaptureToLocal = isOn;
+            });
 
 
             SetRegionInput();
@@ -305,6 +307,7 @@ namespace Script.UI.Panel.Auto
 
             Action<string> save_func = (str) =>
            {
+               str = str.Replace(" ", "");
                data.RegionExpression = str;
                string format = AutoDataUIConfig.FormulaFormat(data.RegionExpression);  //格式化
                RegionInput.SetText(format);
@@ -368,6 +371,7 @@ namespace Script.UI.Panel.Auto
 
             Action<string> save_func = (str) =>
             {
+                str = str.Replace(" ", "");
                 data.Formula = str;
                 string format = AutoDataUIConfig.FormulaFormat(data.Formula);  //格式化
                 AssignInput.SetText(format);
@@ -476,6 +480,7 @@ namespace Script.UI.Panel.Auto
 
             Action<string> save_func = (str) =>
             {
+                str = str.Replace(" ", "");
                 data.Formula = str;
                 string format = AutoDataUIConfig.FormulaFormat(data.Formula);  //格式化
                 ConditionInput.SetText(format);
@@ -511,14 +516,15 @@ namespace Script.UI.Panel.Auto
             MouseOperTypeBox.SetData(AutoDataUIConfig.MouseClickTypes,
             (index) =>
             {
-                data.clickType = index;
+                data.ClickType = index;
                 RefreshDrawPanel();
             }, TipsComp);
-            MouseOperTypeBox.SetCurIndex(data.clickType);
+            MouseOperTypeBox.SetCurIndex(data.ClickType);
 
 
             Action<string> save_func = (str) =>
             {
+                str = str.Replace(" ", "");
                 data.ClickPos = str;
                 string format = AutoDataUIConfig.FormulaFormat(data.ClickPos);  //格式化
                 MouseOperPosInput.SetText(format);
@@ -555,6 +561,7 @@ namespace Script.UI.Panel.Auto
                 var data = _data as TriggerEventNode;
                 EventNameInput.SetData(data.EventName, str =>
                 {
+                    str = str.Replace(" ", "");
                     data.EventName = str;
                     EventNameInput.SetText(data.EventName); // 可能会格式化
                     RefreshDrawPanel();
@@ -570,6 +577,7 @@ namespace Script.UI.Panel.Auto
                 var data = _data as ListenEventNode;
                 EventNameInput.SetData(data.EventName, str =>
                 {
+                    str = str.Replace(" ", "");
                     data.EventName = str;
                     EventNameInput.SetText(data.EventName); // 可能会格式化
                     RefreshDrawPanel();

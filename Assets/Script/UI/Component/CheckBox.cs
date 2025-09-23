@@ -29,6 +29,11 @@ namespace Script.UI.Component
             Refresh();
         }
 
+        public bool GetStatus()
+        {
+            return _value;
+        }
+
         void Refresh()
         {
             foreach (var go in TrueGos)

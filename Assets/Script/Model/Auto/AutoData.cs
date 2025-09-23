@@ -102,6 +102,8 @@ namespace Script.Model.Auto
         public string FirstNode = "";
         [JsonProperty("end_index")]
         public int EndIndex = -1;
+        [JsonProperty("capture_end_index")]
+        public int CaptureEndIndex = -1;
         [JsonProperty("list")]
         public List<BaseNodeData> List = new List<BaseNodeData>();
 
@@ -129,11 +131,11 @@ namespace Script.Model.Auto
     {
         #region 序列化
         [JsonProperty("id")]
-        public string Id;                  // id，用于查找
+        public string Id;                       // id，用于查找
         [JsonProperty("name")]
-        public string Name = "默认名";                 // 名称
+        public string Name = "默认名";          // 名称
         [JsonProperty("description")]
-        public string Description = "";          // 备注
+        public string Description = "";         // 备注
         [JsonProperty("pos")]
         public string Pos_Ser;                  // 序列化坐标
         /// <summary>
@@ -162,16 +164,17 @@ namespace Script.Model.Auto
         [JsonIgnore]
         public List<string> LastNode = new List<string>();      // 上个节点
         [JsonIgnore]
-        public Vector2 Pos;                             // 画布坐标
+        public HashSet<string> LineIds = new HashSet<string>();       // 线段列表
         [JsonIgnore]
-        public float ExcuteTimes = 0;                   // 执行过多少次
+        public Vector2 Pos;                             // 画布坐标
         [JsonIgnore]
         public int Index = 0;                           // 节点创建顺序
         [JsonIgnore]
         protected AutoScriptData _scriptData;           // 脚本数据，管理者引用
 
-
-
+        // 运行时数据
+        [JsonIgnore]
+        public float ExcuteTimes = 0;                   // 执行过多少次
         [JsonIgnore]
         public NodeStatus Status = NodeStatus.Off;      // 节点状态。In表示流程处在此节点，否则就是Off
         [JsonIgnore]
@@ -185,13 +188,15 @@ namespace Script.Model.Auto
 
         #endregion
 
-
-
         public virtual void Init(AutoScriptData scriptData)
         {
             _scriptData = scriptData;
+            Index = int.Parse(Id.Split('-')[1]); // id格式为id-0, id-1, ...
         }
-        public virtual void AfterInit() { }
+        public virtual void AfterInit()
+        {
+            RefreshLineIds();
+        }
 
         // 执行内容
         public virtual void BeforeAction() { }
@@ -230,7 +235,6 @@ namespace Script.Model.Auto
         {
             var posArray = Pos_Ser.Substring(1, Pos_Ser.Length - 2).Split(',');  // 去掉括号,去掉逗号
             Pos = new Vector2(float.Parse(posArray[0]) * 100, float.Parse(posArray[1]) * 100);
-            Index = int.Parse(Id.Split('-')[1]); // id格式为id-0, id-1, ...
         }
         // 序列化准备
         public virtual void Serialize()
@@ -238,10 +242,49 @@ namespace Script.Model.Auto
             Pos_Ser = $"({Math.Round(Pos.x / 100, 3)},{Math.Round(Pos.y / 100, 3)})";
         }
 
+        /// <summary>
+        /// 实现接口时，争取做到只用 拷贝序列化相关的字段
+        /// </summary>
+        public virtual void Copy(BaseNodeData source)
+        {
+            Name = source.Name;
+            Delay = source.Delay;
+        }
+
+
+        public void RefreshLineIds()
+        {
+            LineIds.Clear();
+            foreach (var nextId in TrueNextNodes)
+            {
+                LineIds.Add(LineIdFormat(Id, nextId));
+            }
+            foreach (var nextId in FalseNextNodes)
+            {
+                LineIds.Add(LineIdFormat(Id, nextId));
+            }
+            foreach (var fromId in LastNode)
+            {
+                LineIds.Add(LineIdFormat(fromId, Id));
+            }
+        }
+
+        public HashSet<string> GetRelativeNode()
+        {
+            var result = new HashSet<string>(LastNode);
+            foreach (var id in LastNode)
+                result.Add(id);
+            foreach (var id in TrueNextNodes)
+                result.Add(id);
+            foreach (var id in FalseNextNodes)
+                result.Add(id);
+            return result;
+        }
+
+
         public static string IdStart = "node-";
         public static string LineIdStart = "line-";
         public static string LineIdFormat(string from, string id) { return LineIdStart + $"{from}-{id}"; }
-
 
     }
     #region 子类
@@ -261,7 +304,7 @@ namespace Script.Model.Auto
     /// </summary>
     public class TemplateMatchOperNode : BaseNodeData
     {
-        public static float ThresholdDefault = 0.95f;
+        public static float ThresholdDefault = 0.98f;   //普通截图一般都是1.0
         public static int CountDefault = 1;
         public static string RegionExpressionDefault = "Screen{}";
 
@@ -273,6 +316,10 @@ namespace Script.Model.Auto
         public float Threshold;
         [JsonProperty("count")]
         public int Count;
+        [JsonProperty("save_capture_to_local")]
+        public bool SaveCaptureToLocal = false;
+        [JsonProperty("save_capture_to_local_path")]
+        public string SaveCaptureToLocalPath = "";
 
         Vector4 _region;
         List<CVMatchResult> _result;
@@ -317,13 +364,33 @@ namespace Script.Model.Auto
                 return;
 
             Mat template = IU.GetMat(templatePath, true);
+            int t_width = template.Width;
+            int t_height = template.Height;
+            if (template.Width == 0)
+            {
+                DU.MessageBox($"模版图片格式不对：{templatePath}");
+                return;
+            }
             CVRect inputRect = _scriptData.Manager.FrameCaptureRegion;
 
+            CVMatchResult max_score_r = null;
             // 匹配结果
             Mat resultMat = null;
-            DU.RunWithTimer(() => resultMat = IU.MatchTemplate1(input, template), "MatchTemplate1");
+            // DU.RunWithTimer(() =>
+            // {
+            resultMat = IU.MatchTemplate1(input, template);
+            template.Dispose();
+            // }, "MatchTemplate1");
 
-            DU.RunWithTimer(() => _result = IU.FindResult(resultMat, template.Width, template.Height, Threshold), "FindResult");
+            if (resultMat == null)
+                return;
+
+            // DU.RunWithTimer(() =>
+            // {
+            _result = IU.FindResult(resultMat, t_width, t_height, Threshold, out max_score_r);
+            resultMat.Dispose();
+            // }, "FindResult");
+
             foreach (var item in _result)
             {
                 item.Rect.x += inputRect.x;
@@ -332,11 +399,12 @@ namespace Script.Model.Auto
 
             // 输出结果
             // 
-            if (_result.Count == 1)
+            if (Count == 1)
             {
-                OutData = _result[0].Rect.ToVector4();
+                if (_result.Count > 0)
+                    OutData = _result[0].Rect.ToVector4();
             }
-            else if (_result.Count > 1)
+            else if (Count > 1)
             {
                 var temp = new List<Vector4>();
                 foreach (var item in _result)
@@ -350,8 +418,16 @@ namespace Script.Model.Auto
             // UI 展示
             //
             var draw = new List<CVMatchResult>(_result);
-            draw.Add(new CVMatchResult() { Rect = _scriptData.Manager.FrameCaptureRegion, Score = 100 }); // 显示截屏范围
+            draw.Insert(0, new CVMatchResult() { Rect = _scriptData.Manager.FrameCaptureRegion, UIType = 1 }); // 显示截屏范围
 
+            // 为了知道最高分数在哪
+            if (_result.Count == 0)
+            {
+                max_score_r.Rect.x += inputRect.x;
+                max_score_r.Rect.y += inputRect.y;
+                max_score_r.UIType = 2;
+                draw.Add(max_score_r);
+            }
             UIManager.Inst.ShowPanel(PanelEnum.TemplateMatchDrawResultPanel, new List<object> { draw, 3.0f });
         }
 
@@ -369,6 +445,16 @@ namespace Script.Model.Auto
             _region = Vector4.zero;
             _result = null;
         }
+
+        public override void Copy(BaseNodeData source)
+        {
+            base.Copy(source);
+            var sourceObj = source as TemplateMatchOperNode;
+            TemplatePath = sourceObj.TemplatePath;
+            RegionExpression = sourceObj.RegionExpression;
+            Threshold = sourceObj.Threshold;
+            Count = sourceObj.Count;
+        }
     }
 
     #endregion
@@ -380,7 +466,7 @@ namespace Script.Model.Auto
     {
 
         [JsonProperty("click_type")]
-        public int clickType = 0;             // 0左键，1右键
+        public int ClickType = 0;             // 0左键，1右键
         [JsonProperty("click_pos")]
         public string ClickPos = "";          // 点击坐标
 
@@ -388,7 +474,7 @@ namespace Script.Model.Auto
         {
             var node = new MouseOperNode();
             node.Name = "鼠标";
-            node.clickType = 0;
+            node.ClickType = 0;
             return node;
         }
 
@@ -412,10 +498,25 @@ namespace Script.Model.Auto
             //     , x * 65535 / 1920, y * 65535 / 1080, 0, UIntPtr.Zero);
 
             WU.SetCursorPos(x, y);
-            WU.mouse_event(WU.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
-            WU.mouse_event(WU.MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
+            if (ClickType == 0)
+            {
+                WU.mouse_event(WU.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
+                WU.mouse_event(WU.MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
+            }
+            else if (ClickType == 1)
+            {
+                WU.mouse_event(WU.MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, UIntPtr.Zero);
+                WU.mouse_event(WU.MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
+            }
         }
 
+        public override void Copy(BaseNodeData source)
+        {
+            base.Copy(source);
+            var sourceObj = source as MouseOperNode;
+            ClickType = sourceObj.ClickType;
+            ClickPos = sourceObj.ClickPos;
+        }
     }
 
     #endregion
@@ -447,6 +548,14 @@ namespace Script.Model.Auto
             WU.keybd_event_packed(key, true);
             WU.keybd_event_packed(key, false);
         }
+
+        public override void Copy(BaseNodeData source)
+        {
+            base.Copy(source);
+
+            var sourceObj = source as KeyBoardOperNode;
+            Key = sourceObj.Key;
+        }
     }
     #endregion
 
@@ -469,7 +578,7 @@ namespace Script.Model.Auto
             set
             {
                 _scriptData.DeleteVarRef(this);
-                _formula = value.Replace(" ", "");
+                _formula = value;
                 Refresh();
                 CheckLegal();
                 _scriptData.AddVarRef(this);
@@ -532,6 +641,7 @@ namespace Script.Model.Auto
         }
         public override void AfterInit()
         {
+            base.AfterInit();
             CheckLegal();
         }
 
@@ -584,7 +694,13 @@ namespace Script.Model.Auto
 
             // DU.RunWithTimer(action, $"AssignOperNode Action 10000次 ", 2);
         }
-
+        public override void Copy(BaseNodeData source)
+        {
+            base.Copy(source);
+            var sourceObj = source as AssignOperNode;
+            _formula = sourceObj._formula;
+            _varTypeStr = sourceObj._varTypeStr;
+        }
 
     }
     #endregion
@@ -608,7 +724,7 @@ namespace Script.Model.Auto
             get { return _formula; }
             set
             {
-                _formula = value.Replace(" ", "");
+                _formula = value;
                 // RPNCalculator.ParseConditionFormula(_formula, out Oper, out LeftExp, out RightExp);
                 CheckLegal();
 
@@ -656,6 +772,13 @@ namespace Script.Model.Auto
         {
             return _result;
         }
+
+        public override void Copy(BaseNodeData source)
+        {
+            base.Copy(source);
+            var sourceObj = source as ConditionOperNode;
+            _formula = sourceObj._formula;
+        }
     }
 
     public struct ConditionCell
@@ -669,6 +792,8 @@ namespace Script.Model.Auto
             LeftExp = leftExp;
             RightExp = rightExp;
         }
+
+
     }
 
     #endregion
@@ -688,7 +813,6 @@ namespace Script.Model.Auto
             set
             {
                 _scriptData.RemoveEditTriggerNode(this);
-                value = value.Replace(" ", "");
                 _eventName = value;
                 _scriptData.AddEditTriggerNode(this);
             }
@@ -713,6 +837,14 @@ namespace Script.Model.Auto
             base.Action();
             _scriptData.TriggerEvent(_eventName);
         }
+
+        public override void Copy(BaseNodeData source)
+        {
+            base.Copy(source);
+
+            var sourceObj = source as TriggerEventNode;
+            _eventName = sourceObj._eventName;
+        }
     }
     #region ListenEventN
     /// <summary>
@@ -730,7 +862,6 @@ namespace Script.Model.Auto
             set
             {
                 _scriptData.RemoveListenNode(this);
-                value = value.Replace(" ", "");
                 _eventName = value;
                 _scriptData.AddListenNode(this);
             }
@@ -748,7 +879,13 @@ namespace Script.Model.Auto
             _nodeType = NodeType.ListenEvent;
             _scriptData.AddListenNode(this);
         }
+        public override void Copy(BaseNodeData source)
+        {
+            base.Copy(source);
 
+            var sourceObj = source as ListenEventNode;
+            _eventName = sourceObj._eventName;
+        }
     }
 
     #endregion
@@ -842,14 +979,26 @@ namespace Script.Model.Auto
             }
             node.Id = id;
             node.Pos = pos;
-            node.Init(this);
-            node.AfterInit();
-
 
             NodeDatas[id] = node;
 
             return node;
         }
+
+        public BaseNodeData CopyNode(string target_id, Vector2 pos)
+        {
+            if (!NodeDatas.ContainsKey(target_id)) return null;
+            var source = NodeDatas[target_id];
+            var copy = CreateNode(source.NodeType, source.Pos + new Vector2(20, 20));
+            copy.Copy(source);
+
+            copy.Init(this);
+            copy.AfterInit();
+            copy.Pos = pos;
+
+            return copy;
+        }
+
         public void DeleteNode(string id)
         {
             var node = NodeDatas[id];
@@ -860,16 +1009,19 @@ namespace Script.Model.Auto
                 var fromNode = NodeDatas[fromId];
                 fromNode.TrueNextNodes.Remove(id);
                 fromNode.FalseNextNodes.Remove(id);
+                fromNode.RefreshLineIds();
             }
             foreach (var toId in node.TrueNextNodes)
             {
                 var toNode = NodeDatas[toId];
                 toNode.LastNode.Remove(id);
+                toNode.RefreshLineIds();
             }
             foreach (var toId in node.FalseNextNodes)
             {
                 var toNode = NodeDatas[toId];
                 toNode.LastNode.Remove(id);
+                toNode.RefreshLineIds();
             }
 
 
@@ -918,7 +1070,10 @@ namespace Script.Model.Auto
             }
 
             if (ActiveNodes.Count == 0)
+            {
                 _running = false;
+                Manager.OnScriptEnd?.Invoke();
+            }
         }
 
 
@@ -1121,10 +1276,13 @@ namespace Script.Model.Auto
         public static string LineIdStart = "line-";
         public event Action Tick;      //通知ui刷新
         public Action<string> StatusChange;  //通知ui刷新
+        public Action OnScriptEnd;  //通知ui刷新
         public bool InfoPanelFolded = true;
 
-
         public AutoScriptSettings Settings;
+
+        public CVRect FrameCaptureRegion => _frameCaptureRegion;
+
 
         /// <summary>
         /// 脚本目录.<id, (path,fileName)>
@@ -1137,6 +1295,8 @@ namespace Script.Model.Auto
 
         private CVRect _frameCaptureRegion = default;   // 当前帧屏幕截屏范围
         private Mat _frameCapture = null;               // 当前帧屏幕截屏
+        public bool _saveCaptureToLocal = false;        // 是否保存截屏到本地
+
 
         AutoScriptManager()
         {
@@ -1145,52 +1305,7 @@ namespace Script.Model.Auto
         void Init()
         {
             LoadScriptJsonDirectory();
-            // _scriptData = Simulate();
         }
-
-        // public AutoScriptData Simulate()
-        // {
-        //     //模拟数据
-        //     int count = 10;
-        //     var autoScriptConfig = new AutoScriptConfig
-        //     {
-        //         Name = "New Auto Script",
-        //         FirstNode = BaseNodeData.IdStart + "0",
-        //         EndIndex = count - 1,
-        //         List = new List<BaseNodeData>()
-        //     };
-        //     var scriptData = new AutoScriptData(autoScriptConfig, this);
-
-        //     scriptData.NodeDatas = new Dictionary<string, BaseNodeData>();
-        //     for (int i = 0; i < count; i++)
-        //     {
-        //         var id = BaseNodeData.IdStart + $"{i}";
-        //         BaseNodeData item = null;
-        //         if (i < 9)
-        //         {
-        //             item = new TemplateMatchOperNode();
-        //         }
-        //         else
-        //         {
-        //             item = new MouseOperNode();
-        //             ((MouseOperNode)item).click = 0;
-        //         }
-        //         _scriptData.NodeDatas[id] = item;
-        //         item.Id = id;
-        //         item.Index = i;
-        //         item.Pos = new Vector2(200 + i * 300, 300);
-        //         item.Delay = 5 + Random.Range(0, 2);
-
-        //         if (i - 1 >= 0)
-        //             item.LastNode.Add(BaseNodeData.IdStart + $"{i - 1}");
-        //         if (i + 1 < count)
-        //             item.TrueNextNodes.Add(BaseNodeData.IdStart + $"{i + 1}");
-        //     }
-        //     return scriptData;
-        // }
-
-
-
 
         #region 脚本
 
@@ -1237,6 +1352,9 @@ namespace Script.Model.Auto
 
         public void OnUpdate(float deltaTime)
         {
+            // 让FrameCapture获取最新的帧截屏
+            ClearFrameCapture();
+
             // 预更新
             foreach (var script in _scriptDatas.Values)
             {
@@ -1250,74 +1368,12 @@ namespace Script.Model.Auto
             {
                 script.Update(deltaTime);
             }
-            // 使FrameCapture获取最新的帧截屏
-            _frameCapture = null;
 
             // 通知UI刷新
             Tick?.Invoke();
         }
-        // 当前帧屏幕截屏
-        public Mat FrameCapture
-        {
-            get
-            {
-                if (_frameCapture == null && _frameCaptureRegion != default)
-                {
-                    Bitmap bitmap = null;
-                    Action action = () =>
-                    {
-                        bitmap = WU.CaptureWindow(_frameCaptureRegion);
-                    };
-                    Action action1 = () =>
-                    {
-                        _frameCapture = IU.BitmapToMat(bitmap);
-                    };
-                    DU.RunWithTimer(action, "CaptureWindow");   // 25ms
-                    DU.RunWithTimer(action1, "BitmapToMat");    // 0ms
-                }
-                return _frameCapture;
-            }
-        }
-        public CVRect FrameCaptureRegion => _frameCaptureRegion;
 
-        // 计算所有脚本中，所有模版匹配节点的区域的并集
-        CVRect CalculateFrameCaptureRegion()
-        {
-            List<CVRect> regions = new List<CVRect>();
-            foreach (var script in _scriptDatas.Values)
-            {
-                foreach (var node in script.ActiveNodes.Values)
-                {
-                    if (node.CanAction && node is TemplateMatchOperNode templateNode)
-                    {
-                        var r = templateNode.GetRegion();
-                        regions.Add(new CVRect(r.x, r.y, r.z, r.w));
-                    }
-                }
-            }
 
-            // 计算并集, 有左上角和右下角两点决定矩形。
-            Vector2 left_top = default;
-            Vector2 right_bottom = default;
-
-            foreach (var r in regions)
-            {
-                var lt = r.LeftTop;
-                var rb = r.RightBottom;
-                // lt在left_top左上方，则要更新
-                if (left_top == default || (lt.x < left_top.x && lt.y < left_top.y))
-                {
-                    left_top = lt;
-                }
-
-                if (right_bottom == default || (rb.x > right_bottom.x && rb.y > right_bottom.y))
-                {
-                    right_bottom = rb;
-                }
-            }
-
-            return new CVRect(left_top, right_bottom);
-        }
 
         public void RenameScript(string id, string newName)
         {
@@ -1397,6 +1453,122 @@ namespace Script.Model.Auto
             // DU.LogWarning($"{scriptData.Config.Name} 脚本保存成功 至 {path}");
         }
 
+
+        #region 截屏
+
+        // 当前帧屏幕截屏
+        public Mat FrameCapture
+        {
+            get
+            {
+                if (_frameCapture == null && _frameCaptureRegion != default)
+                {
+                    //Bitmap 是一个托管对象，但它使用了非托管资源（如 GDI+ 图形资源）。
+                    // 因此，Bitmap 不会自动释放其非托管资源，需要手动释放。
+                    Bitmap bitmap = null;
+                    Action action = () =>
+                    {
+                        bitmap = WU.CaptureWindow(_frameCaptureRegion);
+                    };
+                    Action action1 = () =>
+                    {
+                        _frameCapture = IU.BitmapToMat(bitmap);
+                    };
+                    Action action2 = () =>
+                    {
+                        SaveCaptureToLocal(bitmap);
+                    };
+
+                    DU.RunWithTimer(action, "CaptureWindow");   // 25ms
+                    DU.RunWithTimer(action1, "BitmapToMat");    // 1ms
+                    if (_saveCaptureToLocal) DU.RunWithTimer(action2, "SaveCaptureToLocal");    // 0ms
+
+                    bitmap.Dispose();
+                }
+                return _frameCapture;
+            }
+        }
+
+
+        // 计算所有脚本中，所有模版匹配节点的区域的并集
+        CVRect CalculateFrameCaptureRegion()
+        {
+            List<CVRect> regions = new List<CVRect>();
+            foreach (var script in _scriptDatas.Values)
+            {
+                foreach (var node in script.ActiveNodes.Values)
+                {
+                    if (node.CanAction && node is TemplateMatchOperNode templateNode)
+                    {
+                        var r = templateNode.GetRegion();
+                        regions.Add(new CVRect(r.x, r.y, r.z, r.w));
+                        _saveCaptureToLocal |= templateNode.SaveCaptureToLocal;
+                    }
+                }
+            }
+
+            // 计算并集, 有左上角和右下角两点决定矩形。
+            Vector2 left_top = default;
+            Vector2 right_bottom = default;
+
+            foreach (var r in regions)
+            {
+                var lt = r.LeftTop;
+                var rb = r.RightBottom;
+                // lt在left_top左上方，则要更新
+                if (left_top == default || (lt.x < left_top.x && lt.y < left_top.y))
+                {
+                    left_top = lt;
+                }
+
+                if (right_bottom == default || (rb.x > right_bottom.x && rb.y > right_bottom.y))
+                {
+                    right_bottom = rb;
+                }
+            }
+
+            return new CVRect(left_top, right_bottom);
+        }
+
+        // 差一个清理无引用的缓存的方法
+        void SaveCaptureToLocal(Bitmap bitmap)
+        {
+            foreach (var script in _scriptDatas.Values)
+            {
+                bool save = false;
+                string path = "";
+                foreach (var node in script.ActiveNodes.Values)
+                {
+                    if (node.CanAction && node is TemplateMatchOperNode templateNode
+                        && templateNode.SaveCaptureToLocal)
+                    {
+                        if (!save)
+                        {
+                            script.Config.CaptureEndIndex++;
+                            var name = $"{script.Config.Id}_{script.Config.CaptureEndIndex}";
+                            IU.SaveBitmap(bitmap, "Capture", name);
+                            path = $"Capture/{name}.png";
+                        }
+                        save = true;
+                        templateNode.SaveCaptureToLocalPath = path;
+                    }
+                }
+            }
+        }
+
+        void ClearFrameCapture()
+        {
+            if (_frameCapture != null)
+            {
+                _frameCapture.Dispose();
+                _frameCapture = null;
+            }
+
+            _saveCaptureToLocal = false;
+        }
+
+        #endregion
+
         #region 加载
         // StreamingAssets/Script 目录下存所有的json脚本
         // StreamingAssets/Script/config.json 是此类型文件的配置
@@ -1429,7 +1601,10 @@ namespace Script.Model.Auto
             foreach (var kv in path2id)
             {
                 if (!files_set.Contains(kv.Key))
+                {
                     Settings.IdDic.Remove(kv.Value);
+                    Settings.Collections.Remove(kv.Value);
+                }
             }
 
             // 更新
@@ -1468,7 +1643,7 @@ namespace Script.Model.Auto
             }
         }
 
-        void SaveAutoScriptSettings()
+        public void SaveAutoScriptSettings()
         {
             Settings.Serialize();
             var json = JsonConvert.SerializeObject(Settings);
@@ -1552,7 +1727,15 @@ namespace Script.Model.Auto
 
         public BaseNodeData CreateNode(AutoScriptData scriptData, NodeType type, Vector2 pos, string id = null)
         {
-            return scriptData.CreateNode(type, pos, id);
+            var node = scriptData.CreateNode(type, pos, id);
+            node.Init(scriptData);
+            node.AfterInit();
+
+            return node;
+        }
+        public BaseNodeData CopyNode(AutoScriptData scriptData, string target_id, Vector2 pos)
+        {
+            return scriptData.CopyNode(target_id, pos);
         }
 
         public void DeleteNode(AutoScriptData scriptData, string id)
@@ -1598,6 +1781,9 @@ namespace Script.Model.Auto
                 other.Remove(toId);
 
             toNode.LastNode.Add(fromId);
+
+            fromNode.RefreshLineIds();
+            toNode.RefreshLineIds();
         }
 
         public void DeleteLine(AutoScriptData scriptData, string fromId, string toId)
@@ -1608,30 +1794,17 @@ namespace Script.Model.Auto
             fromNode.TrueNextNodes.Remove(toId);
             fromNode.FalseNextNodes.Remove(toId);
 
-
             toNode.LastNode.Remove(fromId);
+
+            fromNode.RefreshLineIds();
+            toNode.RefreshLineIds();
         }
 
 
         public HashSet<string> GetLinesByNode(AutoScriptData scriptData, string id)
         {
             BaseNodeData node = GetNode(scriptData, id);
-
-            HashSet<string> r = new HashSet<string>();
-            foreach (var nextId in node.TrueNextNodes)
-            {
-                r.Add(BaseNodeData.LineIdFormat(id, nextId));
-            }
-            foreach (var nextId in node.FalseNextNodes)
-            {
-                r.Add(BaseNodeData.LineIdFormat(id, nextId));
-            }
-            foreach (var fromId in node.LastNode)
-            {
-                r.Add(BaseNodeData.LineIdFormat(fromId, id));
-            }
-
-            return r;
+            return node.LineIds;
         }
 
         #endregion

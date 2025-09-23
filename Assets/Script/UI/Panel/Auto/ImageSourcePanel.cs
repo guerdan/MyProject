@@ -5,12 +5,16 @@ using System.IO;
 using Script.Framework.AssetLoader;
 using Script.Framework.UI;
 using Script.UI.Component;
+using Script.Util;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 
+
+
 namespace Script.UI.Panel.Auto
 {
+
     public class ImageSourcePanel : BasePanel
     {
         [SerializeField] private Button CaptureBtn;
@@ -23,6 +27,8 @@ namespace Script.UI.Panel.Auto
         bool _configPathExist;
         string _externalPath;
         Action<string> _onSave;
+
+
 
         void Awake()
         {
@@ -71,7 +77,7 @@ namespace Script.UI.Panel.Auto
         void OnFindPathBtnClick()
         {
             // 打开资源管理器 => 选择一个图片
-            string path = EditorUtility.OpenFilePanel("选择图片", "", "png");
+            string path = WU.OpenFileDialog("选择图片", "", "图片 *.png *.jpg)|*.png;*.jpg");
             if (string.IsNullOrEmpty(path)) return;
 
             bool InStreaming = path.StartsWith(Application.streamingAssetsPath);
@@ -91,7 +97,7 @@ namespace Script.UI.Panel.Auto
         // 用户已有资源
         void OnUserBtnClick()
         {
-            string path = EditorUtility.OpenFilePanel("选择图片", Application.streamingAssetsPath, "png");
+            string path = WU.OpenFileDialog("选择图片", Application.streamingAssetsPath,"图片 *.png *.jpg)|*.png;*.jpg");
             if (string.IsNullOrEmpty(path)) return;
             bool InStreaming = path.StartsWith(Application.streamingAssetsPath);
             if (!InStreaming) return;
@@ -103,13 +109,17 @@ namespace Script.UI.Panel.Auto
         // 复制到StreamingAssets下
         void OnSaveBtnClick()
         {
-            string fileName = Path.GetFileName(_externalPath);
-            string savePath = EditorUtility.SaveFilePanel(
-                "保存图片",
-                Application.streamingAssetsPath, // 初始目录
-                fileName,
-                "png"
-            );
+            string fileName = ".png";
+            string title = "保存图片";
+            if (!_configPathExist)  // 更改路径
+            {
+                fileName = Path.GetFileName(_externalPath);
+                title = "更改路径";
+            }
+
+            string savePath = WU.SaveFileDialog(title
+            , Application.streamingAssetsPath + $"/{fileName}", "图片 *.png *.jpg)|*.png;*.jpg");
+
             // 需选择正确的项目内路径
             if (string.IsNullOrEmpty(savePath) || !savePath.StartsWith(Application.streamingAssetsPath))
                 return;

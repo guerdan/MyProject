@@ -157,6 +157,24 @@ namespace Script.UI.Panel.Auto
             return center;
         }
 
+        public Vector2 GetMousePos()
+        {
+            var contentR = scrollRect.content.GetComponent<RectTransform>();
+            // 获取鼠标屏幕位置
+            Vector2 screenPoint = Input.mousePosition;
+
+            // 转换为 contentR 的局部坐标
+            Vector2 localPoint;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(contentR, screenPoint, null, out localPoint);
+
+            // 中心点影响
+            localPoint += new Vector2(0, _contentH);
+            
+            return localPoint;
+
+        }
+
+
         public void ScrollToNode(string node_id)
         {
             _panel._scriptData.NodeDatas.TryGetValue(node_id, out var nodeData);

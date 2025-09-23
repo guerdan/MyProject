@@ -85,6 +85,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 5b6dfbc55557d8145a8bb4b0bbc841dc, type: 3}
   - {fileID: 21300000, guid: 52716ae5491d10d47ad25f7ed317bda4, type: 3}
   - {fileID: 21300000, guid: 374439065de2d3a4a9b179287a84e14e, type: 3}
+  - {fileID: 21300000, guid: c554b13610552ba4baa86365ea916807, type: 3}
   - {fileID: 21300000, guid: ac212e76159a6b449baefd75f0b1823d, type: 3}
   - {fileID: 21300000, guid: 66b16786e946ef6469fd37763f795d85, type: 3}
   - {fileID: 21300000, guid: b3aef0a63aa728840a256052be0a34a7, type: 3}
@@ -181,6 +182,7 @@ SpriteAtlas:
   - title_bg_popup
   - star
   - title_bg_fs1
+  - folder_transparent
   - button_red
   - b_stop1
   - frame1_white

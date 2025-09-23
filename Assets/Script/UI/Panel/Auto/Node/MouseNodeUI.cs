@@ -11,8 +11,8 @@ namespace Script.UI.Panel.Auto.Node
         public override void RefreshContent()
         {
             MouseOperNode data = _data as MouseOperNode;
-            Icon.localScale = new Vector3(data.clickType == 0 ? 1 : -1, 1, 1);
-            Icon.anchoredPosition = new Vector2(data.clickType == 0 ? -3 : 3, 5);
+            Icon.localScale = new Vector3(data.ClickType == 0 ? 1 : -1, 1, 1);
+            Icon.anchoredPosition = new Vector2(data.ClickType == 0 ? -3 : 3, 5);
         }
     }
 }

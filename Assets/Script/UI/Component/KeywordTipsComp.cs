@@ -110,7 +110,7 @@ namespace Script.UI.Component
                 bool close = true;
                 foreach (var go in _withoutArea)
                 {
-                    if (Utils.IsPointerOverUIObject(go, AutoRoot.Inst.Canvas))
+                    if (Utils.IsPointerOverUIObject(go, Root.Inst.Canvas))
                     {
                         close = false;
                         break;
@@ -130,7 +130,6 @@ namespace Script.UI.Component
                     _onSelect?.Invoke(SelectIndex);
                 }
 
-                ListComp._scrollView.verticalScrollbar.navigation = new Navigation { mode = Navigation.Mode.None };
 
                 bool up_move = false;
                 bool down_move = false;

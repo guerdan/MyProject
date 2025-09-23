@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Script.Util;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -355,7 +356,7 @@ namespace Script.UI.Component
                     return;
                 }
             }
-
+            // DU.LogWarning($"OnScrolling {pos} ");
             UpdateItems();
         }
 

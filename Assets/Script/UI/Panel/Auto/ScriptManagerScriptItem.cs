@@ -2,6 +2,8 @@
 using Script.Framework.UI;
 using Script.Model.Auto;
 using Script.UI.Component;
+using Script.UI.Panel.Auto.Node;
+using Script.Util;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,7 +11,8 @@ namespace Script.UI.Panel.Auto
 {
     public class ScriptManagerScriptItem : MonoBehaviour
     {
-
+        [SerializeField] private Image OutlineF;      //前
+        [SerializeField] private Image OutlineB;      //底。常规色
         [SerializeField] private Button Btn;
         [SerializeField] private Text ScriptName;
         [SerializeField] private CheckBox RunBtn;
@@ -25,11 +28,14 @@ namespace Script.UI.Panel.Auto
         }
         void OnEnable()
         {
-            ScriptManagerPanel.OnRefresh += Refresh;
+            ScriptManagerPanel.OnRefresh += OnRefresh;
+            AutoScriptManager.Inst.Tick += Refresh;
+
         }
         void OnDisable()
         {
-            ScriptManagerPanel.OnRefresh -= Refresh;
+            ScriptManagerPanel.OnRefresh -= OnRefresh;
+            AutoScriptManager.Inst.Tick -= Refresh;
         }
 
         public void SetData(string id, ScriptManagerPanel panel, bool is_collection = false)
@@ -48,14 +54,11 @@ namespace Script.UI.Panel.Auto
                     = CollectBtn.GetComponent<RectTransform>().anchoredPosition;
             }
 
-            Refresh(_id);
+            Refresh();
         }
 
-        void Refresh(string id)
+        void Refresh()
         {
-            if (id != _id)
-                return;
-
             ScriptName.text = _scriptData.Config.Name;
             RunBtn.SetData(_scriptData.Running, OnRunBtnClick);
 
@@ -63,14 +66,39 @@ namespace Script.UI.Panel.Auto
             CollectBtn.SetData(contain, OnCollectBtnClick);
 
 
+            if (_scriptData.Running)
+            {
+                Utils.SetActive(OutlineF, true);
+                Utils.SetActive(OutlineB, true);
+                OutlineF.color = ProcessNodeUI.RedColor;
+                OutlineF.fillAmount = 0.5f;   // 统计节点个数吧。已执行数/ 总节点数
+                OutlineB.color = Color.white;
+            }
+            else
+            {
+
+                Utils.SetActive(OutlineF, false);
+                Utils.SetActive(OutlineB, false);
+                OutlineB.color = ProcessNodeUI.WhiteColor;
+            }
+        }
+
+        void OnRefresh(string id)
+        {
+            if (id != _id)
+                return;
+            Refresh();
         }
 
         void OnRunBtnClick(bool value)
         {
             if (value)
-                AutoScriptManager.Inst.StopScript(_id);
-            else
                 AutoScriptManager.Inst.StartScript(_id);
+            else
+            {
+                AutoScriptManager.Inst.StopScript(_id);
+                UIManager.Inst.PopPanel(PanelEnum.ScriptManagerPanel);
+            }
 
             ScriptManagerPanel.OnRefresh?.Invoke(_id);
         }

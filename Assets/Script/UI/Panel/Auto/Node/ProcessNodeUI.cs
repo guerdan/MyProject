@@ -52,11 +52,12 @@ namespace Script.UI.Panel.Auto.Node
 
 
         [HideInInspector] public BaseNodeData _data;
+        [HideInInspector] public string _id;
         [HideInInspector] public NodeType _type;
         protected DrawProcessPanel _panel;
         AutoScriptData _scriptData;
 
-        void Awake()
+       protected void Awake()
         {
             selfR.anchorMin = new Vector2(0, 0);
             selfR.anchorMax = new Vector2(0, 0);
@@ -79,6 +80,7 @@ namespace Script.UI.Panel.Auto.Node
         public void SetData(BaseNodeData nodeData, DrawProcessPanel panel)
         {
             _data = nodeData;
+            _id = _data.Id;
             _panel = panel;
             _type = _data.NodeType;
             _scriptData = panel._scriptData;
@@ -99,7 +101,7 @@ namespace Script.UI.Panel.Auto.Node
         /// </summary>
         public void Refresh()
         {
-            bool selected = _data.Id == _panel.MouseSelectedId;
+            bool selected = _id == _panel.MouseSelectedId;
             // bool show_progress = _type != NodeType.AssignOper && _type != NodeType.ListenEvent;
             // 这个样式空闲时要框
             bool type1 = _type == NodeType.TemplateMatchOper;
@@ -131,17 +133,21 @@ namespace Script.UI.Panel.Auto.Node
             }
 
 
-            Utils.SetActive(IsFirstMark, _data.Id == _scriptData.Config.FirstNode);
+            Utils.SetActive(IsFirstMark, _id == _scriptData.Config.FirstNode);
         }
 
-
+        public virtual void RefreshSlotUI()
+        {
+            TrueOutNode.anchoredPosition = _panel.GetLineEndPos(_data, 1) - selfR.anchoredPosition;
+            if (FalseOutNode) FalseOutNode.anchoredPosition = _panel.GetLineEndPos(_data, 2) - selfR.anchoredPosition;
+        }
 
         /// <summary>
         /// 刷新选中状态
         /// </summary>
         public virtual void RefreshSelected()
         {
-            bool selected = _data.Id == _panel.MouseSelectedId;
+            bool selected = _id == _panel.MouseSelectedId;
             _panel.GetLineEndOwnership(_data.NodeType, out bool _, out bool has_true, out bool has_false);
 
             //圈圈操作
@@ -152,14 +158,6 @@ namespace Script.UI.Panel.Auto.Node
                 if (has_true) TrueOutNode.GetComponent<Image>().color = _data.TrueNextNodes.Count > 0 ? WhiteColor : BrownColor;
                 if (has_false) FalseOutNode.GetComponent<Image>().color = _data.FalseNextNodes.Count > 0 ? WhiteColor : BrownColor;
             }
-        }
-
-        /// <summary>
-        /// 所属节点的线段刷新
-        /// </summary>
-        public void RefreshLine()
-        {
-            _panel.RefreshLineByNode(_data.Id);
         }
 
         /// <summary>
@@ -180,12 +178,10 @@ namespace Script.UI.Panel.Auto.Node
         // 任意节点状态流入或流出触发
         void StatusChange(string id)
         {
-            // if (_data.Id != id) return;
+            // if (_id != id) return;
             RefreshSelected();
-            RefreshLine();
+            _panel.RefreshLineByNode(_id);
         }
-
-
 
 
         #region 操作交互
@@ -200,14 +196,14 @@ namespace Script.UI.Panel.Auto.Node
         public void OnPointerDown(PointerEventData eventData)
         {
             // DU.LogWarning("PointerDown");
-            _doubleClick = _panel.MouseSelectedId == _data.Id;
+            _doubleClick = _panel.MouseSelectedId == _id;
             _finishOneClick = false;
 
             // 节点变白色调
             {
 
                 string pre = _panel.MouseSelectedId;
-                _panel.MouseSelectedId = _data.Id;
+                _panel.MouseSelectedId = _id;
 
             }
 
@@ -243,7 +239,7 @@ namespace Script.UI.Panel.Auto.Node
             }
 
 
-            // 用于拖拽节点实现， 服务OnDrag、OnEndDrag
+            // 用于拖拽节点实现， 服务于OnDrag、OnEndDrag
             if (_dragStatus == ProcessNodeDragStatus.None)
             {
                 Vector2 pointerLocalPos;
@@ -301,7 +297,8 @@ namespace Script.UI.Panel.Auto.Node
             {
                 _data.Pos = _panel.Map.MapConvert(point + _dragOffset);
                 SetPos();
-                RefreshLine();
+                RefreshRelativeLine();
+
             }
             else if (_dragStatus == ProcessNodeDragStatus.LineTrue || _dragStatus == ProcessNodeDragStatus.LineFalse)
             {
@@ -309,7 +306,7 @@ namespace Script.UI.Panel.Auto.Node
                 string hover_id = _panel.MouseHoverId;
                 bool has_in = GetTargetHasIn(hover_id);
 
-                if (hover_id != null && hover_id != _data.Id && has_in &&
+                if (hover_id != null && hover_id != _id && has_in &&
                 !_data.TrueNextNodes.Contains(hover_id) && !_data.FalseNextNodes.Contains(hover_id))
                 {
                     // 有悬浮节点，画到悬浮节点入口
@@ -339,12 +336,11 @@ namespace Script.UI.Panel.Auto.Node
                 string hover_id = _panel.MouseHoverId;
                 bool in_own = GetTargetHasIn(hover_id);
 
-                if (hover_id != null && hover_id != _data.Id && in_own)
+                if (hover_id != null && hover_id != _id && in_own)
                 {
-                    AutoScriptManager.Inst.AddLine(_scriptData, _data.Id, hover_id,
+                    _panel.AddLine(_scriptData, _id, hover_id,
                         _dragStatus == ProcessNodeDragStatus.LineTrue);
                     RefreshSelected();
-                    _panel.SyncData();
                 }
             }
 
@@ -356,7 +352,7 @@ namespace Script.UI.Panel.Auto.Node
         //鼠标悬浮进入事件
         public virtual void OnPointerEnter(PointerEventData eventData)
         {
-            _panel.MouseHoverId = _data.Id;
+            _panel.MouseHoverId = _id;
         }
 
         //鼠标悬浮离开事件
@@ -406,7 +402,7 @@ namespace Script.UI.Panel.Auto.Node
                     match_list = _scriptData.GetEditTriggerNodes(data.EventName).ConvertAll(m => m as BaseNodeData);
                 }
 
-                
+
                 TipsComp.gameObject.SetActive(true);
                 TipsComp.SetData(match_list.ConvertAll(m => m.Name),
                 index =>
@@ -431,6 +427,23 @@ namespace Script.UI.Panel.Auto.Node
                 return true;
             }
             return false;
+        }
+
+        void RefreshRelativeLine()
+        {
+            _panel.RefreshNodeSlot(_id);
+            // 简洁的就是只刷自己的槽，严谨的效果就是，把关联的所有节点都刷一遍槽点，然后刷新线段 要的
+            var set = _data.GetRelativeNode();
+            foreach (var node_id in set)
+            {
+                _panel.RefreshNodeSlot(node_id);
+            }
+
+            _panel.RefreshLineByNode(_id);
+            foreach (var node_id in set)
+            {
+                _panel.RefreshLineByNode(node_id);
+            }
         }
 
         #endregion

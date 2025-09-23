@@ -189,6 +189,7 @@ namespace Script.Framework.UI
         public void PopPanel(PanelEnum panelEnum)
         {
             var panel = UISceneMixin.Inst.FindPanel(panelEnum);
+            if (panel == null) return;
             UISceneMixin.Inst.PopPanel(panel, null);
             PopPanelInternal(panel.PanelDefine.Layer);
         }

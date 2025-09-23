@@ -24,18 +24,27 @@ namespace Script.UI.Panel.Auto
         {
             var dataList = data as List<object>;
             var itemdata = dataList[0] as List<CVMatchResult>;
+            if (itemdata == null)
+            {
+                Clear();
+                return;
+            }
             float duration = (float)dataList[1];
             Utils.RefreshItemListByCount<SquareFrameUI>(_itemList, itemdata.Count, Prefab, Content, (item, index) =>
                {
                    var matchResult = itemdata[index];
-                   if (matchResult.Score <= 1)
-                       item.SetData(matchResult.Score, matchResult.Rect, Color.red, 2, true);
-                   else if (matchResult.Score == 100)  // 是截屏范围
-                       item.SetData(0, matchResult.Rect, Color.green, 2, false);
+                   if (matchResult.UIType == 0)
+                       item.SetData(DU.FloatFormat(matchResult.Score, 2), matchResult.Rect, Color.green);
+                   else if (matchResult.UIType == 1)  // 是截屏范围
+                   {
+                       var r = matchResult.Rect;
+                       item.SetData($"P({(int)r.x},{(int)r.y}), Size({(int)r.w},{(int)r.h})", r, Color.red, 32);
+                   }
+                   else if (matchResult.UIType == 2)  // 失败后的，最高分数
+                       item.SetData(DU.FloatFormat(matchResult.Score, 2), matchResult.Rect, Color.yellow);
                });
 
             _countDown = duration;
-
         }
 
         void Update()
@@ -45,11 +54,16 @@ namespace Script.UI.Panel.Auto
                 _countDown -= Time.deltaTime;
                 if (_countDown <= 0)
                 {
-                    foreach (var item in _itemList)
-                        item.gameObject.SetActive(false);
+                    Clear();
                 }
             }
         }
 
+
+        void Clear()
+        {
+            foreach (var item in _itemList)
+                item.gameObject.SetActive(false);
+        }
     }
 }

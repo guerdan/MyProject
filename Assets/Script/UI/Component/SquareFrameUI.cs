@@ -16,13 +16,9 @@ namespace Script.UI.Component
         [SerializeField] private RectTransform rightUI;
         [SerializeField] private Text textUI;
 
-        public void SetData(float score, CVRect rect, Color color = default, float border_width = 2, bool showText = true)
+        public void SetData(string text, CVRect rect, Color color = default, int text_size = 40, float border_width = 2)
         {
-            if (showText)
-                textUI.text = DU.FloatFormat(score, 2);
-            else
-                textUI.text = "";
-
+            textUI.text = text;
             RectTransform trans = (RectTransform)transform;
             // 4个边框UI的位置依赖于此节点
             trans.anchorMin = new Vector2(0, 1);
@@ -39,7 +35,24 @@ namespace Script.UI.Component
 
             color = color == default ? Color.red : color;
             SetColor(color);
+            textUI.fontSize = text_size;
+
         }
+
+        public void SetData(Vector2 pos, Vector2 size, Color color, float border_width = 2)
+        {
+            RectTransform rT = (RectTransform)transform;
+            rT.sizeDelta = size;
+            rT.anchoredPosition = pos;
+
+            topUI.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, border_width);
+            bottomUI.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, border_width);
+            leftUI.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, border_width);
+            rightUI.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, border_width);
+
+            SetColor(color);
+        }
+
 
         void SetColor(Color color)
         {
@@ -47,6 +60,7 @@ namespace Script.UI.Component
             bottomUI.GetComponent<Image>().color = color;
             leftUI.GetComponent<Image>().color = color;
             rightUI.GetComponent<Image>().color = color;
+            if (textUI) textUI.color = color;
         }
 
     }

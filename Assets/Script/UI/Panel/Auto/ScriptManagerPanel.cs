@@ -176,5 +176,11 @@ namespace Script.UI.Panel.Auto
 
             UIManager.Inst.ShowPanel(PanelEnum.EditNamePanel, param);
         }
+
+        void OnDisable()
+        {
+            manager.SaveAutoScriptSettings();
+        }
     }
+
 }

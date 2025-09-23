@@ -282,6 +282,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef91349acbd1dcb418e967ef72a297a4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  OutlineF: {fileID: 1787170831153471546}
+  OutlineB: {fileID: 6444550240209281325}
   Btn: {fileID: 5948742897558153284}
   ScriptName: {fileID: 1003409775247967603}
   RunBtn: {fileID: 7171117931653609612}
@@ -421,7 +423,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.69803923, g: 0.21960784, b: 0.1764706, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -429,11 +431,11 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_Sprite: {fileID: 21300000, guid: 28a7971e9b88b1c4fb517e98c35f5000, type: 3}
-  m_Type: 1
+  m_Type: 3
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
-  m_FillAmount: 1
+  m_FillAmount: 0
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0

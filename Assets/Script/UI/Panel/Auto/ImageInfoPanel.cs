@@ -1,5 +1,3 @@
-
-using Script.Framework.AssetLoader;
 using Script.Framework.UI;
 using Script.UI.Component;
 using UnityEngine;
@@ -20,7 +18,7 @@ namespace Script.UI.Panel.Auto
             _useScaleAnim = false;
 
             string path = data as string;
-            TemplateImage.SetData(path, default, false);
+            TemplateImage.SetData(path, new Vector2(1700,800), false);
             var size = TemplateImage.GetSize();
             var target = size + new Vector2(150, 220);
 

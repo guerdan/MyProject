@@ -17,8 +17,8 @@ namespace Script.Framework.UI
     public enum UIRecycleTypeEnum
     {
         Once,          //关闭界面后，立即销毁实例。
-        Normal,        //关闭界面10秒后，销毁实例。
-        Frequent,      //关闭界面60秒后，销毁实例。
+        Normal,        //关闭界面60秒后，销毁实例。
+        Frequent,      //缓存实例。
     }
 
 
@@ -43,6 +43,8 @@ namespace Script.Framework.UI
         ImageSourcePanel,
         ScriptManagerPanel,
         TemplateMatchDrawResultPanel,
+        ImageMatchTestPanel,
+        ImageCompareTestPanel,
     }
 
 
@@ -122,7 +124,7 @@ namespace Script.Framework.UI
                 Name = "LogPrintPanel",
                 Path = "Auto/Prefabs/LogPrintPanel",
                 Type = UITypeEnum.WindowsPopUp,
-                RecycleType = UIRecycleTypeEnum.Frequent,
+                RecycleType = UIRecycleTypeEnum.Normal,
                 InitPos = new Vector2(200, 0),
                 HideLastPanel = false,
             },
@@ -132,7 +134,7 @@ namespace Script.Framework.UI
                 Name = "PicMatchFloat",
                 Path = "Auto/Prefabs/PicMatchFloat",
                 Type = UITypeEnum.WindowsPopUp,
-                RecycleType = UIRecycleTypeEnum.Frequent,
+                RecycleType = UIRecycleTypeEnum.Normal,
                 InitPos = new Vector2(0, 0),
                 HideLastPanel = false,
             },
@@ -162,7 +164,7 @@ namespace Script.Framework.UI
                 Name = "EditNamePanel",
                 Path = "Common/Prefabs/Panel/EditNamePanel",
                 Type = UITypeEnum.WindowsPopUp,
-                RecycleType = UIRecycleTypeEnum.Frequent,
+                RecycleType = UIRecycleTypeEnum.Normal,
                 InitPos = new Vector2(0, 0),
                 HideLastPanel = false,
                 ClickOutWinClose = true,
@@ -173,7 +175,7 @@ namespace Script.Framework.UI
                 Name = "ImageInfoPanel",
                 Path = "Common/Prefabs/Panel/ImageInfoPanel",
                 Type = UITypeEnum.WindowsPopUp,
-                RecycleType = UIRecycleTypeEnum.Frequent,
+                RecycleType = UIRecycleTypeEnum.Normal,
                 InitPos = new Vector2(0, 0),
                 HideLastPanel = false,
                 ClickOutWinClose = true,
@@ -184,7 +186,7 @@ namespace Script.Framework.UI
                 Name = "ImageSourcePanel",
                 Path = "Common/Prefabs/Panel/ImageSourcePanel",
                 Type = UITypeEnum.WindowsPopUp,
-                RecycleType = UIRecycleTypeEnum.Frequent,
+                RecycleType = UIRecycleTypeEnum.Normal,
                 InitPos = new Vector2(0, 0),
                 HideLastPanel = false,
             },
@@ -207,6 +209,27 @@ namespace Script.Framework.UI
                 RecycleType = UIRecycleTypeEnum.Frequent,
                 InitPos = new Vector2(0, 0),
                 HideLastPanel = false,
+            },
+
+            new PanelDefine{
+                Key = PanelEnum.ImageMatchTestPanel,
+                Name = "ImageMatchTestPanel",
+                Path = "Common/Prefabs/Panel/ImageMatchTestPanel",
+                Type = UITypeEnum.WindowsPopUp,
+                RecycleType = UIRecycleTypeEnum.Normal,
+                InitPos = new Vector2(0, 0),
+                HideLastPanel = false,
+                ClickOutWinClose = true,
+            },
+            new PanelDefine{
+                Key = PanelEnum.ImageCompareTestPanel,
+                Name = "ImageCompareTestPanel",
+                Path = "Common/Prefabs/Panel/ImageCompareTestPanel",
+                Type = UITypeEnum.WindowsPopUp,
+                RecycleType = UIRecycleTypeEnum.Normal,
+                InitPos = new Vector2(0, 0),
+                HideLastPanel = false,
+                ClickOutWinClose = true,
             },
         };
 

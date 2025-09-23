@@ -30,7 +30,7 @@ namespace Script.UI.Panel.Auto
             // DU.LogWarning($"System.Drawing.dll is loaded from: {assemblyPath}");
         }
 
- 
+
 
 
         void Update()
@@ -48,10 +48,7 @@ namespace Script.UI.Panel.Auto
                 Quit();
             }
 
-            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.D))
-            {
-                // UIManager.Inst.ShowPanel(PanelEnum.DrawProcessPanel, $"{AutoScriptConfig.IdStart}0");
-            }
+
             if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.L))
             {
                 UIManager.Inst.ShowPanel(PanelEnum.ProcessNodeInfoPanel, null);
@@ -88,7 +85,22 @@ namespace Script.UI.Panel.Auto
                 UIManager.Inst.ShowPanel(PanelEnum.ScriptManagerPanel, null);
             }
 
+            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.D))
+            {
+                string id = DrawProcessPanel.LastOpenId;
+                if (id != null)
+                    UIManager.Inst.ShowPanel(PanelEnum.DrawProcessPanel, id);
+            }
+            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.T))
+            {
+                UIManager.Inst.ShowPanel(PanelEnum.ImageMatchTestPanel, null);
+            }
 
+            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.C))
+            {
+                string id = Application.streamingAssetsPath + "/MatchTemplate/folder.png";
+                UIManager.Inst.ShowPanel(PanelEnum.ImageCompareTestPanel, id);
+            }
         }
 
 

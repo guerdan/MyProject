@@ -40,7 +40,7 @@ namespace Script.UI.Panel.Auto.Node
             TitleText.text = data.Name;
             DelayText.text = $"{Math.Round(data.Delay, 2)}s";
             TemplateImage.SetData(ImageManager.GetFullPath(data.TemplatePath), new Vector2(90, 90), true, 2);
-            RegionText.text = data.RegionExpression;
+            RegionText.text = AutoDataUIConfig.FormulaFormat(data.RegionExpression);
             RefreshTemplateImageBtn();
         }
 

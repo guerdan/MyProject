@@ -44,6 +44,9 @@ namespace Script.UI.Panel.Auto
     /// </summary>
     public class DrawProcessPanel : BasePanel
     {
+        public static string LastOpenId;
+        public static event Action OnMouseSelected;
+
         public AutoScriptManager manager => AutoScriptManager.Inst;
 
         [SerializeField] private Text Title;
@@ -64,8 +67,6 @@ namespace Script.UI.Panel.Auto
         [SerializeField] public GameObject KeyboardNodePre; //键盘节点
         [SerializeField] public GameObject AssignNodePre;   //赋值节点
 
-        public static event Action OnMouseSelected;
-        private string _mouseSelectedId;
         //当前选中的节点 格式：
         //节点id: "node-{index}"
         //线段id: "line-{from}-{to}"
@@ -103,6 +104,17 @@ namespace Script.UI.Panel.Auto
 
         DateTime _lastSaveTime;
 
+        private string _mouseSelectedId;        //选中元素
+        private string _copyId;                 //选中并复制的元素
+
+
+        // 存八个插槽.方位位置
+        Dictionary<NodeType, Vector2[]> _nodeUISlotPos;
+        // 存节点默认使用插槽情况。<类型, <type,槽序>>
+        Dictionary<NodeType, int[]> _nodeUISlotDefault;
+        // 存节点使用插槽情况。<拼接id, 槽序>
+        Dictionary<string, int> _nodeUISlotCache;
+
 
         void Awake()
         {
@@ -132,6 +144,7 @@ namespace Script.UI.Panel.Auto
             _useScaleAnim = false;
 
             _id = data as string;
+            LastOpenId = _id;
             _scriptData = manager.GetScriptData(_id);
             _lastSaveTime = DateTime.Now;
             Init();
@@ -139,15 +152,41 @@ namespace Script.UI.Panel.Auto
 
         void Init()
         {
-            CanvasCfg = new CanvasConfig(4000, 4000);
+            Save();
+            InitNodeSlotPos();
 
+            CanvasCfg = new CanvasConfig(4000, 4000);
             Map.SetData(this, 300);  //绘制栅格
             BtnBar.SetData(this);
+
+            Clear();
 
             //生成流程的节点
             OnScrolling(ScrollRect.normalizedPosition);
 
             Title.text = $"绘制面板：{_scriptData.Config.Name}";
+        }
+        // 全删
+        void Clear()
+        {
+            // 删节点
+            foreach (var id in _nodeUIMap.Keys.ToList())
+            {
+                var ui = _nodeUIMap[id];
+                PushToPool(ui);
+                _nodeUIMap.Remove(id);
+            }
+
+            // 删线段
+            foreach (var id in _lineUIMap.Keys.ToList())
+            {
+                var line = _lineUIMap[id];
+                _linePool.Push(line);
+                _lineUIMap.Remove(id);
+            }
+
+            // 清线段端点- 插槽缓存
+            _nodeUISlotCache.Clear();
         }
 
 
@@ -222,6 +261,16 @@ namespace Script.UI.Panel.Auto
             // 按着Ctrl键，点击节点出引用
             HoldCtrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
 
+            if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.C))
+            {
+                _copyId = MouseSelectedId;
+            }
+            if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.V))
+            {
+                if (_copyId != null && _copyId.StartsWith(BaseNodeData.IdStart))
+                    CopyNode(_copyId);
+            }
+
         }
 
         #endregion
@@ -232,6 +281,8 @@ namespace Script.UI.Panel.Auto
         {
             HashSet<string> node_ids = Map.GetInViewNodeIds();
             HashSet<string> lines_ids = new HashSet<string>();
+            // 增节点的相关线段都要刷新
+            HashSet<string> lines_need_refresh_ids = new HashSet<string>();
 
             // 删节点
             foreach (var id in _nodeUIMap.Keys.ToList())
@@ -256,6 +307,10 @@ namespace Script.UI.Panel.Auto
                     nodeUI.transform.SetParent(NodeParent, false);
                     _nodeUIMap[id] = nodeUI;
                     nodeUI.SetData(data, this);
+                    RefreshNodeSlot(id);
+
+                    var line_ids = manager.GetLinesByNode(_scriptData, id);
+                    lines_need_refresh_ids.AddRange(line_ids);
                 }
 
                 // 统计所有的线段
@@ -276,6 +331,7 @@ namespace Script.UI.Panel.Auto
             }
 
             // 增线段
+            HashSet<string> lines_already_refresh_ids = new HashSet<string>();
             foreach (var id in lines_ids)
             {
                 if (!_lineUIMap.ContainsKey(id))
@@ -287,9 +343,20 @@ namespace Script.UI.Panel.Auto
                     var ui = line.GetComponent<ProcessNodeLineUI>();
                     ui.SetData(id, this);
                     ui.DrawLine();
+                    lines_already_refresh_ids.Add(id);
                 }
             }
 
+            // 增节点的相关线段都要刷新
+            foreach (var id in lines_need_refresh_ids)
+            {
+                if (!lines_already_refresh_ids.Contains(id)
+                    && _lineUIMap.TryGetValue(id, out GameObject line))
+                {
+                    var ui = line.GetComponent<ProcessNodeLineUI>();
+                    ui.DrawLine();
+                }
+            }
         }
 
         // 获取节点
@@ -306,8 +373,19 @@ namespace Script.UI.Panel.Auto
             SyncData();
 
             // 确保新节点在最上层
-            var new_ui = _nodeUIMap[data.Id];
-            new_ui.transform.SetAsLastSibling();
+            if (_nodeUIMap.TryGetValue(data.Id, out var new_ui))
+                new_ui.transform.SetAsLastSibling();
+        }
+        // 创建新节点功能
+        public void CopyNode(string id)
+        {
+            var pos = Map.MapConvert(Map.GetMousePos());
+            var data = manager.CopyNode(_scriptData, id, pos);
+            SyncData();
+
+            // 确保新节点在最上层
+            if (_nodeUIMap.TryGetValue(data.Id, out var new_ui))
+                new_ui.transform.SetAsLastSibling();
         }
         // 删除节点功能
         public void DeleteNode(string id)
@@ -398,7 +476,7 @@ namespace Script.UI.Panel.Auto
                 if (_nodeUIMap.TryGetValue(id, out var ui))
                 {
                     ui.RefreshSelected();
-                    ui.RefreshLine();
+                    RefreshLineByNode(id);
                 }
             }
 
@@ -421,7 +499,6 @@ namespace Script.UI.Panel.Auto
         // 按id列表刷新线段
         public void RefreshLineByNode(string node_id)
         {
-
             var line_ids = manager.GetLinesByNode(_scriptData, node_id);
 
             foreach (var id in line_ids)
@@ -434,10 +511,24 @@ namespace Script.UI.Panel.Auto
             }
         }
 
-        // 数据层面删线段
+        // 增线段
+        public void AddLine(AutoScriptData scriptData, string from_id, string to_id, bool isTrue)
+        {
+            manager.AddLine(scriptData, from_id, to_id, isTrue);
+            RefreshNodeSlot(from_id);
+            RefreshNodeSlot(to_id);
+            RefreshLineByNode(from_id);
+            RefreshLineByNode(to_id);
+            SyncData();
+        }
+        // 删线段
         public void DeleteLine(string from_id, string to_id)
         {
             manager.DeleteLine(_scriptData, from_id, to_id);
+            RefreshNodeSlot(from_id);
+            RefreshNodeSlot(to_id);
+            RefreshLineByNode(from_id);
+            RefreshLineByNode(to_id);
             SyncData();
         }
 
@@ -459,43 +550,201 @@ namespace Script.UI.Panel.Auto
             _tempLine.SetActive(false);
         }
 
-        // 
-        Dictionary<NodeType, Vector2[]> _lineEndPosCache;
-
-        // type: 0-in, 1-out_true, 2-out_false  ,画布(0,0)为原点下的坐标
-        public Vector2 GetLineEndPos(BaseNodeData nData, int type)
+        // 初始化节点插槽位置
+        void InitNodeSlotPos()
         {
-            if (_lineEndPosCache == null)
-            {
-                _lineEndPosCache = new Dictionary<NodeType, Vector2[]>();
-                foreach (var t in AutoDataUIConfig.NodeTypes)
-                {
-                    GetPool(t, out var _, out var go);
+            if (_nodeUISlotPos != null) return;
+            _nodeUISlotPos = new Dictionary<NodeType, Vector2[]>();
+            _nodeUISlotCache = new Dictionary<string, int>();
 
-                    if (t == NodeType.ConditionOper)
+            foreach (var t in AutoDataUIConfig.NodeTypes)
+            {
+                Vector2[] l = null;
+                GetPool(t, out var _, out var go);
+                var ui = go.GetComponent<ProcessNodeUI>();
+                var rectT = go.GetComponent<RectTransform>();
+                if (t == NodeType.TemplateMatchOper)
+                {
+                    l = new Vector2[3];
+                    l[0] = Utils.GetRelativePosToParent(ui.InflowNode);
+                    l[1] = Utils.GetRelativePosToParent(ui.TrueOutNode);
+                    l[2] = Utils.GetRelativePosToParent(ui.FalseOutNode);
+                }
+                else
+                {
+                    bool isCircle = t == NodeType.MouseOper || t == NodeType.KeyBoardOper;
+                    if (isCircle)
                     {
-                        var template = go.GetComponent<AssignNodeUI>();
-                        var l = new Vector2[3];
-                        _lineEndPosCache[t] = l;
-                        l[0] = Utils.GetRelativePosToParent(template.InflowNode);
-                        l[1] = Utils.GetRelativePosToParent(template.TopCircle.GetComponent<RectTransform>());
-                        l[2] = Utils.GetRelativePosToParent(template.BottomCircle.GetComponent<RectTransform>());
+                        float r_w = rectT.rect.width / 2 + 16;
+                        float r_h = r_w;
+                        float sqr_w = r_w / 1.414f;
+                        float sqr_h = r_h / 1.414f;
+                        l = new Vector2[8] {
+                            new Vector2(0, -r_h), new Vector2(-sqr_w, -sqr_h), new Vector2(-r_w, 0), new Vector2(-sqr_w, sqr_h),
+                            new Vector2(0, r_h), new Vector2(sqr_w, sqr_h), new Vector2(r_w, 0), new Vector2(sqr_w, -sqr_h)
+                        };
                     }
                     else
                     {
-                        GetLineEndOwnership(t, out bool in_own, out bool out_true_own, out bool out_false_own);
-                        var template = go.GetComponent<ProcessNodeUI>();
-                        var l = new Vector2[3];
-                        _lineEndPosCache[t] = l;
-                        if (in_own) l[0] = Utils.GetRelativePosToParent(template.InflowNode);
-                        if (out_true_own) l[1] = Utils.GetRelativePosToParent(template.TrueOutNode);
-                        if (out_false_own) l[2] = Utils.GetRelativePosToParent(template.FalseOutNode);
+                        float w_half = rectT.rect.width / 2 + 18;
+                        float h_half = rectT.rect.height / 2 + 12;
+                        float sqr_w = w_half - 3;
+                        float sqr_h = h_half - 3;
+
+                        l = new Vector2[8] {
+                            new Vector2(0, -h_half), new Vector2(-sqr_w, -sqr_h), new Vector2(-w_half, 0), new Vector2(-sqr_w, sqr_h),
+                            new Vector2(0, h_half), new Vector2(sqr_w, sqr_h), new Vector2(w_half, 0), new Vector2(sqr_w, -sqr_h)
+                        };
                     }
+                }
+                _nodeUISlotPos[t] = l;
+            }
+
+            _nodeUISlotDefault = new Dictionary<NodeType, int[]>()
+            {
+                { NodeType.TemplateMatchOper, new int[]{0,1,2} },
+                { NodeType.MouseOper, new int[]{2,6} },
+                { NodeType.KeyBoardOper, new int[]{2,6} },
+                { NodeType.AssignOper, new int[]{2,6} },
+                { NodeType.ConditionOper, new int[]{2,5,7} },
+                { NodeType.TriggerEvent, new int[]{2,6} },
+                { NodeType.ListenEvent, new int[]{2,6}}
+            };
+
+
+        }
+
+        // type: 0-in, 1-out_true, 2-out_false  ,画布(0,0)为原点下的坐标
+        // 每个节点要在_nodeUISlotCache 初始化
+        public Vector2 GetLineEndPos(BaseNodeData nData, int type)
+        {
+            Vector2 offset = default;
+            var id = nData.Id + "-" + type;
+            var pos_list = _nodeUISlotPos[nData.NodeType];
+
+            // 没有的就用默认的
+            if (_nodeUISlotCache.TryGetValue(id, out int slot_i))
+            {
+                offset = pos_list[slot_i];
+            }
+            else
+            {
+                slot_i = _nodeUISlotDefault[nData.NodeType][type];
+                offset = pos_list[slot_i];
+            }
+
+            return Map.MapConvert(nData.Pos) + offset;
+        }
+
+        public void RefreshNodeSlot(string node_id)
+        {
+            var self_ui = GetNode(node_id);
+            if (self_ui == null)
+                return;
+
+            BaseNodeData self = _scriptData.NodeDatas[node_id];
+            // 模版匹配节点用固定的位置
+            if (self.NodeType == NodeType.TemplateMatchOper)
+                return;
+
+            int type = 0;
+            int direction = 0;  // 0-下，转一圈
+            var pos_list = new List<Vector2>(_nodeUISlotPos[self.NodeType]);
+            var self_pos = Map.MapConvert(self.Pos);
+            Vector2 target_pos = default;
+            var default_list = _nodeUISlotDefault[self.NodeType];
+
+            GetLineEndOwnership(self.NodeType, out bool _, out bool _, out bool out_false_has);
+
+            if (!_nodeUISlotCache.TryGetValue(self.Id + "-0", out int value_0))
+                value_0 = default_list[0];
+            if (!_nodeUISlotCache.TryGetValue(self.Id + "-1", out int value_1))
+                value_1 = default_list[1];
+
+            int value_2 = 0;
+            if (out_false_has && !_nodeUISlotCache.TryGetValue(self.Id + "-2", out value_2))
+                value_2 = default_list[2];
+
+            HashSet<int> used = new HashSet<int>();
+
+            if (self.LastNode.Count > 0)
+            {
+                type = 0;
+                used.Clear();
+                used.Add(value_1);
+                if (out_false_has) used.Add(value_2);
+                BaseNodeData target = _scriptData.NodeDatas[self.LastNode[0]];
+                if (target.NodeType == NodeType.TemplateMatchOper)
+                    target_pos = target.TrueNextNodes.Contains(node_id) ? GetLineEndPos(target, 1) : GetLineEndPos(target, 2);
+                else
+                    target_pos = Map.MapConvert(target.Pos);
+                direction = GetMinDistanceSlot(self_pos, target_pos, pos_list, used);
+                _nodeUISlotCache[self.Id + "-" + type] = direction;
+                value_0 = direction;
+            }
+
+            if (self.TrueNextNodes.Count > 0)
+            {
+                type = 1;
+                used.Clear();
+                used.Add(value_0);
+                if (out_false_has) used.Add(value_2);
+
+                used.Remove(default_list[1]);
+                BaseNodeData target = _scriptData.NodeDatas[self.TrueNextNodes[0]];
+                if (target.NodeType == NodeType.TemplateMatchOper)
+                    target_pos = GetLineEndPos(target, 0);
+                else
+                    target_pos = Map.MapConvert(target.Pos);
+                direction = GetMinDistanceSlot(self_pos, target_pos, pos_list, used);
+                _nodeUISlotCache[self.Id + "-" + type] = direction;
+                used.Add(direction);
+                value_1 = direction;
+
+            }
+
+            if (self.FalseNextNodes.Count > 0)
+            {
+                type = 2;
+                used.Clear();
+                used.Add(value_0);
+                used.Add(value_1);
+
+                if (default_list.Count() > 2)
+                    used.Remove(default_list[2]);
+                BaseNodeData target = _scriptData.NodeDatas[self.FalseNextNodes[0]];
+                if (target.NodeType == NodeType.TemplateMatchOper)
+                    target_pos = GetLineEndPos(target, 0);
+                else
+                    target_pos = Map.MapConvert(target.Pos);
+                direction = GetMinDistanceSlot(self_pos, target_pos, pos_list, used);
+                _nodeUISlotCache[self.Id + "-" + type] = direction;
+                used.Add(direction);
+                value_2 = direction;
+
+            }
+
+            self_ui.RefreshSlotUI();
+        }
+
+
+        // 获取最小距离的插槽
+        int GetMinDistanceSlot(Vector2 self_pos, Vector2 target_pos, List<Vector2> pos_list, HashSet<int> used)
+        {
+            float min_distance = float.MaxValue;
+            int direction = 0;  // 0-下，转一圈
+            for (int i = 0; i < 8; i++)
+            {
+                if (used.Contains(i)) continue;
+                var t = (self_pos + pos_list[i] - target_pos).SqrMagnitude();
+                if (t < min_distance)
+                {
+                    min_distance = t;
+                    direction = i;
                 }
             }
 
-            var list = _lineEndPosCache[nData.NodeType];
-            return Map.MapConvert(nData.Pos) + list[type];
+            return direction;
         }
 
         public void GetLineEndOwnership(NodeType type, out bool in_has, out bool out_true_has, out bool out_false_has)
@@ -533,10 +782,16 @@ namespace Script.UI.Panel.Auto
             }
         }
         #endregion
-
+        #region Others
         void OnDisable()
         {
-            manager.SaveScript(_id);
+            Save();
+        }
+
+        void Save()
+        {
+            if (_id != null)
+                manager.SaveScript(_id);
         }
 
         void LateUpdate()
@@ -548,5 +803,7 @@ namespace Script.UI.Panel.Auto
                 _lastSaveTime = now;
             }
         }
+
+        #endregion
     }
 }

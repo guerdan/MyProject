@@ -65,7 +65,7 @@ namespace Script.Model.Auto
             _allVars[IN_VarName] = inData;
             Action delete = null;
 
-            var in_type = inData.GetType().Name;
+            string in_type = inData?.GetType().Name;
             switch (in_type)
             {
                 case "Single":

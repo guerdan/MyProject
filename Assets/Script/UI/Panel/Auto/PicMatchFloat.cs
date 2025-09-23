@@ -68,14 +68,14 @@ namespace Script.UI.Panel.Auto
 
             DU.StartTimer();
 
-            var result_list = IU.FindResult(result, matT.Width, matT.Height, threshold);
+            var result_list = IU.FindResult(result, matT.Width, matT.Height, threshold,out _);
 
             AssetManager.Inst.LoadAssetAsync<GameObject>(PathUtil.SquareFrameUIPath, (go) =>
             {
                 Utils.RefreshItemListByCount(frameUIList, result_list.Count, go, NInput, (item, index) =>
                 {
                     var matchResult = result_list[index];
-                    item.SetData(matchResult.Score, matchResult.Rect);
+                    item.SetData(matchResult.Score.ToString(), matchResult.Rect);
                 });
             }, this);
             DU.Log(DU.StopTimer($"筛选"));

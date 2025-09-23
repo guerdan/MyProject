@@ -13,20 +13,25 @@ namespace Script.UI.Component
     /// </summary>
     public class ImageLoadComp : MonoBehaviour
     {
-        [SerializeField] private Image Image;
+        [SerializeField] public Image Image;
         [SerializeField] private float Border = 3;
         [SerializeField] private Text SizeText;
         [SerializeField] private Button Btn;
 
+
         private Sprite TransparentSprite;
+        private Vector2 _ori_size;
         private Vector2 _size;
         private string _path;
         private bool _canClick;
+        private float _scale;
 
         void Awake()
         {
             TransparentSprite = Image.sprite;
             Btn?.onClick.AddListener(OnClick);
+            _ori_size = GetComponent<RectTransform>().sizeDelta;
+            _ori_size = new Vector2(_ori_size.x - 2 * Border, _ori_size.y - 2 * Border);
         }
 
         public void SetData(string path, Vector2 max_size = default, bool canClick = true
@@ -34,7 +39,7 @@ namespace Script.UI.Component
         {
             if (!ImageManager.Inst.TryLoadSprite(path, Image, out var spr))
             {
-                GetComponent<RectTransform>().sizeDelta = new Vector2(max_size.x + Border, max_size.y + Border);
+                GetComponent<RectTransform>().sizeDelta = _ori_size;
                 Image.sprite = TransparentSprite;
                 Image.raycastTarget = false;
                 if (SizeText) SizeText.text = "";
@@ -55,25 +60,42 @@ namespace Script.UI.Component
                 {
                     w *= scale;
                     h *= scale;
+                    _scale = scale;
                 }
                 else if (scale > preferred_scale)
                 {
                     w *= preferred_scale;
                     h *= preferred_scale;
+                    _scale = preferred_scale;
+                }
+                else
+                {
+                    _scale = 1;
                 }
             }
 
-            GetComponent<RectTransform>().sizeDelta = new Vector2(w + Border, h + Border);
+            GetComponent<RectTransform>().sizeDelta = new Vector2(w + 2 * Border, h + 2 * Border);
             _size = new Vector2(w, h);
             if (SizeText) SizeText.text = string.Format("{0} * {1}", (int)spr.rect.width, (int)spr.rect.height);
         }
 
 
-
+        /// <summary>
+        /// 图片大小
+        /// </summary>
         public Vector2 GetSize()
         {
-            return _size;
+            if (_size == default)
+                return _ori_size;
+            else
+                return _size;
         }
+
+        public float GetScale()
+        {
+            return _scale;
+        }
+
 
 
         void OnClick()
@@ -81,7 +103,7 @@ namespace Script.UI.Component
             if (!_canClick) return;
             UIManager.Inst.ShowPanel(PanelEnum.ImageInfoPanel, _path);
         }
-       
+
 
         // public void OnPointerDown(PointerEventData eventData)
         // {

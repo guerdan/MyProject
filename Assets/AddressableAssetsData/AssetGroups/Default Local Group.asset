@@ -49,6 +49,14 @@ MonoBehaviour:
     m_Address: Auto/Prefabs/TemplateMatchDrawResultPanel
     m_ReadOnly: 0
     m_SerializedLabels: []
+  - m_GUID: 47c3a630b26bb2c41910d93a53c99a97
+    m_Address: Common/Prefabs/Panel/ImageMatchTestPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 4c7182d95be56684e968b08ca3c7d921
+    m_Address: Common/Prefabs/Panel/ImageCompareTestPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 461c0bb45d0c65047b0497b6d6fed90a, type: 2}
   m_SchemaSet:
