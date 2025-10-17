@@ -160,6 +160,13 @@ namespace Script.UI.Panel.Auto.Node
             }
         }
 
+        public virtual void Clear()
+        {
+            Utils.SetActive(TrueOutNode, false);
+            Utils.SetActive(FalseOutNode, false);
+        }
+
+
         /// <summary>
         /// 设置坐标
         /// </summary>

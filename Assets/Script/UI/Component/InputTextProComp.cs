@@ -19,6 +19,7 @@ namespace Script.UI.Component
     {
 
         [SerializeField] private CustomInputField InputText;
+        [SerializeField] public CheckBox ValidCheck;
 
 
         Action<string> _onEndEditFunc;          //输入结束行为,一般要保存编辑后的数据
@@ -33,8 +34,6 @@ namespace Script.UI.Component
         int _keywordStart;                   //提示词，关键词起始位置
 
         Vector2 _relativePos;                   //相对位置
-
-        CheckBox _checkBox;                     //检查组件
         Func<string, bool> _checkFunc;          //检查方法
 
         void Awake()
@@ -67,9 +66,8 @@ namespace Script.UI.Component
             _extractKeyFunc = extractKeyFunc;
         }
 
-        public void UseCheckBox(CheckBox checkBox, Func<string, bool> checkFunc)
+        public void UseCheckBox(Func<string, bool> checkFunc)
         {
-            _checkBox = checkBox;
             _checkFunc = checkFunc;
             RefreshCheckBox();
         }
@@ -217,10 +215,10 @@ namespace Script.UI.Component
 
         void RefreshCheckBox()
         {
-            if (_checkBox == null) return;
+            if (ValidCheck == null || _checkFunc == null) return;
 
             bool legal = _checkFunc(InputText.text);
-            _checkBox.SetData(legal);
+            ValidCheck.SetData(legal);
         }
 
         /// <summary>

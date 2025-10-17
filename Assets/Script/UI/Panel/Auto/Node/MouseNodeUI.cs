@@ -10,9 +10,16 @@ namespace Script.UI.Panel.Auto.Node
         [SerializeField] private RectTransform Icon;      // 图标
         public override void RefreshContent()
         {
-            MouseOperNode data = _data as MouseOperNode;
-            Icon.localScale = new Vector3(data.ClickType == 0 ? 1 : -1, 1, 1);
-            Icon.anchoredPosition = new Vector2(data.ClickType == 0 ? -3 : 3, 5);
+            if (_data is MouseOperNode mouseNode)
+            {
+                Icon.localScale = new Vector3(mouseNode.ClickType == 0 ? 1 : -1, 1, 1);
+                Icon.anchoredPosition = new Vector2(mouseNode.ClickType == 0 ? -3 : 3, 5);
+            }
+            // 接收难民
+            else if (_data is MapCaptureNode mapCaptureNode)
+            {
+
+            }
         }
     }
 }

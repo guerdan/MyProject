@@ -62,10 +62,11 @@ namespace Script.UI.Panel.Auto
 
 
         [Header("各式节点预制件")]
-        [SerializeField] public GameObject TemplateMatchPre;   //普通节点
+        [SerializeField] public GameObject TemplateMatchPre;   //模版匹配节点
         [SerializeField] public GameObject MouseNodePre;    //鼠标节点
         [SerializeField] public GameObject KeyboardNodePre; //键盘节点
         [SerializeField] public GameObject AssignNodePre;   //赋值节点
+        [SerializeField] public GameObject MapCaptureNodePre;   //赋值节点
 
         //当前选中的节点 格式：
         //节点id: "node-{index}"
@@ -83,16 +84,18 @@ namespace Script.UI.Panel.Auto
         }
 
         [NonSerialized] public CanvasConfig CanvasCfg;
+        [NonSerialized] public string MouseHoverId;                         // 鼠标悬浮的节点
+        [NonSerialized] public string _id;                                  // 脚本id
+        [NonSerialized] public AutoScriptData _scriptData;                  // 脚本运行时数据
+        [NonSerialized] public bool HoldCtrl;                               // 长按Ctrl键状态
 
-        [NonSerialized] public string MouseHoverId;         //悬浮的节点
-
-        [NonSerialized] public string _id;                                  //脚本id
-        [NonSerialized] public AutoScriptData _scriptData;                  //脚本运行时数据
 
         SPool _templateMatchNodeUIPool;
         SPool _mouseNodeUIPool;
         SPool _keyboardNodeUIPool;
         SPool _assignNodeUIPool;
+        SPool _mapCaptureNodeUIPool;
+
 
         SPool _linePool;
         GameObject _tempLine; //拖拽时的临时线段
@@ -127,16 +130,18 @@ namespace Script.UI.Panel.Auto
             MouseNodePre.SetActive(false);
             KeyboardNodePre.SetActive(false);
             AssignNodePre.SetActive(false);
+            MapCaptureNodePre.SetActive(false);
 
             var trans_line = LinePre.GetComponent<RectTransform>();
             trans_line.anchorMin = new Vector2(0, 0);
             trans_line.anchorMax = new Vector2(0, 0);
 
             _linePool = new SPool(LinePre, 0, "LineUI");
-            _templateMatchNodeUIPool = new SPool(TemplateMatchPre, 0, "C_NodeUI");
+            _templateMatchNodeUIPool = new SPool(TemplateMatchPre, 0, "T_NodeUI");
             _mouseNodeUIPool = new SPool(MouseNodePre, 0, "M_NodeUI");
             _keyboardNodeUIPool = new SPool(KeyboardNodePre, 0, "K_NodeUI");
             _assignNodeUIPool = new SPool(AssignNodePre, 0, "A_NodeUI");
+            _mapCaptureNodeUIPool = new SPool(MapCaptureNodePre, 0, "Map_NodeUI");
         }
 
         public override void SetData(object data)
@@ -216,14 +221,14 @@ namespace Script.UI.Panel.Auto
         }
 
         #region Update
-        public bool HoldCtrl;
 
         void Update()
         {
 
             //上方有界面就应该跳过
-            BasePanel last = UISceneMixin.Inst.PeekPanel(PanelDefine.Layer) as BasePanel;
-            if (last && last.PanelDefine.Key != PanelDefine.Key)
+            BasePanel last = UISceneMixin.Inst.PeekPanel(PanelUtil.GetLayer(UITypeEnum.WindowsPopUp)) as BasePanel;
+            BasePanel last1 = UISceneMixin.Inst.PeekPanel(PanelUtil.GetLayer(UITypeEnum.PopUp)) as BasePanel;
+            if (last && last.PanelDefine.Key != PanelDefine.Key || last1 != null)
             {
                 return;
             }
@@ -405,6 +410,7 @@ namespace Script.UI.Panel.Auto
 
             // UI层主动删除节点
             _nodeUIMap.Remove(id);
+            nodeUI.Clear();
             PushToPool(nodeUI);
             // 刷新出新节点
             SyncData();
@@ -440,6 +446,10 @@ namespace Script.UI.Panel.Auto
                 case NodeType.ListenEvent:
                     pool = _assignNodeUIPool;
                     prefab = AssignNodePre;
+                    break;
+                case NodeType.MapCapture:
+                    pool = _mapCaptureNodeUIPool;
+                    prefab = MapCaptureNodePre;
                     break;
 
             }
@@ -608,7 +618,8 @@ namespace Script.UI.Panel.Auto
                 { NodeType.AssignOper, new int[]{2,6} },
                 { NodeType.ConditionOper, new int[]{2,5,7} },
                 { NodeType.TriggerEvent, new int[]{2,6} },
-                { NodeType.ListenEvent, new int[]{2,6}}
+                { NodeType.ListenEvent, new int[]{2,6}},
+                { NodeType.MapCapture, new int[]{2,6}},
             };
 
 
@@ -760,6 +771,7 @@ namespace Script.UI.Panel.Auto
                 case NodeType.MouseOper:
                 case NodeType.KeyBoardOper:
                 case NodeType.AssignOper:
+                case NodeType.MapCapture:
                     in_has = true;
                     out_true_has = true;
                     out_false_has = false;

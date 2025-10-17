@@ -9,6 +9,12 @@ namespace Script.UI.Panel.Auto
 {
     public class TemplateMatchDrawResultPanel : BasePanel
     {
+        static Color Blue;
+        static TemplateMatchDrawResultPanel()
+        {
+            Blue = Utils.ParseHtmlString("#003EFF");
+        }
+
         [SerializeField] private RectTransform Content;
         [SerializeField] private GameObject Prefab;
 
@@ -41,7 +47,7 @@ namespace Script.UI.Panel.Auto
                        item.SetData($"P({(int)r.x},{(int)r.y}), Size({(int)r.w},{(int)r.h})", r, Color.red, 32);
                    }
                    else if (matchResult.UIType == 2)  // 失败后的，最高分数
-                       item.SetData(DU.FloatFormat(matchResult.Score, 2), matchResult.Rect, Color.yellow);
+                       item.SetData(DU.FloatFormat(matchResult.Score, 2), matchResult.Rect, new Color());
                });
 
             _countDown = duration;

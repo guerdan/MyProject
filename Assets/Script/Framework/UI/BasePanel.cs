@@ -53,7 +53,7 @@ namespace Script.Framework.UI
         protected bool _useScaleAnim = true;
 
 
-        public bool Display { get { return display; }}
+        public bool Display { get { return display; } }
         public PanelDefine PanelDefine { get { return _panelDefine; } set { _panelDefine = value; } }
         public int StackIndex { get { return _stackIndex; } set { _stackIndex = value; } }
         public Transform Transform { get { return transform; } }
@@ -255,8 +255,11 @@ namespace Script.Framework.UI
         }
         public void OnPointerUp(PointerEventData eventData)
         {
-            UISceneMixin.Inst.ToFirst(this, null);
-            // DU.LogWarning($"ToFirst {PanelDefine.Name}");
+            if (PanelDefine.Type == UITypeEnum.WindowsPopUp)
+            {
+                UISceneMixin.Inst.ToFirst(this, null);
+                // DU.LogWarning($"ToFirst {PanelDefine.Name}");
+            }
         }
     }
 }

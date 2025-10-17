@@ -158,5 +158,7 @@ namespace Script.UI.Panel.Auto.Node
             return new Vector2(x, y);
         }
 
+
+
     }
 }

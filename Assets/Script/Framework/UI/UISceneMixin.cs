@@ -34,7 +34,7 @@ namespace Script.Framework.UI
 
             // 界面栈
             _panelStacks = new List<PanelStack>();
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
             {
                 _panelStacks.Add(CreateStack($"PanelStack{i}"));
             }

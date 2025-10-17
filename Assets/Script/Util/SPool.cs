@@ -60,6 +60,7 @@ namespace Script.Util
             item.SetActive(false);
             _cache.Add(item);
         }
+        
 
     }
 }

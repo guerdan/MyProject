@@ -22,12 +22,14 @@ namespace Script.UI.Component
     }
     /// <summary>
     /// 算出Image大小，再改变自身大小
+    /// 参考坐标系是 左下角为原点，X轴向右，Y轴向上
     /// </summary>
     public class ImageDetailComp : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
     {
         [SerializeField] public ScrollRect ScrollRect;
         [SerializeField] public Image Image;
         [SerializeField] public RectTransform LineParent;
+        [SerializeField] public RectTransform ColorParent;
         [SerializeField] public GameObject LinePre;
         [SerializeField] private Text SizeText;
         [SerializeField] private SquareFrameUI SelectPixelUI;             // 选中像素点的框
@@ -37,7 +39,7 @@ namespace Script.UI.Component
         Sprite TransparentSprite;
         string _path;
         float _edgeLen;             // 视区边长
-        Vector2 _imageSize;         // texture尺寸大小
+        Vector2Int _imageSize;         // texture尺寸大小
 
         float _viewW;               // 视区宽
         float _viewH;               // 视区高
@@ -51,17 +53,44 @@ namespace Script.UI.Component
         float MaxScale;             // 最大缩放比例，_edgeLenX_edgeLen的视窗下显示 10X10个像素，_edgeLen/10=30
         float ScaleStep = 1.1f;     // 步长, 次方的底数
 
-        bool showLine => _sizeScale >= 12;
+        bool showLine => _sizeScale >= 12;          //显示参考线和选中像素的“缩放”临界点
 
-        List<RectTransform> _verticalLines = new List<RectTransform>();        // 参考线实例缓存
-        List<RectTransform> _horizonLines = new List<RectTransform>();        // 参考线实例缓存
+        int startXIndex;            // 参考线X索引
+        int endXIndex;              // 参考线X索引
+        int startYIndex;            // 参考线Y索引
+        int endYIndex;              // 参考线Y索引
+
+
+        List<RectTransform> _verticalLines = new List<RectTransform>();         // 参考线实例缓存
+        List<RectTransform> _horizonLines = new List<RectTransform>();          // 参考线实例缓存
+        List<RectTransform> _verticalLines1 = new List<RectTransform>();         // 参考线实例缓存
+        List<RectTransform> _horizonLines1 = new List<RectTransform>();          // 参考线实例缓存
+        List<SquareFrameUI> _colorPixelObjs = new List<SquareFrameUI>();           // 颜色格子实例缓存
+
 
         Vector2 _cursor_down_pos;
-        Vector2 _select_pixel_pos;   // 选中像素点的位置, 以左下角为原点
+        Vector2Int _select_pixel_pos;                      // 选中像素点的位置, 以左下角为原点
 
         Action<float> _onScaleChange;
         Action<Vector2> _onScroll;
-        Action<Vector2> _onSelectPixel;
+        Action<Vector2Int> _onSelectPixel;
+        // Dic<哪些格子，涂的颜色>
+        Color[,] _colorData;
+        Color[,] colorData
+        {
+            get
+            {
+                if (_colorData == null)
+                {
+                    _colorData = new Color[_imageSize.x, _imageSize.y];
+                }
+                return _colorData;
+            }
+        }
+
+        Dictionary<Color, (int, float)> _colorIndex = new Dictionary<Color, (int, float)>();
+
+
         void Awake()
         {
             _edgeLen = 500;
@@ -73,47 +102,47 @@ namespace Script.UI.Component
             MaxScale = _edgeLen / 10f;
             _imageRT = Image.GetComponent<RectTransform>();
             _imageRT.anchoredPosition = default;
-            LinePre.SetActive(false);
             SelectPixelUI.gameObject.SetActive(false);
             Float.SelfRT.gameObject.SetActive(false);
+
+            LinePre.SetActive(false);
 
             ScrollRect.onValueChanged.AddListener(OnScroll);
         }
 
 
 
-        public void SetData(string path, Action<float> onScaleChange = null
-            , Action<Vector2> onScroll = null, Action<Vector2> onSelectPixel = null)
+        public void SetData(string path)
         {
-            if (!ImageManager.Inst.TryLoadSprite(path, Image, out var spr))
+            if (!ImageManager.Inst.TryLoadSprite(path, Image, out var spr, true, true))
             {
                 Image.sprite = TransparentSprite;
                 if (SizeText) SizeText.text = "";
                 return;
             }
-            _onScaleChange = onScaleChange;
-            _onScroll = onScroll;
-            _onSelectPixel = onSelectPixel;
-
             _path = path;
+            SetData(spr);
+        }
 
+        public void SetData(Sprite spr)
+        {
             spr.texture.filterMode = FilterMode.Point;
             Image.sprite = spr;
-            _imageSize = new Vector2(spr.rect.width, spr.rect.height);
-            if (SizeText) SizeText.text = string.Format("{0} * {1}", (int)_imageSize.x, (int)_imageSize.y);
+            _imageSize = new Vector2Int(spr.texture.width, spr.texture.height);
+            if (SizeText) SizeText.text = string.Format("{0} * {1}", _imageSize.x, _imageSize.y);
 
 
             MinScale = Math.Min(_edgeLen / _imageSize.x, _edgeLen / _imageSize.y);
             MinScale = Math.Min(MinScale, MaxScale);
             _sizeScale = MinScale;
-            _select_pixel_pos = new Vector2(-1, -1);
+            _select_pixel_pos = new Vector2Int(-1, -1);
 
             RefreshScale();
             ScrollRect.normalizedPosition = new Vector2(0.5f, 0.5f);
         }
 
         public void Change(Action<float> onScaleChange
-            , Action<Vector2> onScroll, Action<Vector2> onSelectPixel)
+            , Action<Vector2> onScroll, Action<Vector2Int> onSelectPixel)
         {
             _onScaleChange = onScaleChange;
             _onScroll = onScroll;
@@ -138,7 +167,7 @@ namespace Script.UI.Component
 
         void RefreshScale()
         {
-            var size = _imageSize * _sizeScale;
+            var size = new Vector2(_imageSize.x * _sizeScale, _imageSize.y * _sizeScale);
             _imageW = size.x;
             _imageH = size.y;
             _contentH = _imageH + _viewH;
@@ -158,12 +187,17 @@ namespace Script.UI.Component
 
         void RefreshLine()
         {
-
+            RefreshLine(1, _verticalLines, _horizonLines, new Color(1, 1, 1, 0.25f), 1);
+            RefreshLine(5, _verticalLines1, _horizonLines1, new Color(0, 1, 0, 0.3f), 2);
+        }
+        void RefreshLine(int pixel_interval, List<RectTransform> verticalList, List<RectTransform> horizonList
+            , Color color, float thickness = 1)
+        {
+            var spacing = pixel_interval * _sizeScale;
             var normalPos = ScrollRect.normalizedPosition;
             // DU.Log($"normal {ScrollRect.normalizedPosition}");
             if (showLine)
             {
-                var spacing = _sizeScale;
                 // 视窗的左下角在Content(以左下角为原点)下的坐标
                 //
                 var x = normalPos.x * (_contentW - _viewW);
@@ -172,14 +206,14 @@ namespace Script.UI.Component
 
                 {   // 绘制竖线
                     var del = 0f;
-                    var startXIndex = 0;
+                    startXIndex = 0;
                     if (x - _viewW / 2 > 0)
                     {
                         del = (x - _viewW / 2) % spacing;
-                        startXIndex = (int)Math.Ceiling((x - _viewW / 2 - del) / spacing);
+                        startXIndex = (int)Math.Floor((x - _viewW / 2 - del) / spacing);
                     }
 
-                    var endXIndex = (int)_imageSize.x - 1;
+                    endXIndex = _imageSize.x / pixel_interval;
                     if (x + _viewW / 2 < _imageW)
                     {
                         del = (x + _viewW / 2) % spacing;
@@ -187,9 +221,11 @@ namespace Script.UI.Component
                     }
 
                     var count = endXIndex - startXIndex + 1;
-                    Utils.RefreshItemListByCount<RectTransform>(_verticalLines, count, LinePre, LineParent, (rect, i) =>
+
+                    Utils.RefreshItemListByCount<RectTransform>(verticalList, count, LinePre, LineParent, (rect, i) =>
                         {
-                            rect.sizeDelta = new Vector2(1, _imageH);
+                            rect.GetComponent<Image>().color = color;
+                            rect.sizeDelta = new Vector2(thickness, _imageH);
                             rect.anchorMin = new Vector2(0, 0.5f);
                             rect.anchorMax = new Vector2(0, 0.5f);
                             rect.anchoredPosition = new Vector2((startXIndex + i) * spacing + _viewW / 2, 0);
@@ -198,14 +234,14 @@ namespace Script.UI.Component
 
                 {   // 绘制横线
                     var del = 0f;
-                    var startYIndex = 0;
+                    startYIndex = 0;
                     if (y - _viewH / 2 > 0)
                     {
                         del = (y - _viewH / 2) % spacing;
-                        startYIndex = (int)Math.Ceiling((y - _viewH / 2 - del) / spacing);
+                        startYIndex = (int)Math.Floor((y - _viewH / 2 - del) / spacing);
                     }
 
-                    var endYIndex = (int)_imageSize.y - 1;
+                    endYIndex = _imageSize.y / pixel_interval;
                     if (y + _viewH / 2 < _imageH)
                     {
                         del = (y + _viewH / 2) % spacing;
@@ -213,9 +249,10 @@ namespace Script.UI.Component
                     }
 
                     var count = endYIndex - startYIndex + 1;
-                    Utils.RefreshItemListByCount<RectTransform>(_horizonLines, count, LinePre, LineParent, (rect, i) =>
+                    Utils.RefreshItemListByCount<RectTransform>(horizonList, count, LinePre, LineParent, (rect, i) =>
                         {
-                            rect.sizeDelta = new Vector2(_imageW, 1);
+                            rect.GetComponent<Image>().color = color;
+                            rect.sizeDelta = new Vector2(_imageW, thickness);
                             rect.anchorMin = new Vector2(0.5f, 0);
                             rect.anchorMax = new Vector2(0.5f, 0);
                             rect.anchoredPosition = new Vector2(0, (startYIndex + i) * spacing + _viewH / 2);
@@ -225,8 +262,8 @@ namespace Script.UI.Component
             }
             else
             {
-                Utils.RefreshItemListByCount<RectTransform>(_verticalLines, 0, LinePre, LineParent, null);
-                Utils.RefreshItemListByCount<RectTransform>(_horizonLines, 0, LinePre, LineParent, null);
+                Utils.RefreshItemListByCount<RectTransform>(verticalList, 0, LinePre, LineParent, null);
+                Utils.RefreshItemListByCount<RectTransform>(horizonList, 0, LinePre, LineParent, null);
             }
         }
 
@@ -236,6 +273,7 @@ namespace Script.UI.Component
 
             RefreshLine();
             RefreshSelectPixel();
+            RefreshPixelColor();
             _onScroll?.Invoke(cur);
         }
 
@@ -265,29 +303,127 @@ namespace Script.UI.Component
 
             SelectPixelUI.gameObject.SetActive(true);
             SelectPixelUI.transform.SetParent(ScrollRect.content);
-            var pos = new Vector2(
-               _viewW / 2 + _select_pixel_pos.x * spacing - _contentW / 2 + spacing / 2,
-               _viewH / 2 + _select_pixel_pos.y * spacing - _contentH / 2 + spacing / 2);
-
+            var pos = new Vector2(x, y);
             var size = new Vector2(spacing, spacing);
+            SelectPixelUI.SetAnchor(new Vector2(0, 0));
             SelectPixelUI.SetData(pos, size, Color.white);
 
             Float.SelfRT.gameObject.SetActive(true);
             // Float.SelfRT.SetParent(ScrollRect.content);
+            // 父节点与SelectPixelUI的父节点不同
+            //
             var floatRT = Float.SelfRT;
-            var float_pos = pos + new Vector2(0, -spacing / 2 - floatRT.rect.height / 2 - 10);
+            var float_pos = pos + new Vector2(0, -spacing / 2 - floatRT.rect.height / 2 - 10)
+                + new Vector2(-_contentW / 2, -_contentH / 2);
             Float.SelfRT.anchoredPosition = float_pos + ScrollRect.content.anchoredPosition;
 
             var tex = Image.sprite.texture;
             var color = tex.GetPixel((int)_select_pixel_pos.x, (int)_select_pixel_pos.y);
-            var show_y = _imageSize.y - 1 - _select_pixel_pos.y;
-            Float.PosT.text = $"（{(int)_select_pixel_pos.x}   ,   {(int)show_y}）";
+            Float.PosT.text = $"（{(int)_select_pixel_pos.x}   ,   {(int)_select_pixel_pos.y}）";
             Float.RT.text = $"{(int)(color.r * 255)} , ";
             Float.GT.text = $"{(int)(color.g * 255)} , ";
             Float.BT.text = $"{(int)(color.b * 255)}";
             Float.ColorImage.color = color;
         }
+        #endregion
 
+        #region  DrawColor
+
+        /// <summary>
+        /// index可选项为0,1,2
+        /// </summary>
+        public void SetPixelColor(List<Vector2Int> pixels, Color color, int index = 0, float border_width = 1)
+        {
+            foreach (var pos in pixels)
+            {
+                if (pos.x < 0 || pos.x >= _imageSize.x || pos.y < 0 || pos.y >= _imageSize.y)
+                    continue;
+                colorData[pos.x, pos.y] = color;
+            }
+            _colorIndex[color] = (index, border_width);
+            RefreshPixelColor();
+        }
+
+        public void ClearPixelColor(Color color)
+        {
+            for (int i = 0; i < _imageSize.y; i++)
+            {
+                for (int j = 0; j < _imageSize.x; j++)
+                {
+                    var c = colorData[j, i];
+                    if (c == color)
+                        colorData[j, i] = default;
+                }
+            }
+            _colorIndex.Remove(color);
+            RefreshPixelColor();
+        }
+        void RefreshPixelColor()
+        {
+            if (!showLine)
+            {
+                Utils.RefreshItemListByCount(_colorPixelObjs, 0, SelectPixelUI.gameObject
+                , ScrollRect.content, null);
+                return;
+            }
+            // 格子颜色列表
+            var pixels = new List<Vector2>();
+            for (int i = startYIndex; i <= endYIndex; i++)
+            {
+                for (int j = startXIndex; j <= endXIndex; j++)
+                {
+                    var color = colorData[j, i];
+                    if (color != default)
+                        pixels.Add(new Vector2(j, i));
+                }
+            }
+
+
+            Utils.RefreshItemListByCount<SquareFrameUI>(_colorPixelObjs, pixels.Count, SelectPixelUI.gameObject
+                , ColorParent, (item, i) =>
+                {
+                    var indexPos = pixels[i];
+                    var x = (int)indexPos.x;
+                    var y = (int)indexPos.y;
+                    var color = colorData[x, y];
+                    var spacing = _sizeScale;
+                    var sort_info = _colorIndex[color];
+                    item.transform.SetParent(ColorParent.GetChild(sort_info.Item1));
+
+                    var size = new Vector2(spacing, spacing);
+                    item.SetAnchor(new Vector2(0, 0));
+                    var pos = new Vector2(
+                        _viewW / 2 + indexPos.x * spacing + spacing / 2,
+                        _viewH / 2 + indexPos.y * spacing + spacing / 2);
+
+                    var border_width = Mathf.Min(4, _sizeScale * 0.2f);
+                    item.SetData(pos, size, color, border_width * sort_info.Item2);
+                    int show_border = 0;
+                    int x_end = _imageSize.x - 1;
+                    int y_end = _imageSize.y - 1;
+
+
+                    if (y == 0 || colorData[x, y - 1] != color)
+                        show_border |= 1;
+                    if (x == 0 || colorData[x - 1, y] != color)
+                        show_border |= 2;
+                    if (y == y_end || colorData[x, y + 1] != color)
+                        show_border |= 4;
+                    if (x == x_end || colorData[x + 1, y] != color)
+                        show_border |= 8;
+                    if (y == 0 || x == 0 || colorData[x - 1, y - 1] != color)
+                        show_border |= 16;
+                    if (y == y_end || x == 0 || colorData[x - 1, y + 1] != color)
+                        show_border |= 32;
+                    if (y == y_end || x == x_end || colorData[x + 1, y + 1] != color)
+                        show_border |= 64;
+                    if (y == 0 || x == x_end || colorData[x + 1, y - 1] != color)
+                        show_border |= 128;
+
+                    item.ShowBorder(show_border);
+                });
+        }
+        #endregion
 
         public void OnPointerDown(PointerEventData eventData)
         {
@@ -312,7 +448,7 @@ namespace Script.UI.Component
             float y = (localPoint.y + _contentH / 2 - _viewH / 2) / spacing;
             if (x >= 0 && x < _imageSize.x && y >= 0 && y < _imageSize.y)
             {
-                _select_pixel_pos = new Vector2((int)x, (int)y);
+                _select_pixel_pos = new Vector2Int((int)x, (int)y);
                 RefreshSelectPixel();
                 _onSelectPixel?.Invoke(_select_pixel_pos);
             }
@@ -322,7 +458,6 @@ namespace Script.UI.Component
             }
         }
 
-        #endregion
 
         void Clear()
         {
@@ -332,20 +467,19 @@ namespace Script.UI.Component
 
         public void ScaleTo(float scale)
         {
-            if (string.IsNullOrEmpty(_path)) return;
+            if (Image.sprite == null) return;
             _sizeScale = Mathf.Clamp(scale, MinScale, MaxScale);
             RefreshScale();
         }
         public void ScrollTo(Vector2 normalizedPos)
         {
-            if (string.IsNullOrEmpty(_path)) return;
+            if (Image.sprite == null) return;
             ScrollRect.normalizedPosition = normalizedPos;
         }
 
-        public void SelectPixel(Vector2 pixel)
+        public void SelectPixel(Vector2Int pixel)
         {
-            if (string.IsNullOrEmpty(_path)) return;
-
+            if (Image.sprite == null) return;
             if (pixel.x >= 0 && pixel.x < _imageSize.x && pixel.y >= 0 && pixel.y < _imageSize.y)
             {
                 _select_pixel_pos = pixel;
@@ -355,7 +489,7 @@ namespace Script.UI.Component
         /// <summary>
         /// 图片大小
         /// </summary>
-        public Vector2 GetSize()
+        public Vector2Int GetSize()
         {
             return _imageSize;
         }

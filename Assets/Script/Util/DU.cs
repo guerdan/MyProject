@@ -12,6 +12,9 @@ namespace Script.Util
     /// </summary>
     public static class DU
     {
+        // 统计执行的平均时长。Dic<输出名, (次数, 总时长)>
+        static Dictionary<string, (int, double)> _averageTimeDic = new Dictionary<string, (int, double)>();
+
         public static void Log(object msg)
         {
             Debug.Log(msg.ToString());
@@ -80,20 +83,31 @@ namespace Script.Util
 
         public static string RunWithTimer(Action action, string message = "", int logType = 1)
         {
+
             var pre = DateTime.Now;
 
             action.Invoke();
 
             var back = DateTime.Now;
+            double ms = (back - pre).TotalMilliseconds;
 
-            string str = $"{message} 耗时: {(back - pre).TotalMilliseconds} ms";
+            if (!_averageTimeDic.TryGetValue(message, out var tuple))
+            {
+                tuple = (0, 0);
+            }
+            tuple.Item1 += 1;
+            tuple.Item2 += ms;
+            _averageTimeDic[message] = tuple;
+            double avg = tuple.Item2 / tuple.Item1;
+
+            string str = $"{message} 耗时: {ms} ms，平均：{avg} ms";
+
             if (logType == 1)
                 Log(str);
             else if (logType == 2)
                 LogWarning(str);
             else if (logType == 3)
                 LogError(str);
-
             return str;
         }
 

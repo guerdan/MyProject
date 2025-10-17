@@ -11,6 +11,7 @@ using Script.Framework.UI;
 using Script.Util;
 using UnityEngine;
 using Random = UnityEngine.Random;
+using Rect = OpenCvSharp.Rect;
 
 namespace Script.Model.Auto
 {
@@ -33,6 +34,7 @@ namespace Script.Model.Auto
         ConditionOper,      //条件判断操作
         TriggerEvent,       //触发事件
         ListenEvent,        //监听事件
+        MapCapture,        //监听事件
     }
 
     #region AutoScriptSettings
@@ -351,10 +353,14 @@ namespace Script.Model.Auto
             _region = _scriptData.FormulaGetResultV4(RegionExpression);
         }
 
+
+        // 所有的节点 _region汇总，相当于给 Manager 提截屏需求。Manager最后计算并集FrameCaptureRegion
+        // 返回 Mat FrameCapture；节点再input.SubMat(Region)截自己的需求部分
         public override void Action()
         {
             base.Action();
 
+            // 是不是要_region 的范围按截取一下.
             Mat input = _scriptData.Manager.FrameCapture;
             if (input == null)
                 return;
@@ -363,33 +369,44 @@ namespace Script.Model.Auto
             if (!File.Exists(templatePath))
                 return;
 
-            Mat template = IU.GetMat(templatePath, true);
-            int t_width = template.Width;
-            int t_height = template.Height;
-            if (template.Width == 0)
-            {
-                DU.MessageBox($"模版图片格式不对：{templatePath}");
-                return;
-            }
             CVRect inputRect = _scriptData.Manager.FrameCaptureRegion;
+            CVRect r1 = CVRect.GetByRegion(_region);
+
 
             CVMatchResult max_score_r = null;
             // 匹配结果
-            Mat resultMat = null;
-            // DU.RunWithTimer(() =>
-            // {
-            resultMat = IU.MatchTemplate1(input, template);
-            template.Dispose();
-            // }, "MatchTemplate1");
 
-            if (resultMat == null)
-                return;
+            using (Mat template = IU.GetMat(templatePath, true))
+            {
+                int t_width = template.Width;
+                int t_height = template.Height;
+                if (template.Width == 0)
+                {
+                    DU.MessageBox($"模版图片格式不对：{templatePath}");
+                    return;
+                }
+                // DU.RunWithTimer(() =>
+                // {
+                if (inputRect != r1)
+                    input = input.SubMat(new Rect(r1.x - inputRect.x, r1.y - inputRect.y, r1.w, r1.h));
 
-            // DU.RunWithTimer(() =>
-            // {
-            _result = IU.FindResult(resultMat, t_width, t_height, Threshold, out max_score_r);
-            resultMat.Dispose();
-            // }, "FindResult");
+                using (Mat resultMat = IU.MatchTemplate1(input, template))
+                {
+                    if (resultMat == null)
+                        return;
+
+                    // DU.RunWithTimer(() =>
+                    // {
+                    _result = IU.FindResult(resultMat, t_width, t_height, Threshold, out max_score_r);
+                    // }, "FindResult");
+                }
+
+                //用了就释放
+                if (inputRect != r1)
+                    input.Dispose();
+                // }, "MatchTemplate1");
+
+            }
 
             foreach (var item in _result)
             {
@@ -414,21 +431,24 @@ namespace Script.Model.Auto
                 OutData = temp;
             }
 
-
             // UI 展示
             //
-            var draw = new List<CVMatchResult>(_result);
-            draw.Insert(0, new CVMatchResult() { Rect = _scriptData.Manager.FrameCaptureRegion, UIType = 1 }); // 显示截屏范围
-
-            // 为了知道最高分数在哪
-            if (_result.Count == 0)
+            if (_scriptData.Manager.ScreenDrawStatus)
             {
-                max_score_r.Rect.x += inputRect.x;
-                max_score_r.Rect.y += inputRect.y;
-                max_score_r.UIType = 2;
-                draw.Add(max_score_r);
+                var draw = new List<CVMatchResult>(_result);
+                draw.Insert(0, new CVMatchResult() { Rect = _scriptData.Manager.FrameCaptureRegion, UIType = 1 }); // 显示截屏范围
+
+                // 为了知道最高分数在哪
+                if (_result.Count == 0)
+                {
+                    max_score_r.Rect.x += inputRect.x;
+                    max_score_r.Rect.y += inputRect.y;
+                    max_score_r.UIType = 2;
+                    draw.Add(max_score_r);
+                }
+
+                UIManager.Inst.ShowPanel(PanelEnum.TemplateMatchDrawResultPanel, new List<object> { draw, 3.0f });
             }
-            UIManager.Inst.ShowPanel(PanelEnum.TemplateMatchDrawResultPanel, new List<object> { draw, 3.0f });
         }
 
         public override bool GetResult()
@@ -889,6 +909,95 @@ namespace Script.Model.Auto
     }
 
     #endregion
+
+
+    #region MapCaptureN
+    /// <summary>
+    /// 拍摄地图
+    /// </summary>
+    public class MapCaptureNode : BaseNodeData
+    {
+        [JsonProperty("region_expression")]
+        public string RegionExpression = "";
+        [JsonProperty("map_id")]
+        public string MapId = "";
+
+
+        Vector4 _region;
+        MapData _mapData;
+
+        public static MapCaptureNode CreateNew()
+        {
+            var node = new MapCaptureNode();
+            node.Name = "默认名";
+            node.RegionExpression = TemplateMatchOperNode.RegionExpressionDefault;
+
+            return node;
+        }
+
+        public override void Init(AutoScriptData scriptData)
+        {
+            base.Init(scriptData);
+            _nodeType = NodeType.MapCapture;
+
+            MapId = $"Map-{scriptData.Config.Id.Substring(7)}";
+        }
+
+        public Vector4 GetRegion()
+        {
+            return _region;
+        }
+
+        public override void BeforeAction()
+        {
+            base.BeforeAction();
+            _region = _scriptData.FormulaGetResultV4(RegionExpression);
+        }
+
+        public override void Action()
+        {
+            base.Action();
+            if (_region == Vector4.zero)
+                return;
+
+            if (_mapData == null)
+            {
+                MapDataManager.Inst.Create(MapId, CVRect.GetByRegion(_region));
+                _mapData = MapDataManager.Inst.Get(MapId);
+            }
+
+            using (Bitmap bitmap = WU.CaptureWindow(CVRect.GetByRegion(_region)))
+            {
+                _mapData.Capture(bitmap);
+            }
+        }
+
+
+        public override void Copy(BaseNodeData source)
+        {
+            base.Copy(source);
+            var sourceObj = source as MapCaptureNode;
+            RegionExpression = sourceObj.RegionExpression;
+        }
+
+        public override void Clear()
+        {
+            base.Clear();
+            _region = Vector4.zero;
+            if (_mapData != null)
+            {
+                MapDataManager.Inst.Remove(MapId);
+                _mapData = null;
+            }
+
+        }
+
+    }
+
+    #endregion
+
+
+
     #endregion
     #endregion
     #endregion
@@ -896,6 +1005,7 @@ namespace Script.Model.Auto
     public partial class AutoScriptData
     {
         public bool Running => _running;
+        public bool Finish => _finish;
         // 仅编辑模式下展示
         public Dictionary<string, List<TriggerEventNode>> Edit_TriggerNodes = new Dictionary<string, List<TriggerEventNode>>();
         public AutoScriptConfig Config;
@@ -904,6 +1014,7 @@ namespace Script.Model.Auto
         public Dictionary<string, BaseNodeData> ActiveNodes = new Dictionary<string, BaseNodeData>();
         private Dictionary<string, List<ListenEventNode>> _listenNodes = new Dictionary<string, List<ListenEventNode>>();
         private bool _running = false;
+        private bool _finish = true;
 
         public AutoScriptData(AutoScriptConfig config, AutoScriptManager manager)
         {
@@ -918,7 +1029,7 @@ namespace Script.Model.Auto
                 NodeDatas[item.Id] = item;
             }
 
-            // 初始化每个节点的 LastNode
+            // 初始化每个节点的 LastNode, 要是Id对不上， 肯定是新加的代码有问题，排查
             foreach (var item in NodeDatas.Values)
             {
                 item.Init(this);
@@ -968,6 +1079,9 @@ namespace Script.Model.Auto
                     break;
                 case NodeType.ListenEvent:
                     node = ListenEventNode.CreateNew();
+                    break;
+                case NodeType.MapCapture:
+                    node = MapCaptureNode.CreateNew();
                     break;
             }
 
@@ -1072,6 +1186,7 @@ namespace Script.Model.Auto
             if (ActiveNodes.Count == 0)
             {
                 _running = false;
+                _finish = true;
                 Manager.OnScriptEnd?.Invoke();
             }
         }
@@ -1086,6 +1201,7 @@ namespace Script.Model.Auto
             }
 
             _running = true;
+            _finish = false;
 
             //如果起点被删了，修改Config.FirstNode
             if (Config.FirstNode == "" || !NodeDatas.ContainsKey(Config.FirstNode))
@@ -1112,6 +1228,10 @@ namespace Script.Model.Auto
         public void StopScript()
         {
             _running = false;
+        }
+        public void ContinueScript()
+        {
+            _running = true;
         }
 
         public void StartNode(BaseNodeData node)
@@ -1278,6 +1398,7 @@ namespace Script.Model.Auto
         public Action<string> StatusChange;  //通知ui刷新
         public Action OnScriptEnd;  //通知ui刷新
         public bool InfoPanelFolded = true;
+        public bool ScreenDrawStatus = false;
 
         public AutoScriptSettings Settings;
 
@@ -1338,9 +1459,13 @@ namespace Script.Model.Auto
         public void StartScript(string id)
         {
             var scriptData = _scriptDatas[id];
-            if (!scriptData.Running)
+            if (scriptData.Finish)
             {
                 scriptData.StartScript();
+            }
+            else
+            {
+                scriptData.ContinueScript();
             }
         }
 
@@ -1501,33 +1626,45 @@ namespace Script.Model.Auto
                     if (node.CanAction && node is TemplateMatchOperNode templateNode)
                     {
                         var r = templateNode.GetRegion();
-                        regions.Add(new CVRect(r.x, r.y, r.z, r.w));
+                        regions.Add(CVRect.GetByRegion(r));
                         _saveCaptureToLocal |= templateNode.SaveCaptureToLocal;
                     }
                 }
             }
 
             // 计算并集, 有左上角和右下角两点决定矩形。
-            Vector2 left_top = default;
-            Vector2 right_bottom = default;
+            Vector2Int left_top = new Vector2Int(-1, -1);
+            Vector2Int right_bottom = new Vector2Int(-1, -1);
 
             foreach (var r in regions)
             {
-                var lt = r.LeftTop;
-                var rb = r.RightBottom;
+                Vector2Int lt = r.LeftTop;
+                Vector2Int rb = r.RightBottom;
                 // lt在left_top左上方，则要更新
-                if (left_top == default || (lt.x < left_top.x && lt.y < left_top.y))
-                {
+                if (left_top == new Vector2Int(-1, -1))
                     left_top = lt;
-                }
-
-                if (right_bottom == default || (rb.x > right_bottom.x && rb.y > right_bottom.y))
+                else
                 {
-                    right_bottom = rb;
+                    if (lt.x < left_top.x)
+                        left_top.x = lt.x;
+                    if (lt.y < left_top.y)
+                        left_top.y = lt.y;
                 }
-            }
 
-            return new CVRect(left_top, right_bottom);
+                if (right_bottom == new Vector2Int(-1, -1))
+                    right_bottom = rb;
+                else
+                {
+                    if (rb.x > right_bottom.x)
+                        right_bottom.x = rb.x;
+                    if (rb.y > right_bottom.y)
+                        right_bottom.y = rb.y;
+                }
+
+            }
+            var w = right_bottom.x - left_top.x;
+            var h = right_bottom.y - left_top.y;
+            return new CVRect(left_top.x, left_top.y, w, h);
         }
 
         // 差一个清理无引用的缓存的方法
@@ -1544,10 +1681,13 @@ namespace Script.Model.Auto
                     {
                         if (!save)
                         {
+                            var id = script.Config.Id.Replace(AutoScriptConfig.IdStart, "");
+                            var relative_path = $"Capture/{script.Config.Name}_{id}";
+
                             script.Config.CaptureEndIndex++;
-                            var name = $"{script.Config.Id}_{script.Config.CaptureEndIndex}";
-                            IU.SaveBitmap(bitmap, "Capture", name);
-                            path = $"Capture/{name}.png";
+                            var name = $"{script.Config.CaptureEndIndex}";
+                            IU.SaveBitmap(bitmap, relative_path, name);
+                            path = $"{relative_path}/{name}.png";
                         }
                         save = true;
                         templateNode.SaveCaptureToLocalPath = path;
@@ -1750,6 +1890,7 @@ namespace Script.Model.Auto
                 case NodeType.TemplateMatchOper:
                 case NodeType.MouseOper:
                 case NodeType.KeyBoardOper:
+                case NodeType.MapCapture:
                     return 0.01f;
                 case NodeType.AssignOper:
                 case NodeType.ConditionOper:

@@ -112,17 +112,17 @@ namespace Script.UI.Panel.Auto
             Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(null, worldPos);
 
             float scale = SourceImage.GetScale();
-            foreach (var item in results)
-            {
-                var rect = item.Rect;
-                rect.x = screenPoint.x - s_size.x * 0.5f + rect.x * scale;
-                rect.y = Screen.height - (screenPoint.y + s_size.y * 0.5f) + rect.y * scale;
-                rect.w *= scale;
-                rect.h *= scale;
-                item.Rect = rect;
-            }
+            // foreach (var item in results)
+            // {
+            //     var rect = item.Rect;
+            //     rect.x = screenPoint.x - s_size.x * 0.5f + rect.x * scale;
+            //     rect.y = Screen.height - (screenPoint.y + s_size.y * 0.5f) + rect.y * scale;
+            //     rect.w *= scale;
+            //     rect.h *= scale;
+            //     item.Rect = rect;
+            // }
 
-            UIManager.Inst.ShowPanel(PanelEnum.TemplateMatchDrawResultPanel, new List<object> { results, 1000.0f });
+            // UIManager.Inst.ShowPanel(PanelEnum.TemplateMatchDrawResultPanel, new List<object> { results, 1000.0f });
         }
 
         void OnClickSourceBtn()

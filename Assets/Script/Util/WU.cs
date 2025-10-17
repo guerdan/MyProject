@@ -238,9 +238,11 @@ namespace Script.Util
 
         #endregion
         #region 资源管理器
-        public static string OpenFileDialog(string title, string initialPath,params string[] extension)
+        public static string OpenFileDialog(string title, string initialPath, params string[] extension)
         {
             var paths = FileDialog.SelectFile(title, initialPath, extension);
+            if (paths == null)
+                return "";
             string path = paths.Count > 0 ? paths[0] : "";
             path = path.Replace('\\', '/');
             return path;
@@ -250,9 +252,8 @@ namespace Script.Util
         {
             string msg = string.Empty;
             string path = "";
-#if IGNORE_COMPILE_TIP
             path = FileDialog.SaveDialog(title, initialPath, extension);
-#endif
+
             if (!string.IsNullOrEmpty(path))
                 path = path.Replace('\\', '/');
             return path;
@@ -492,16 +493,20 @@ namespace Script.Util
 
             return screenBmp;
         }
-        // 25ms
+
+
+     /// <summary>
+     /// 全屏25ms, bitmap.PixelFormat = Format32bppArgb
+     /// </summary>
         public static Bitmap CaptureWindow(CVRect rect)
         {
             int screenW = Screen.width;
             int screenH = Screen.height;
 
-            int left = (int)Math.Floor(rect.x);
-            int top = (int)Math.Floor(rect.y);
-            int width = (int)Math.Ceiling(rect.w);
-            int height = (int)Math.Ceiling(rect.h);
+            int left = rect.x;
+            int top = rect.y;
+            int width = rect.w;
+            int height = rect.h;
 
             // 合法性
             //

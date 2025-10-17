@@ -40,59 +40,81 @@ namespace zFramework.IO
             }
             var filter = Filter(filters.ToArray());
 
-            int size = 1024;
-            List<string> list = new List<string>();
-            //多选文件是传出一个指针，这里需要提前分配空间
-            //如果是单选文件，使用已经分配大小的StringBuilder或string
-            IntPtr filePtr = Marshal.AllocHGlobal(size);
+            var chars = new char[1024];
+            // var it = Path.GetFileName(path).GetEnumerator();
+            // for (int i = 0; i < chars.Length && it.MoveNext(); ++i)
+            // {
+            //     chars[i] = it.Current;
+            // }
+            var file = new string(chars);
+            var filePtr = Marshal.StringToHGlobalAuto(file);
 
-            //清空分配的内存区域
-            for (int i = 0; i < size; i++)
-            {
-                Marshal.WriteByte(filePtr, i, 0);
-            }
+            // int size = 1024;
+            // List<string> list = new List<string>();
+            // //多选文件是传出一个指针，这里需要提前分配空间
+            // //如果是单选文件，使用已经分配大小的StringBuilder或string
+            // IntPtr filePtr = Marshal.AllocHGlobal(size);
+
+            // //清空分配的内存区域
+            // for (int i = 0; i < size; i++)
+            // {
+            //     Marshal.WriteByte(filePtr, i, 0);
+            // }
 
             OpenFileName ofn = new OpenFileName();
             ofn.lStructSize = Marshal.SizeOf(ofn);
             ofn.lpstrFilter = filter;
             ofn.nFilterIndex = 2;
-            ofn.filePtr = filePtr;
-            ofn.nMaxFile = size;
-            ofn.nMaxFileTitle = 256;
+            ofn.filePtr = filePtr;          // 同时选中多个文件，的缓冲区
+            ofn.nMaxFile = 1024;            // 同时选中多个文件，这些文件名总的字符大小
+            ofn.nMaxFileTitle = 256;        // 选中的单个文件的字符大小
+            ofn.lpstrFileTitle = new string(new char[256]);  // 选中的单个文件的缓冲区
+
+            // ofn.nMaxFile = size;
+            // ofn.nMaxFileTitle = 256;
             ofn.lpstrInitialDir = initialPath + "\\";
-            ofn.lpstrFileTitle = title;
             ofn.lpstrDefExt = "*.*";
             ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_ALLOWMULTISELECT | OFN_NOCHANGEDIR;
             ofn.hwndOwner = UnityHWnd; //这一步将文件选择窗口置顶。
 
-            if (GetOpenFileName(ofn))
+            // if (GetOpenFileName(ofn))
+            // {
+            //     var file = Marshal.PtrToStringAuto(ofn.filePtr);
+            //     while (!string.IsNullOrEmpty(file))
+            //     {
+            //         list.Add(file);
+            //         //转换为地址
+            //         long filePointer = (long)ofn.filePtr;
+            //         //偏移
+            //         filePointer += file.Length * Marshal.SystemDefaultCharSize + Marshal.SystemDefaultCharSize;
+            //         ofn.filePtr = (IntPtr)filePointer;
+            //         file = Marshal.PtrToStringAuto(ofn.filePtr);
+            //     }
+            // }
+
+            if (!GetOpenFileName(ofn))
             {
-                var file = Marshal.PtrToStringAuto(ofn.filePtr);
-                while (!string.IsNullOrEmpty(file))
-                {
-                    list.Add(file);
-                    //转换为地址
-                    long filePointer = (long)ofn.filePtr;
-                    //偏移
-                    filePointer += file.Length * Marshal.SystemDefaultCharSize + Marshal.SystemDefaultCharSize;
-                    ofn.filePtr = (IntPtr)filePointer;
-                    file = Marshal.PtrToStringAuto(ofn.filePtr);
-                }
+                return null;
             }
+
+
+            var saveto = Marshal.PtrToStringUni(ofn.filePtr);
+            Marshal.FreeHGlobal(filePtr);
+            return new List<string> { saveto };
 
             //第一条字符串为文件夹路径，需要再拼成完整的文件路径
-            if (list.Count > 1)
-            {
-                for (int i = 1; i < list.Count; i++)
-                {
-                    list[i] = System.IO.Path.Combine(list[0], list[i]);
-                }
+            // if (list.Count > 1)
+            // {
+            //     for (int i = 1; i < list.Count; i++)
+            //     {
+            //         list[i] = System.IO.Path.Combine(list[0], list[i]);
+            //     }
 
-                list = list.Skip(1).ToList();
-            }
+            //     list = list.Skip(1).ToList();
+            // }
 
-            Marshal.FreeHGlobal(filePtr);
-            return list;
+            // Marshal.FreeHGlobal(filePtr);
+            // return list;
         }
 
         /// <summary>
@@ -129,10 +151,10 @@ namespace zFramework.IO
             ofn.filePtr = filePtr;
             ofn.nMaxFile = file.Length;
 
-            ofn.lpstrFileTitle = new string(new char[64]);
-            ofn.nMaxFileTitle = 64;
+            ofn.lpstrFileTitle = new string(new char[256]);
+            ofn.nMaxFileTitle = 256;
             ofn.lpstrInitialDir = Path.GetDirectoryName(path) + "\\";
-            ofn.lpstrFileTitle = title;
+            // ofn.lpstrFileTitle = title;
             ofn.lpstrDefExt = "*.*";
             ofn.Flags = OFN_OVERWRITEPROMPT | OFN_HIDEREADONLY | OFN_NOCHANGEDIR;
             ofn.hwndOwner = UnityHWnd; //这一步将文件选择窗口置顶。

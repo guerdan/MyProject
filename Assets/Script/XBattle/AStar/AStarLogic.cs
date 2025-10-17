@@ -8,15 +8,8 @@ namespace Script.XBattle.AStar
     public class AStarLogicManager
     {
         private static AStarLogicManager _inst;
-
         public static AStarLogicManager inst
-        {
-            get
-            {
-                _inst = _inst == null ? new AStarLogicManager() : _inst;
-                return _inst;
-            }
-        }
+        { get { _inst = _inst == null ? new AStarLogicManager() : _inst; return _inst; } }
 
 
         public AStarLogicNode[,] grid = null; // Node[y,x]
@@ -118,6 +111,8 @@ namespace Script.XBattle.AStar
                 openList.Add(startNode);
             }
 
+            // openList 要排序，也要查找
+            // closedList 只要查找
             if (openList.Count > 0)
             {
                 AStarLogicNode currentNode = GetLowestFScore(openList); // 获取F值最低的节点
@@ -223,7 +218,7 @@ namespace Script.XBattle.AStar
         Block = 3,
     }
 
-// Node类表示网格中的单个节点
+    // Node类表示网格中的单个节点
     public class AStarLogicNode
     {
         public int GridX;

@@ -10,27 +10,27 @@ namespace Script.UI.Panel.Auto
 {
     public class DrawProcessBtnBar : MonoBehaviour
     {
-        [SerializeField] private Button RunBtn; //运行按钮
-        [SerializeField] private Button CreateNodeBtn; //创建节点按钮
+        [SerializeField] private Button RunBtn;         //运行按钮
+        [SerializeField] private Button CreateNodeBtn;  //创建节点按钮
+        [SerializeField] private Button DebugBtn;       //打开Debug窗
 
         DrawProcessPanel _panel;
 
         void Awake()
         {
+            RunBtn.onClick.AddListener(OnRunBtnClick);
+            CreateNodeBtn.onClick.AddListener(OnCreateNodeBtnClick);
+            DebugBtn.onClick.AddListener(OnDebugBtnClick);
         }
 
 
         void OnEnable()
         {
-            RunBtn.onClick.AddListener(OnRunBtnClick);
-            CreateNodeBtn.onClick.AddListener(OnCreateNodeBtnClick);
             AutoScriptManager.Inst.OnScriptEnd += RefreshBtn;
         }
 
         void OnDisable()
         {
-            RunBtn.onClick.RemoveListener(OnRunBtnClick);
-            CreateNodeBtn.onClick.RemoveListener(OnCreateNodeBtnClick);
             AutoScriptManager.Inst.OnScriptEnd -= RefreshBtn;
         }
 
@@ -58,9 +58,7 @@ namespace Script.UI.Panel.Auto
             else
             {
                 AutoScriptManager.Inst.StartScript(_panel._id);
-                UIManager.Inst.PopPanel(PanelEnum.ScriptManagerPanel);
-                UIManager.Inst.PopPanel(PanelEnum.DrawProcessPanel);
-                UIManager.Inst.PopPanel(PanelEnum.ProcessNodeInfoPanel);
+                CloseElsePanel();
             }
             RefreshBtn();
         }
@@ -68,6 +66,19 @@ namespace Script.UI.Panel.Auto
         void OnCreateNodeBtnClick()
         {
             _panel.CreateNewNode();
+        }
+
+        void OnDebugBtnClick()
+        {
+            UIManager.Inst.ShowPanel(PanelEnum.ProcessDebugPanel, _panel);
+        }
+
+        public static void CloseElsePanel()
+        {
+            UIManager.Inst.PopPanel(PanelEnum.ScriptManagerPanel);
+            UIManager.Inst.PopPanel(PanelEnum.DrawProcessPanel);
+            UIManager.Inst.PopPanel(PanelEnum.ProcessNodeInfoPanel);
+            UIManager.Inst.PopPanel(PanelEnum.ProcessDebugPanel);
         }
     }
 }

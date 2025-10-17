@@ -76,7 +76,7 @@ namespace Script.UI.Panel.Auto
 
             if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.A))
             {
-                var data = new List<string>() { "MatchInput/folder.png", "MatchTemplate/folder_transparent.png" };
+                var data = new List<string>() { "MatchSource/folder.png", "MatchTemplate/folder_transparent.png" };
                 UIManager.Inst.ShowPanel(PanelEnum.PicMatchFloat, data);
             }
 
@@ -89,7 +89,10 @@ namespace Script.UI.Panel.Auto
             {
                 string id = DrawProcessPanel.LastOpenId;
                 if (id != null)
+                {
+                    AutoScriptManager.Inst.StopScript(id);
                     UIManager.Inst.ShowPanel(PanelEnum.DrawProcessPanel, id);
+                }
             }
             if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.T))
             {

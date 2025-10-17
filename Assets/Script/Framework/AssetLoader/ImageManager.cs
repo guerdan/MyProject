@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.UI;
 
 namespace Script.Framework.AssetLoader
@@ -21,7 +22,7 @@ namespace Script.Framework.AssetLoader
         /// <summary>
         /// Dic<路径，(精灵，缓存倒计时, 使用该图片的Image列表)>
         /// </summary>
-        private Dictionary<string, (Sprite, int, HashSet<Image>)> _cache = new Dictionary<string, (Sprite, int, HashSet<Image>)>();
+        private Dictionary<string, ImageLoadItem> _cache = new Dictionary<string, ImageLoadItem>();
 
 
         private int _maxCacheCount = 50;
@@ -30,7 +31,7 @@ namespace Script.Framework.AssetLoader
         /// <summary>
         /// 路径传相对于StreamingAssets的路径。delegtor代理，销毁时会检查代理是否在使用
         /// </summary>
-        public bool TryLoadSprite(string path, Image delegtor, out Sprite sprite)
+        public bool TryLoadSprite(string path, Image delegtor, out Sprite sprite, bool rgbaFormat = false, bool force = false)
         {
 
             if (!File.Exists(path))
@@ -39,33 +40,74 @@ namespace Script.Framework.AssetLoader
                 return false;
             }
 
-            if (!_cache.TryGetValue(path, out var tuple))
+            if (!_cache.TryGetValue(path, out var item))
             {
-                tuple.Item1 = LoadSpriteInStreaming(path);
-                tuple.Item3 = new HashSet<Image>();
-                _cache[path] = tuple;
+                item = new ImageLoadItem();
+                item.Sprite = LoadSpriteInStreaming(path, rgbaFormat);
+                item.Refers = new HashSet<Image>();
+                _cache[path] = item;
+            }else if (force)
+            {
+                // 强制刷新, 旧的不管了。自己注意点
+                var old = item.Sprite;
+                item.Sprite = LoadSpriteInStreaming(path, rgbaFormat);
+                UnityEngine.Object.Destroy(old);
+                UnityEngine.Object.Destroy(old.texture);
             }
 
-            tuple.Item2 = _maxCacheDuration;
-            tuple.Item3.Add(delegtor);
+            item.CountDown = _maxCacheDuration;
+            item.Refers.Add(delegtor);
             if (_cache.Count > _maxCacheCount)
                 ReleaseOldest();
 
-            sprite = tuple.Item1;
+            sprite = item.Sprite;
             return true;
         }
 
 
-
-        private Sprite LoadSpriteInStreaming(string path)
+        /// <summary>
+        /// rgbaFormat：是否额外转成 RGBA32的Texture2D
+        /// </summary>
+        public Sprite LoadSpriteInStreaming(string path, bool rgbaFormat = false)
         {
             byte[] bytes = File.ReadAllBytes(path);
             Texture2D tex = new Texture2D(2, 2);
             tex.LoadImage(bytes);
 
+            // 需要时转换。
+            if (rgbaFormat && tex.format == TextureFormat.ARGB32)
+            {
+                var old = tex;
+                tex = ConvertARGB32ToRGBA32(old);
+                UnityEngine.Object.Destroy(old);
+            }
+
             var sprite = Sprite.Create(tex, new UnityEngine.Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
 
             return sprite;
+        }
+
+        Texture2D ConvertARGB32ToRGBA32(Texture2D source)
+        {
+            // 创建一个新的 RGBA32 格式的纹理
+            Texture2D newTexture = new Texture2D(source.width, source.height, TextureFormat.RGBA32, source.mipmapCount > 1);
+
+            // 获取原始像素数据
+            Color32[] pixels = source.GetPixels32(0);
+
+            // 调整通道顺序
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                Color32 color = pixels[i];
+                // ARGB32 to RGBA32
+                // pixels[i] = new Color32(color.g, color.b, color.a, color.a);
+            }
+
+            // 将调整后的像素数据设置到新纹理
+            newTexture.SetPixels32(pixels, 0);
+            newTexture.Apply();
+
+            return newTexture;
         }
 
         // 如果是队列的话：增删的时候麻烦，update省力。理解度低
@@ -75,8 +117,8 @@ namespace Script.Framework.AssetLoader
             foreach (var key in _cache.Keys.ToList())
             {
                 var tuple = _cache[key];
-                tuple.Item2 -= (int)deltaTime;
-                if (tuple.Item2 <= 0)
+                tuple.CountDown -= deltaTime;
+                if (tuple.CountDown <= 0)
                 {
                     // 释放资源
                     Release(key);
@@ -87,14 +129,14 @@ namespace Script.Framework.AssetLoader
 
         void Release(string imgPath)
         {
-            if (!_cache.TryGetValue(imgPath, out var tuple))
+            if (!_cache.TryGetValue(imgPath, out var item))
                 return;
 
             // 如果还有持有引用的Image，则重置倒计时    
             bool inUse = false;
-            foreach (var img in tuple.Item3.ToList())
+            foreach (var img in item.Refers.ToList())
             {
-                if (img != null && img.sprite == tuple.Item1)
+                if (img != null && img.sprite == item.Sprite)
                 {
                     inUse = true;
                     break;
@@ -102,12 +144,12 @@ namespace Script.Framework.AssetLoader
             }
             if (inUse)
             {
-                tuple.Item2 = _maxCacheDuration;
+                item.CountDown = _maxCacheDuration;
                 return;
             }
-            
+
             _cache.Remove(imgPath);
-            var sprite = tuple.Item1;
+            var sprite = item.Sprite;
             UnityEngine.Object.Destroy(sprite);         //原理：真正的销毁在帧末处理
             UnityEngine.Object.Destroy(sprite.texture);
         }
@@ -115,10 +157,10 @@ namespace Script.Framework.AssetLoader
         void ReleaseOldest()
         {
             string name = "";
-            (Sprite, int, HashSet<Image>) oldest = (null, int.MaxValue, null);
+            ImageLoadItem oldest = null;
             foreach (var kv in _cache)
             {
-                if (kv.Value.Item2 < oldest.Item2)
+                if (oldest == null || kv.Value.CountDown < oldest.CountDown)
                 {
                     name = kv.Key;
                     oldest = kv.Value;
@@ -142,5 +184,12 @@ namespace Script.Framework.AssetLoader
         // {
         //     return path.Replace(Application.streamingAssetsPath, "");
         // }
+    }
+
+    public class ImageLoadItem
+    {
+        public Sprite Sprite;
+        public float CountDown;
+        public HashSet<Image> Refers;
     }
 }

@@ -57,6 +57,10 @@ MonoBehaviour:
     m_Address: Common/Prefabs/Panel/ImageCompareTestPanel
     m_ReadOnly: 0
     m_SerializedLabels: []
+  - m_GUID: 4f61f602c778130428fb9b5e037f6132
+    m_Address: Auto/Prefabs/ProcessDebugPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 461c0bb45d0c65047b0497b6d6fed90a, type: 2}
   m_SchemaSet:

@@ -18,6 +18,7 @@ namespace Script.Model.Auto
             NodeType.ConditionOper,
             NodeType.TriggerEvent,
             NodeType.ListenEvent,
+            NodeType.MapCapture,
         };
 
         public static Dictionary<NodeType, string> NodeTypeNames = new Dictionary<NodeType, string>()
@@ -29,6 +30,7 @@ namespace Script.Model.Auto
             { NodeType.ConditionOper, "条件" },
             { NodeType.TriggerEvent, "触发事件" },
             { NodeType.ListenEvent, "监听" },
+            { NodeType.MapCapture, "地图截图" },
         };
 
         public static List<string> GetNodeTypeNameList()
@@ -331,18 +333,20 @@ namespace Script.Model.Auto
         #endregion
 
         // 搜索匹配的变量名
-        public static List<string> GetAssignMatchList(string search, HashSet<string> varRef)
+        public static List<string> GetAssignMatchList(string search, Dictionary<string, FormulaVarInfo> varRef)
         {
             List<string> r = new List<string>();
             if (string.IsNullOrEmpty(search))
                 return r;
 
             search = search.ToLower();
-            foreach (string var_name in varRef)
+            foreach (var tuple in varRef)
             {
+                var var_name = tuple.Key;
+                var var_info = tuple.Value;
                 if (var_name.Contains(search))
                 {
-                    r.Add(var_name);
+                    r.Add(var_info.VarName);
                 }
             }
             Utils.CommonSort(r);

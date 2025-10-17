@@ -71,6 +71,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 44103b33ac4780a45b08d752db379a72, type: 3}
   - {fileID: 21300000, guid: 765bdda359c52984c804e2f37a5f4178, type: 3}
   - {fileID: 21300000, guid: 374c4404ef9d2904f81c7247876b5ec1, type: 3}
+  - {fileID: 21300000, guid: 367d5214049147349aa5017340d60396, type: 3}
   - {fileID: 21300000, guid: 7cb18c24ffb21454eaaf2d8a57e3e413, type: 3}
   - {fileID: 21300000, guid: 4d9fd244757d7334aadd3c4cc75b5f48, type: 3}
   - {fileID: 21300000, guid: 51944344e5d33814fa1cc526da6dbae4, type: 3}
@@ -99,6 +100,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: ad0bf7286f27bd24fba1ecd5dfad10c1, type: 3}
   - {fileID: 21300000, guid: d70932686ab6c3f41a58747625611115, type: 3}
   - {fileID: 21300000, guid: f0755768c8612d74ba6967f0f56d714e, type: 3}
+  - {fileID: 21300000, guid: e1dbca885744d30408a699399a281ddd, type: 3}
   - {fileID: 21300000, guid: cc97fa984c7870e45a5346f85809ac16, type: 3}
   - {fileID: 21300000, guid: 689279a807c1c494aa7099a71b789d79, type: 3}
   - {fileID: 21300000, guid: 70534fc8594c1264cba542d68ccf51e9, type: 3}
@@ -121,6 +123,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: af2cfe9bc625d2644b77ee367f8db182, type: 3}
   - {fileID: 21300000, guid: 855dadab7c270264a84478724a60dc65, type: 3}
   - {fileID: 21300000, guid: ac7869bb7ce37b94e8db34b6bb2e3d6e, type: 3}
+  - {fileID: 21300000, guid: 97e1e7cbd8c56414698e32f68d19bf49, type: 3}
   - {fileID: 21300000, guid: a81ed4dbd5814784daa82c4fe42a7441, type: 3}
   - {fileID: 21300000, guid: 39fb5fdb4a6efd34180db51a9098dc0e, type: 3}
   - {fileID: 21300000, guid: 03a85c4c76c16904faf168f507a208c7, type: 3}
@@ -168,6 +171,7 @@ SpriteAtlas:
   - folder_add
   - white_square_10px
   - tab_hero_active
+  - settings
   - search_icon
   - ui
   - arrow1
@@ -196,6 +200,7 @@ SpriteAtlas:
   - edit
   - icon_loading_progress
   - rank_icon_log
+  - Cartoon_buttons_3_white
   - icon_pvp_defence
   - button_yellow
   - ui_outline
@@ -218,6 +223,7 @@ SpriteAtlas:
   - select_frame
   - frame1
   - icon_pvp_rank1 1
+  - Cartoon_buttons_3
   - bg_color_hero_bottom
   - b_create
   - folder_icon

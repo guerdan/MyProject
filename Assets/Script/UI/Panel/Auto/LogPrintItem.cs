@@ -37,7 +37,7 @@ namespace Script.UI.Panel.Auto
         void OnClick()
         {   
             // 原图 是1
-            // var data = new List<string>(){"MatchInput/folder.png","MatchTemplate/folder.png"};
+            // var data = new List<string>(){"MatchSource/folder.png","MatchTemplate/folder.png"};
             // 抠图 未用掩码是0.97   用掩码到1
         
         }

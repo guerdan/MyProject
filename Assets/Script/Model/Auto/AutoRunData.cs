@@ -17,11 +17,13 @@ namespace Script.Model.Auto
     {
         public HashSet<AssignOperNode> Nodes;           //变量名
         public FormulaVarType Type;                     //变量类型
+        public string VarName;                          //实际变量名
 
-        public FormulaVarInfo(HashSet<AssignOperNode> nodes, FormulaVarType type)
+        public FormulaVarInfo(HashSet<AssignOperNode> nodes, FormulaVarType type, string varName)
         {
             Nodes = nodes;
             Type = type;
+            VarName = varName;
         }
     }
 
@@ -119,31 +121,25 @@ namespace Script.Model.Auto
         /// <summary>
         /// 编辑器环境下：统计所有的变量名和方法名
         /// </summary>
-        public HashSet<string> GetInEditVarRef()
+        public Dictionary<string, FormulaVarInfo> GetInEditVarRef()
         {
-            var result = new HashSet<string>();
-            foreach (var item in _inEditVarRef.Keys)
-            {
-                result.Add(item);
-            }
-
-            return result;
+            return _inEditVarRef;
         }
 
         public void AddVarRef(AssignOperNode node)
         {
-            var name = node.VarNameLower;
-            if (node.VarType == FormulaVarType.Undefined || name == "") return;
+            var lower_name = node.VarNameLower;
+            if (node.VarType == FormulaVarType.Undefined || lower_name == "") return;
 
-            if (_inEditVarRef.TryGetValue(name, out FormulaVarInfo info))
+            if (_inEditVarRef.TryGetValue(lower_name, out FormulaVarInfo info))
             {
                 info.Nodes.Add(node);
             }
             else
             {
                 var l = new HashSet<AssignOperNode>() { node };
-                info = new FormulaVarInfo(l, node.VarType);
-                _inEditVarRef[name] = info;
+                info = new FormulaVarInfo(l, node.VarType, node.VarName);
+                _inEditVarRef[lower_name] = info;
             }
         }
 

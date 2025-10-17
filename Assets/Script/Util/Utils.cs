@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -42,7 +43,6 @@ namespace Script.Util
                     process(item, i);
             }
         }
-
 
 
         public static Rect ConvertRect(OpenCvSharp.Rect rect)
@@ -173,5 +173,6 @@ namespace Script.Util
 
 
     }
+
 
 }

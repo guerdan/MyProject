@@ -17,15 +17,15 @@ namespace Script.Util
     /// </summary>
     public struct CVRect
     {
-        public float x;
-        public float y;
-        public float w;
-        public float h;
+        public int x;
+        public int y;
+        public int w;
+        public int h;
 
-        public Vector2 LeftTop => new Vector2(x, y);
-        public Vector2 RightBottom => new Vector2(x + w, y + h);
+        public Vector2Int LeftTop => new Vector2Int(x, y);
+        public Vector2Int RightBottom => new Vector2Int(x + w, y + h);
 
-        public CVRect(float x, float y, float w, float h)
+        public CVRect(int x, int y, int w, int h)
         {
             this.x = x;
             this.y = y;
@@ -33,12 +33,19 @@ namespace Script.Util
             this.h = h;
         }
 
-        public CVRect(Vector2 left_top, Vector2 right_bottom)
+
+        public static CVRect GetByRegion(Vector4 v)
         {
-            this.x = left_top.x;
-            this.y = left_top.y;
-            this.w = right_bottom.x - left_top.x;
-            this.h = right_bottom.y - left_top.y;
+            return new CVRect((int)Math.Floor(v.x), (int)Math.Floor(v.x)
+            , (int)Math.Ceiling(v.z), (int)Math.Ceiling(v.w));
+        }
+
+        /// <summary>
+        /// 像素：获取中心点坐标，当长宽都为奇数时，最准确
+        /// </summary>
+        public Vector2 GetCenterPixel()
+        {
+            return new Vector2(x + (w / 2), y + (h / 2));
         }
 
         public Vector4 ToVector4()
@@ -85,6 +92,7 @@ namespace Script.Util
         public int UIType;      // 如何渲染.0-红框，1-绿框，2-蓝框
     }
 
+    #region IU
 
     /// <summary>
     /// Image-Utils。负责封装OpenCV接口
@@ -98,7 +106,22 @@ namespace Script.Util
         public static Mat GetMat(string path, bool use_alpha = false)
         {
             var mode = use_alpha ? ImreadModes.Unchanged : ImreadModes.Color; // Color 强制3通道BGR
-            return Cv2.ImRead(path, mode);
+            var mat = Cv2.ImRead(path, mode);
+            if (mat.Empty())
+            {
+                string tempPath = Path.Combine(Path.GetDirectoryName(path), "temp_" + Path.GetFileName(path));
+                using (var bitmap = new Bitmap(path))
+                {
+                    mat = BitmapToMat(bitmap);
+                    // 写回path会因为文件锁定，所以绕到临时路径保存
+                    bitmap.Save(tempPath, ImageFormat.Png);
+                }
+
+                File.Delete(path);
+                File.Move(tempPath, path);
+            }
+
+            return mat;
         }
         #region MatchTemplate
         /// <summary>
@@ -154,8 +177,8 @@ namespace Script.Util
             byte[,] cull = new byte[hR, wR];    //优化了10ms. 从Mat(拆装箱)转[,]
             result.GetArray(out float[] scores);
             float max_score = 0;
-            float max_score_x = 0;
-            float max_score_y = 0;
+            int max_score_x = 0;
+            int max_score_y = 0;
 
             // 筛选所有结果，找出所有大于阈值的位置
             for (int y = 0; y < hR; y++)
@@ -194,7 +217,7 @@ namespace Script.Util
                                     ty = y + i;
                                     score = tscore;
                                 }
-                                
+
                             }
                         }
 
@@ -219,13 +242,29 @@ namespace Script.Util
 
             return matchResults;
         }
+
+        public static void PrintScore(Mat result, string message)
+        {
+            result.GetArray(out float[] scores);
+            Array.Sort(scores, (a, b) => b.CompareTo(a));
+
+            var str = $"第1名:{scores[0]}; ";
+            if (scores.Length > 1)
+                str += $"第2名:{scores[1]}; ";
+            if (scores.Length > 2)
+                str += $"第3名:{scores[2]}; ";
+
+            DU.LogWarning($"[{message}] {str} ");
+        }
+
+
         #endregion
 
 
         #region Bitmap
 
         /// <summary>
-        /// Bitmap 转 Mat；目前2ms,  保存读取方案60ms,   逐像素读/赋值2000ms
+        /// Bitmap 转 Mat；目前2ms,  ；保存读取方案60ms；逐像素读/赋值2000ms
         /// </summary>
         public static Mat BitmapToMat(Bitmap bitmap)
         {
@@ -239,7 +278,6 @@ namespace Script.Util
             // 将像素数据复制到字节数组
             Mat source = Mat.FromPixelData(h, w, MatType.CV_8UC4, bitmapData.Scan0); // 4通道
             Cv2.CvtColor(source, source, ColorConversionCodes.BGRA2BGR);
-
             bitmap.UnlockBits(bitmapData);
 
             return source;
@@ -250,6 +288,36 @@ namespace Script.Util
             // return OpenCvSharp.Extensions.BitmapConverter.ToMat(bitmap);
 
         }
+
+        /// <summary>
+        /// 返回 rgba格式的像素数组。bitmap.PixelFormat 必须是 Format32bppArgb
+        /// </summary>
+        public static Color32[] BitmapToColor32(Bitmap bitmap)
+        {
+            // 锁定 Bitmap 的像素数据
+            Rectangle rect = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+            BitmapData bitmapData = bitmap.LockBits(rect, ImageLockMode.ReadOnly, bitmap.PixelFormat);
+
+            // 获取像素数组
+            int byteCount = bitmapData.Stride * bitmap.Height;
+            byte[] pixels = new byte[byteCount];
+
+            // 将像素数据复制到字节数组
+            System.Runtime.InteropServices.Marshal.Copy(bitmapData.Scan0, pixels, 0, byteCount);
+
+            // 解锁 Bitmap
+            bitmap.UnlockBits(bitmapData);
+
+            int len = pixels.Length / 4;
+            Color32[] colors = new Color32[len];
+            for (int i = 0; i < len; i++)
+            {
+                colors[i] = new Color32(pixels[i * 4 + 2], pixels[i * 4 + 1], pixels[i * 4 + 0], pixels[i * 4 + 3]);
+            }
+
+            return colors;
+        }
+
 
         public static void SaveBitmap(Bitmap bitmap, string folder, string name)
         {
@@ -273,4 +341,6 @@ namespace Script.Util
 
         #endregion
     }
+    #endregion
+
 }

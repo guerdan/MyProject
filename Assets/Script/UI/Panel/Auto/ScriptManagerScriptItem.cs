@@ -97,7 +97,7 @@ namespace Script.UI.Panel.Auto
             else
             {
                 AutoScriptManager.Inst.StopScript(_id);
-                UIManager.Inst.PopPanel(PanelEnum.ScriptManagerPanel);
+                DrawProcessBtnBar.CloseElsePanel();
             }
 
             ScriptManagerPanel.OnRefresh?.Invoke(_id);

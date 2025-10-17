@@ -41,14 +41,12 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private InputTextComp ThresholdInput;
         [SerializeField] private InputTextComp CountInput;
         [SerializeField] private InputTextProComp RegionInput;
-        [SerializeField] private CheckBox RegionCheck;
         [SerializeField] private CheckBox SaveCaptureCheck;
 
         [Header("鼠标操作")]
         [SerializeField] private GameObject MouseOperGO;
         [SerializeField] private SelectBoxComp MouseOperTypeBox;
         [SerializeField] private InputTextProComp MouseOperPosInput;
-        [SerializeField] private CheckBox MouseOperPosCheck;
 
         [Header("键盘操作")]
         [SerializeField] private GameObject KeyboardOperGO;
@@ -60,18 +58,22 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private GameObject AssignOperGO;
         [SerializeField] private InputTextProComp AssignInput;
         [SerializeField] private SelectBoxComp VarTypeBox;      // 变量类型
-        [SerializeField] private CheckBox AssignCheck;
         [SerializeField] private Text AssignCheckNum;           // 已声明此变量的个数
 
         [Header("条件判断操作")]
         [SerializeField] private GameObject ConditionOperGO;
         [SerializeField] private InputTextProComp ConditionInput;
-        [SerializeField] private CheckBox ConditionCheck;
 
         [Header("抛出/监听事件操作")]
         [SerializeField] private GameObject EventOperGO;
         [SerializeField] private InputTextComp EventNameInput;
         [SerializeField] private Text EventNum;
+
+        [Header("拍摄地图操作")]
+        [SerializeField] private GameObject MapCaptureGO;
+        [SerializeField] private InputTextProComp MapCaptureRegionInput;
+        [SerializeField] private InputTextComp MapCaptureIdInput;
+        [SerializeField] private Button MapCaptureDetailBtn;
 
         AutoScriptManager manager => AutoScriptManager.Inst;
         BaseNodeData _data;
@@ -87,6 +89,7 @@ namespace Script.UI.Panel.Auto
             UnfoldBtn.onClick.AddListener(OnFoldChangeBtnClick);
             FoldBtn.onClick.AddListener(OnFoldChangeBtnClick);
             TemplateImageBtn.onClick.AddListener(OnTemplateImageBtnClick);
+            MapCaptureDetailBtn.onClick.AddListener(MapCaptureDetailBtnOnClick);
         }
 
 
@@ -159,6 +162,7 @@ namespace Script.UI.Panel.Auto
             AssignOperGO.SetActive(_nodeType == NodeType.AssignOper);
             ConditionOperGO.SetActive(_nodeType == NodeType.ConditionOper);
             EventOperGO.SetActive(_nodeType == NodeType.TriggerEvent || _nodeType == NodeType.ListenEvent);
+            MapCaptureGO.SetActive(_nodeType == NodeType.MapCapture);
 
 
             if (_nodeType == NodeType.TemplateMatchOper)
@@ -168,7 +172,6 @@ namespace Script.UI.Panel.Auto
 
             else if (_nodeType == NodeType.MouseOper)
             {
-
                 RefreshMouseOperPanel();
             }
 
@@ -199,6 +202,11 @@ namespace Script.UI.Panel.Auto
             else if (_nodeType == NodeType.TriggerEvent || _nodeType == NodeType.ListenEvent)
             {
                 RefreshEventOperPanel();
+            }
+
+            else if (_nodeType == NodeType.MapCapture)
+            {
+                RefreshMapCapturePanel();
             }
         }
 
@@ -289,7 +297,7 @@ namespace Script.UI.Panel.Auto
 
                 CountInput.SetText(data.Count.ToString());
             });
-          
+
             SaveCaptureCheck.SetData(data.SaveCaptureToLocal, (isOn) =>
             {
                 data.SaveCaptureToLocal = isOn;
@@ -306,14 +314,14 @@ namespace Script.UI.Panel.Auto
             var data = _data as TemplateMatchOperNode;
 
             Action<string> save_func = (str) =>
-           {
-               str = str.Replace(" ", "");
-               data.RegionExpression = str;
-               string format = AutoDataUIConfig.FormulaFormat(data.RegionExpression);  //格式化
-               RegionInput.SetText(format);
+            {
+                str = str.Replace(" ", "");
+                data.RegionExpression = str;
+                string format = AutoDataUIConfig.FormulaFormat(data.RegionExpression);  //格式化
+                RegionInput.SetText(format);
 
-               RefreshDrawPanel();
-           };
+                RefreshDrawPanel();
+            };
 
             string format = AutoDataUIConfig.FormulaFormat(data.RegionExpression);  //格式化
             RegionInput.SetData(format, save_func);
@@ -323,7 +331,7 @@ namespace Script.UI.Panel.Auto
             , (search) => { return AutoDataUIConfig.GetAssignMatchList(search, varRef); }
             , AutoDataUIConfig.GetAssignKeyword);
 
-            RegionInput.UseCheckBox(RegionCheck, (str) =>
+            RegionInput.UseCheckBox((str) =>
                 {
                     str = str.Replace(" ", "");
                     if (string.IsNullOrEmpty(str)) return false;
@@ -442,7 +450,7 @@ namespace Script.UI.Panel.Auto
                 isLegal = _scriptData.CheckFormula(varNameLower, expression, data.VarType);
             }
 
-            AssignCheck.SetData(isLegal);
+            AssignInput.ValidCheck.SetData(isLegal);
             bool has = TryGetVarInfo(text, out var info);
             if (!has)
             {
@@ -497,7 +505,7 @@ namespace Script.UI.Panel.Auto
             , (search) => { return AutoDataUIConfig.GetAssignMatchList(search, varRef); }
             , AutoDataUIConfig.GetAssignKeyword);
 
-            ConditionInput.UseCheckBox(ConditionCheck, RefreshConditionCheckBox);
+            ConditionInput.UseCheckBox(RefreshConditionCheckBox);
         }
 
         bool RefreshConditionCheckBox(string str)
@@ -540,7 +548,7 @@ namespace Script.UI.Panel.Auto
             , (search) => { return AutoDataUIConfig.GetAssignMatchList(search, varRef); }
             , AutoDataUIConfig.GetAssignKeyword);
 
-            MouseOperPosInput.UseCheckBox(MouseOperPosCheck, (str) =>
+            MouseOperPosInput.UseCheckBox((str) =>
                 {
                     str = str.Replace(" ", "");
                     if (string.IsNullOrEmpty(str)) return false;
@@ -605,6 +613,53 @@ namespace Script.UI.Panel.Auto
                 EventNum.text = list.Count.ToString();
             }
         }
+        #endregion
+
+        #region MapCapture
+        void RefreshMapCapturePanel()
+        {
+            var data = _data as MapCaptureNode;
+
+            Action<string> save_func = (str) =>
+            {
+                str = str.Replace(" ", "");
+                data.RegionExpression = str;
+                string format = AutoDataUIConfig.FormulaFormat(data.RegionExpression);  //格式化
+                MapCaptureRegionInput.SetText(format);
+            };
+
+            string format = AutoDataUIConfig.FormulaFormat(data.RegionExpression);  //格式化
+            MapCaptureRegionInput.SetData(format, save_func);
+
+            var varRef = _scriptData.GetInEditVarRef();
+            MapCaptureRegionInput.UseKeywordTips(TipsComp
+            , (search) => { return AutoDataUIConfig.GetAssignMatchList(search, varRef); }
+            , AutoDataUIConfig.GetAssignKeyword);
+
+            MapCaptureRegionInput.UseCheckBox((str) =>
+                {
+                    str = str.Replace(" ", "");
+                    if (string.IsNullOrEmpty(str)) return false;
+                    if (str.IndexOf("=") >= 0) return false;
+
+                    return AutoDataUIConfig.ExpressionIsLegal(str);
+                });
+
+
+            MapCaptureIdInput.SetData(data.MapId, str =>
+            {
+                str = str.Replace(" ", "");
+                data.MapId = str;
+                EventNameInput.SetText(data.MapId); // 可能会格式化
+            });
+        }
+
+        void MapCaptureDetailBtnOnClick()
+        {
+            var data = _data as MapCaptureNode;
+            UIManager.Inst.ShowPanel(PanelEnum.ImageCompareTestPanel, data.MapId);
+        }
+
 
         #endregion
     }

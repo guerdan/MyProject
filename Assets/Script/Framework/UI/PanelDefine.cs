@@ -6,11 +6,11 @@ namespace Script.Framework.UI
 
     public enum UITypeEnum
     {
-        Full,        // 手游式的全屏界面，层级0
-        PopUp,       // 手游式的弹窗界面，层级0
-        WindowsPopUp,       // Windows式的弹窗界面，层级0
-        TopPopUp,    // 顶层弹窗，层级1，如：战力提升弹窗
-        TopSystem,   // 顶层系统通知界面，层级2，如：断线重连弹窗、转菊花、轮播通知栏
+        WindowsPopUp, // Windows式的弹窗界面，层级0
+        Full,        // 手游式的全屏界面，层级1
+        PopUp,       // 手游式的弹窗界面，层级1
+        TopPopUp,    // 顶层弹窗，层级2，如：战力提升弹窗
+        TopSystem,   // 顶层系统通知界面，层级3，如：断线重连弹窗、转菊花、轮播通知栏
     }
 
     //当关闭Layer=0的界面栈的最后个界面时，调用AssetManager.ReleaseUnuseAsset真正回收资源
@@ -45,6 +45,7 @@ namespace Script.Framework.UI
         TemplateMatchDrawResultPanel,
         ImageMatchTestPanel,
         ImageCompareTestPanel,
+        ProcessDebugPanel,
     }
 
 
@@ -82,6 +83,25 @@ namespace Script.Framework.UI
 
         public static int RecycleTimeNormal = 10;
         public static int RecycleTimeFrequent = 60;
+
+        public static int GetLayer(UITypeEnum layer)
+        {
+            switch (layer)
+            {
+                case UITypeEnum.WindowsPopUp:
+                    return 0;
+                case UITypeEnum.Full:
+                    return 1;
+                case UITypeEnum.PopUp:
+                    return 1;
+                case UITypeEnum.TopPopUp:
+                    return 2;
+                case UITypeEnum.TopSystem:
+                    return 3;
+                default:
+                    return 0;
+            }
+        }
 
         static Dictionary<PanelEnum, PanelDefine> _panelDefineDic;
 
@@ -153,7 +173,7 @@ namespace Script.Framework.UI
                 Key = PanelEnum.ProcessNodeInfoPanel,
                 Name = "ProcessNodeInfoPanel",
                 Path = "Auto/Prefabs/ProcessNodeInfoPanel",
-                Type = UITypeEnum.WindowsPopUp,
+                Type = UITypeEnum.PopUp,
                 RecycleType = UIRecycleTypeEnum.Frequent,
                 InitPos = new Vector2(0, 0),
                 HideLastPanel = false,
@@ -163,7 +183,7 @@ namespace Script.Framework.UI
                 Key = PanelEnum.EditNamePanel,
                 Name = "EditNamePanel",
                 Path = "Common/Prefabs/Panel/EditNamePanel",
-                Type = UITypeEnum.WindowsPopUp,
+                Type = UITypeEnum.PopUp,
                 RecycleType = UIRecycleTypeEnum.Normal,
                 InitPos = new Vector2(0, 0),
                 HideLastPanel = false,
@@ -174,7 +194,7 @@ namespace Script.Framework.UI
                 Key = PanelEnum.ImageInfoPanel,
                 Name = "ImageInfoPanel",
                 Path = "Common/Prefabs/Panel/ImageInfoPanel",
-                Type = UITypeEnum.WindowsPopUp,
+                Type = UITypeEnum.PopUp,
                 RecycleType = UIRecycleTypeEnum.Normal,
                 InitPos = new Vector2(0, 0),
                 HideLastPanel = false,
@@ -185,7 +205,7 @@ namespace Script.Framework.UI
                 Key = PanelEnum.ImageSourcePanel,
                 Name = "ImageSourcePanel",
                 Path = "Common/Prefabs/Panel/ImageSourcePanel",
-                Type = UITypeEnum.WindowsPopUp,
+                Type = UITypeEnum.PopUp,
                 RecycleType = UIRecycleTypeEnum.Normal,
                 InitPos = new Vector2(0, 0),
                 HideLastPanel = false,
@@ -225,30 +245,25 @@ namespace Script.Framework.UI
                 Key = PanelEnum.ImageCompareTestPanel,
                 Name = "ImageCompareTestPanel",
                 Path = "Common/Prefabs/Panel/ImageCompareTestPanel",
-                Type = UITypeEnum.WindowsPopUp,
+                Type = UITypeEnum.PopUp,
                 RecycleType = UIRecycleTypeEnum.Normal,
                 InitPos = new Vector2(0, 0),
                 HideLastPanel = false,
                 ClickOutWinClose = true,
             },
+
+            new PanelDefine{
+                Key = PanelEnum.ProcessDebugPanel,
+                Name = "ProcessDebugPanel",
+                Path = "Auto/Prefabs/ProcessDebugPanel",
+                Type = UITypeEnum.PopUp,
+                RecycleType = UIRecycleTypeEnum.Normal,
+                InitPos = new Vector2(0, 0),
+                HideLastPanel = false,
+            },
         };
 
-        public static int GetLayer(UITypeEnum layer)
-        {
-            switch (layer)
-            {
-                case UITypeEnum.Full:
-                    return 0;
-                case UITypeEnum.PopUp:
-                    return 0;
-                case UITypeEnum.TopPopUp:
-                    return 1;
-                case UITypeEnum.TopSystem:
-                    return 2;
-                default:
-                    return 0;
-            }
-        }
+
 
     }
 }
