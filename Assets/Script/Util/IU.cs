@@ -36,7 +36,7 @@ namespace Script.Util
 
         public static CVRect GetByRegion(Vector4 v)
         {
-            return new CVRect((int)Math.Floor(v.x), (int)Math.Floor(v.x)
+            return new CVRect((int)Math.Floor(v.x), (int)Math.Floor(v.y)
             , (int)Math.Ceiling(v.z), (int)Math.Ceiling(v.w));
         }
 
@@ -123,6 +123,18 @@ namespace Script.Util
 
             return mat;
         }
+
+        public static void SaveMat(Mat mat, string filePath)
+        {
+            if (mat == null || mat.Empty())
+            {
+                throw new ArgumentException("Mat is null or empty!");
+            }
+
+            // 保存 Mat 到指定路径
+            Cv2.ImWrite(filePath, mat);
+        }
+
         #region MatchTemplate
         /// <summary>
         /// 抠图匹配,使用掩码匹配  
@@ -161,6 +173,28 @@ namespace Script.Util
 
             return result;
         }
+
+
+        public static Mat MatchTemplate2(Mat matI, Mat matT)
+        {
+            if (matI.Width < matT.Width || matI.Height < matT.Height)
+            {
+                DU.MessageBox("模板图片尺寸不能大于原图！");
+                return null;
+            }
+
+            Mat result = new Mat();
+            Mat mask = new Mat(); // 掩码，能剪裁模版区域
+
+            var channels = Cv2.Split(matT);
+            mask = channels[0]; // alpha通道作为mask
+
+            //用mask比不用的耗时要大。 12ms 变 55ms
+            Cv2.MatchTemplate(matI, matT, result, TemplateMatchModes.CCorrNormed, mask);
+
+            return result;
+        }
+
         #endregion
         #region FindResult
 
@@ -340,6 +374,20 @@ namespace Script.Util
         }
 
         #endregion
+
+        public static byte[] Color32ToByte(Color32[] colors)
+        {
+            byte[] bl = new byte[colors.Length * 3];
+            for (int i = 0; i < colors.Length; i++)
+            {
+                var color = colors[i];
+                bl[i * 3] = color.b;
+                bl[i * 3 + 1] = color.g;
+                bl[i * 3 + 2] = color.r;
+            }
+            return bl;
+        }
+
     }
     #endregion
 

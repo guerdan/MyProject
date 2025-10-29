@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Script.Framework;
+using Script.Model.Auto;
 using Script.UI.Component;
 using Script.Util;
 using UnityEngine;
@@ -28,6 +29,7 @@ namespace Script.UI.Panel.Auto
         private bool syncOperSwitch = false;
         private IntPtr selectedWin = IntPtr.Zero;    //已选择的窗口
 
+        private static IntPtr _keyboardHookID = IntPtr.Zero;
         void Start()
         {
             button?.onClick.AddListener(OnClick);
@@ -36,13 +38,11 @@ namespace Script.UI.Panel.Auto
             miniBtn?.onClick.AddListener(OnMiniBtnClick);
             closeBtn?.onClick.AddListener(OnCloseBtnClick);
             captureBtn?.onClick.AddListener(OnCaptureBtnClick);
-            // AU.Init();
-            // AU.AddMouseListener(MouseRecord);
-            // AU.AddKeyboardListener(KeyboardRecord);
+
+
             GameTimer.Inst.SetTimeOnce(this, () =>
             {
             }, 1);
-
 
             // template.SetActive(false);
             // listComp.OnGetItemSize = GetItemSize;
@@ -58,9 +58,7 @@ namespace Script.UI.Panel.Auto
             miniBtn?.onClick.RemoveListener(OnMiniBtnClick);
             closeBtn?.onClick.RemoveListener(OnCloseBtnClick);
             captureBtn?.onClick.RemoveListener(OnCaptureBtnClick);
-            // AU.Release();
-            // AU.RemoveMouseListener(MouseRecord);
-            // AU.RemoveKeyboardListener(KeyboardRecord);
+
 
         }
 
@@ -191,34 +189,16 @@ namespace Script.UI.Panel.Auto
         // 按键回调
         void KeyboardRecord(KeyboardHookEnum action, WU.KBDLLHOOKSTRUCT hookStruct)
         {
-            if (!syncOperSwitch) return;
-
-            if (selectedWin != IntPtr.Zero)
-            {
-                if (action == KeyboardHookEnum.KeyDown)
-                {
-                    foreach (var key in list)
-                    {
-                        KeyOper(key, hookStruct);
-                    }
-
-                }
-                if (action == KeyboardHookEnum.KeyUp)
-                {
-                    foreach (var key in list)
-                    {
-                        KeyOper(key, hookStruct, false);
-                    }
-                }
-            }
 
             // 普通键，
             if (action == KeyboardHookEnum.KeyDown)
             {
-                infoText.text = $"按键 ({hookStruct.vkCode})";
-                // DU.Log($"按键 ({hookStruct.vkCode})");
+                if (hookStruct.vkCode == (uint)KeyboardEnum.Esc)
+                {
+                    string id = DrawProcessPanel.LastOpenId;
+                    AutoScriptManager.Inst.StopScript(id);
+                }
             }
-
 
         }
 

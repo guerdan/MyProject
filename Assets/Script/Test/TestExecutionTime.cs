@@ -1,6 +1,8 @@
 
+using System.Numerics;
 using Script.Model.Auto;
 using Script.Util;
+using UnityEngine;
 
 namespace Script.Test
 {
@@ -42,7 +44,29 @@ namespace Script.Test
                 }
             }, "数字比较");
 
-        
+
+        }
+        Vector2Int forTest1_a;
+        int forTest1_b;
+
+        // 结论：赋值Vector2Int的执行耗时 是 赋值int的4倍
+        public void Test1()
+        {
+            DU.RunWithTimer(() =>
+           {
+               for (int i = 0; i < 10000000; i++)
+               {
+                   forTest1_a = new Vector2Int(-1, -1);
+               }
+           }, "赋值Vector2Int");
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)
+                {
+                    forTest1_b = 1;
+                }
+            }, "赋值int");
         }
 
     }

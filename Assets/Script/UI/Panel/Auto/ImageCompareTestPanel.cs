@@ -18,6 +18,7 @@ using Unity.Collections;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
+using static Script.Model.Auto.MapData;
 using Color = UnityEngine.Color;
 
 namespace Script.UI.Panel.Auto
@@ -27,8 +28,11 @@ namespace Script.UI.Panel.Auto
     /// </summary>
     public class ImageCompareTestPanel : BasePanel
     {
+
         [SerializeField] private Button LeftPathBtn;
+        [SerializeField] private Button LeftMemoryBtn;
         [SerializeField] private Button RightPathBtn;
+        [SerializeField] private Button RightMemoryBtn;
         [SerializeField] private CheckBox SyncCB;
         [SerializeField] private ImageDetailComp LeftImage;
         [SerializeField] private ImageDetailComp RightImage;
@@ -37,6 +41,7 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private Button Btn3th;
         [SerializeField] private Button Btn4th;
         [SerializeField] private InputField InputText;
+        [SerializeField] private KeywordTipsComp TipsComp;
 
         string left_path;
         string right_path;
@@ -55,81 +60,181 @@ namespace Script.UI.Panel.Auto
         void Awake()
         {
             _useScaleAnim = false;
-            LeftPathBtn.onClick.AddListener(OnLeftPathBtnClick);
-            RightPathBtn.onClick.AddListener(OnRightPathBtnClick);
+            LeftPathBtn.onClick.AddListener(OnClickLeftPathBtn);
+            LeftMemoryBtn.onClick.AddListener(() => OnClickMemoryBtn(true));
+            RightPathBtn.onClick.AddListener(OnClickRightPathBtn);
+            RightMemoryBtn.onClick.AddListener(() => OnClickMemoryBtn(false));
 
-            Btn1th.onClick.AddListener(OnBtn1thClick);
-            Btn2th.onClick.AddListener(OnBtn2thClick);
-            Btn3th.onClick.AddListener(OnBtn3thClick);
-            Btn4th.onClick.AddListener(OnBtn4thClick);
+            Btn1th.onClick.AddListener(OnClickBtn1th);
+            Btn2th.onClick.AddListener(OnClickBtn2th);
+            Btn3th.onClick.AddListener(OnClickBtn3th);
+            Btn4th.onClick.AddListener(OnClickBtn4th);
+
+            Utils.SetActive(TipsComp, false);
         }
         public override void SetData(object data)
         {
+
+            Utils.SetActive(LeftMemoryBtn, false);
+            Utils.SetActive(RightMemoryBtn, false);
+
             if (data is string mapId)
             {
+                RightImage.ClearData();
+                LeftImage.ClearData();
                 _mapId = mapId;
-                SetMap();
+                RefreshMapPanel();
             }
 
-            InputText.text = "(60,30,148,207)";
+            InputText.text = "(95,120,279,65)";
             SyncCB.SetData(false, OnSyncCB);
             OnSyncCB(SyncCB.GetStatus());
         }
 
         #region 拍摄地图
-        string _mapId;
-        Texture2D _mapTexture;
-        Sprite _mapSprite;
 
-        void SetMap()
+        string _mapId;
+        Texture2D _mapLTexture;
+        Sprite _mapLSprite;
+        Texture2D _mapRTexture;
+        Sprite _mapRSprite;
+
+        bool _clickLeft;
+
+        void RefreshMapPanel()
         {
+            Utils.SetActive(LeftMemoryBtn, true);
+            Utils.SetActive(RightMemoryBtn, true);
+
+            _clickLeft = true;
+            OnSelectMapOption(0);
+        }
+
+        void OnClickMemoryBtn(bool isLeft)
+        {
+            _clickLeft = isLeft;
+            Utils.SetActive(TipsComp, true);
+
+            var comp = _clickLeft ? LeftMemoryBtn : RightMemoryBtn;
+
+            List<string> options = new List<string>()
+            {
+                "_map",
+                "_map1",
+                "大格子寻路",
+            };
+            TipsComp.SetData(options, OnSelectMapOption, 120);
+
+            var tipsCompRectT = TipsComp.GetComponent<RectTransform>();
+            var pos = Utils.GetPos(tipsCompRectT, comp.GetComponent<RectTransform>()
+                , new Vector2(25, 8), true);
+            tipsCompRectT.anchoredPosition = pos;
+        }
+
+        /// <summary>
+        /// 0:_map 
+        /// 1:_map1 
+        /// 2:大格子寻路
+        /// </summary>
+        void OnSelectMapOption(int option)
+        {
+            ImageDetailComp comp = _clickLeft ? LeftImage : RightImage;
+
             MapData mapData = MapDataManager.Inst.Get(_mapId);
             if (mapData == null)
                 return;
 
-            if (_mapTexture != null)
-            {
-                Destroy(_mapTexture);
-                _mapTexture = null;
-                Destroy(_mapSprite);
-                _mapSprite = null;
-            }
 
             mapData.GetContentAttr(out Vector2Int xRange, out Vector2Int yRange
                 , out var w, out var h);
 
-            // 使用 rgba 格式（单通道红色）
-            _mapTexture = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            // 使用 rgba 格式
+            var mapTexture = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            Color32[] pixels = new Color32[w * h];
+            CellType[,] map = mapData._map;
+            CellType[,] map1 = mapData._map1;
 
             // 填充纹理数据
-            Color32[] pixels = new Color32[w * h];
-            for (int y = 0; y < h; y++)
-                for (int x = 0; x < w; x++)
-                {
-                    int index = y * w + x;
-                    var data = mapData._map[x + xRange.x, y + yRange.x];
-                    if (data == CellType.Empty)
-                        pixels[index] = new Color32(0, 0, 0, 255);
-                    else if (data == CellType.ObstacleEdge)
-                        pixels[index] = new Color32(255, 255, 255, 255);
-                    else if (data == CellType.Fog)
-                        pixels[index] = new Color32(0, 0, 255, 255);
+            if (option == 0)
+            {
+                for (int y = 0; y < h; y++)
+                    for (int x = 0; x < w; x++)
+                    {
+                        int index = y * w + x;
+                        var data = map[x + xRange.x, y + yRange.x];
+                        if (data == CellType.Empty)
+                            pixels[index] = new Color32(0, 0, 0, 255);
+                        else if (data == CellType.ObstacleEdge || data == CellType.NewObstacleEdge)
+                            pixels[index] = new Color32(255, 255, 255, 255);
+                        else if (data == CellType.Fog)
+                            pixels[index] = new Color32(0, 0, 255, 255);
 
-                }
+                    }
+            }
+            else if (option == 1)
+            {
+                for (int y = 0; y < h; y++)
+                    for (int x = 0; x < w; x++)
+                    {
+                        int index = y * w + x;
+                        var data = map1[x + xRange.x, y + yRange.x];
+                        if (data == CellType.Empty)
+                            pixels[index] = new Color32(0, 0, 0, 255);
+                        else if (data == CellType.ObstacleEdge || data == CellType.NewObstacleEdge)
+                            pixels[index] = new Color32(255, 255, 255, 255);
 
+                    }
+            }
 
             // 应用像素数据到纹理
-            _mapTexture.SetPixels32(pixels);
-            _mapTexture.Apply();
+            mapTexture.SetPixels32(pixels);
+            mapTexture.Apply();
 
-            _mapSprite = Sprite.Create(_mapTexture, new UnityEngine.Rect(0, 0, w, h), new Vector2(0.5f, 0.5f));
-            LeftImage.SetData(_mapSprite);
+            var mapSprite = Sprite.Create(mapTexture, new UnityEngine.Rect(0, 0, w, h), new Vector2(0.5f, 0.5f));
+            comp.SetData(mapSprite);
+
+            SaveMapImage(_clickLeft, mapTexture, mapSprite);
+        }
+
+        void SaveMapImage(bool isLeft, Texture2D texture, Sprite sprite)
+        {
+            ClearMapImage(isLeft);
+            if (isLeft)
+            {
+                _mapLTexture = texture;
+                _mapLSprite = sprite;
+            }
+            else
+            {
+                _mapRTexture = texture;
+                _mapRSprite = sprite;
+            }
+        }
+
+
+        void ClearMapImage(bool isLeft)
+        {
+            if (isLeft && _mapLTexture != null)
+            {
+                Destroy(_mapLTexture);
+                _mapLTexture = null;
+                Destroy(_mapLSprite);
+                _mapLSprite = null;
+            }
+            else if (!isLeft && _mapRTexture != null)
+            {
+                Destroy(_mapRTexture);
+                _mapRTexture = null;
+                Destroy(_mapRSprite);
+                _mapRSprite = null;
+            }
+
         }
 
 
         #endregion
 
-        void OnLeftPathBtnClick()
+        void OnClickLeftPathBtn()
         {
             string path = WU.OpenFileDialog("选择图片", Application.streamingAssetsPath, "图片 *.png *.jpg)|*.png;*.jpg");
             if (string.IsNullOrEmpty(path)) return;
@@ -150,7 +255,7 @@ namespace Script.UI.Panel.Auto
             _imgW = _sourceTex.width;
             _imgH = _sourceTex.height;
         }
-        void OnRightPathBtnClick()
+        void OnClickRightPathBtn()
         {
             string path = WU.OpenFileDialog("选择图片", Application.streamingAssetsPath, "图片 *.png *.jpg)|*.png;*.jpg");
             if (string.IsNullOrEmpty(path)) return;
@@ -183,11 +288,7 @@ namespace Script.UI.Panel.Auto
         }
 
 
-        public override void Close()
-        {
-            base.Close();
-            UIManager.Inst.ShowPanel(PanelEnum.TemplateMatchDrawResultPanel, new List<object> { null, 0 });
-        }
+
 
 
 
@@ -254,12 +355,13 @@ namespace Script.UI.Panel.Auto
             // if (!float.TryParse(arr[2], out float b)) return;
             // var target = new Color32((byte)r, (byte)g, (byte)b, 255);
 
-            var min_1th = new Color32(120, 120, 160, 255);
-            var max_1th = new Color32(145, 145, 190, 255);
-            var min_2th = new Color32(80, 80, 110, 255);
+            var min_1th = new Color32(117, 123, 128, 255);
+            var max_1th = new Color32(173, 165, 180, 255);
+            var min_2th = new Color32(86, 88, 90, 255);
             var max_2th = max_1th;
-            var min_3th = new Color32(0, 125, 165, 255);
-            var max_3th = new Color32(100, 145, 190, 255);
+            var min_3th = new Color32(65, 120, 135, 255);
+            var max_3th = new Color32(95, 140, 170, 255);
+            var B_to_G = new Vector2Int(5, 30);
 
             //colorData中，0-为不可通行空地，1-为可通行区域，2-边界
             int[,] colorData = new int[_imgW, _imgH];
@@ -280,7 +382,7 @@ namespace Script.UI.Panel.Auto
                             var color = _pixels[index];
 
                             if (Between(color, min_1th, max_1th)
-                                && color.b - color.g >= 40 && color.b - color.g <= 60)
+                                && color.b - color.g >= B_to_G.x && color.b - color.g <= B_to_G.y)
                             {
                                 first_list.Add(new Vector2Int(j, i));
                                 colorData[j, i] = 2;
@@ -290,8 +392,7 @@ namespace Script.UI.Panel.Auto
                                 colorData[j, i] = 4;
                             }
 
-                            else if (Between(color, min_2th, max_2th)
-                                && color.b - color.g >= 28 && color.b - color.g <= 60)
+                            else if (Between(color, min_2th, max_2th))
                             {
                                 colorData[j, i] = 3;
                             }
@@ -312,10 +413,7 @@ namespace Script.UI.Panel.Auto
                             colorData[j, i] = 0;
 
 
-                // ≈ 4ms   改成生数组， 优化为≈ 2ms
-                // DU.RunWithTimer(() =>
-                // {
-                GenerateMap(colorData);
+
             }, "GenerateMap");
 
 
@@ -332,7 +430,7 @@ namespace Script.UI.Panel.Auto
 
 
             // 使用 R8 格式（单通道红色）
-            Texture2D texture = new Texture2D(_imgW, _imgH, TextureFormat.R8, false);
+            Texture2D texture = new Texture2D(_imgW, _imgH, TextureFormat.RGBA32, false);
 
             // 填充纹理数据
             Color32[] pixels = new Color32[_imgW * _imgH];
@@ -340,12 +438,14 @@ namespace Script.UI.Panel.Auto
                 for (int j = 0; j < _imgW; j++)
                 {
                     int index = i * _imgW + j;
-                    if (colorData[j, i] == 0)           //能走的空地
+                    if (colorData[j, i] == 0)
                         pixels[index] = new Color32(0, 0, 0, 255);
-                    else if (colorData[j, i] == 1)       //不能走的空地
+                    else if (colorData[j, i] == 2)      // 边界     
                         pixels[index] = new Color32(255, 255, 255, 255);
-                    else                                //边界
-                        pixels[index] = new Color32(128, 0, 0, 255);
+                    else if (colorData[j, i] == 5)      // 二阶边界,弱一点                 
+                        pixels[index] = new Color32(255, 0, 0, 255);
+                    else if (colorData[j, i] == 4)
+                        pixels[index] = new Color32(0, 0, 255, 255);
                 }
 
 
@@ -398,7 +498,7 @@ namespace Script.UI.Panel.Auto
                 if (colorData[x, y] == 3)
                 {
                     result.Add(new Vector2Int(x, y));
-                    colorData[x, y] = 2; // 标记为"边界"
+                    colorData[x, y] = 5; // 标记为"边界"
                 }
 
                 if (y > 0 && colorData[x, y - 1] == 3)
@@ -486,14 +586,37 @@ namespace Script.UI.Panel.Auto
 
         MapData _mapData;
 
-        void OnBtn1thClick()
+        void OnClickBtn1th()
         {
             // FindRole();
             // LeftImage.SelectPixel(_playerPos);
 
-            var gridData = new GridData(null);
-            var cell = new BigCell(0, 0);
-            var map = new CellType[7, 7];
+            // var gridData = new GridData(null);
+            // var cell = new BigCell(0, 0);
+            // var map = new CellType[7, 7];
+            // var map_temp = new int[7, 7]
+            // {
+            //     { 1, 1, 1, 1, 1, 1, 1 },
+            //     { 1, 2, 1, 1, 1, 1, 1 },
+            //     { 1, 1, 2, 2, 2, 1, 1 },
+            //     { 1, 1, 2, 2, 2, 1, 1 },
+            //     { 1, 1, 2, 2, 2, 1, 1 },
+            //     { 1, 1, 1, 1, 1, 1, 1 },
+            //     { 1, 1, 1, 1, 1, 1, 1 },
+            // };
+
+            // var len = map_temp.GetLength(0);
+            // for (int i = 0; i < len; i++)
+            //     for (int j = 0; j < len; j++)
+            //     {
+            //         map[j, len - 1 - i] = (CellType)map_temp[j, i];
+            //     }
+
+            // gridData.RefreshCell(cell, map, 1, 1,true);
+            // DU.LogWarning($"方向 {Convert.ToString((int)cell.Direction, 2).PadLeft(8, '0')}");
+
+
+            var map = new bool[7, 7];
             var map_temp = new int[7, 7]
             {
                 { 1, 1, 1, 1, 1, 1, 1 },
@@ -509,21 +632,23 @@ namespace Script.UI.Panel.Auto
             for (int i = 0; i < len; i++)
                 for (int j = 0; j < len; j++)
                 {
-                    map[j, len - 1 - i] = (CellType)map_temp[j, i];
+                    map[j, len - 1 - i] = map_temp[j, i] == 1;
                 }
 
-            gridData.RefreshCell(cell, map, 1, 1);
-            DU.LogWarning($"方向 {Convert.ToString((int)cell.Direction, 2).PadLeft(8, '0')}");
+            SmallCellFinder finder = new SmallCellFinder();
+            var result = finder.BeginAStar(map, new Vector2Int(2, 1), new Vector2Int(6, 6));
 
         }
-        void OnBtn2thClick()
+        void OnClickBtn2th()
         {
-            // FilterPixel();
+            FilterPixel();
 
             //  比较下谁执快
-            TestExecutionTime.Inst.Test();
+            // TestExecutionTime.Inst.Test();
         }
-        void OnBtn3thClick()
+
+        // int count = 13;
+        void OnClickBtn3th()
         {
             // if (_mapData == null)
             // {
@@ -535,20 +660,29 @@ namespace Script.UI.Panel.Auto
             // _mapData.Capture(new Bitmap(path));
 
 
-            var dir = @"D:\unityProject\MyProject\Assets\StreamingAssets\SmallMap\小地图_22";
-            for (int i = 14; i <= 22; i++)
+            // var dir = @"D:\unityProject\MyProject\Assets\StreamingAssets\SmallMap\小地图_22";
+            var dir = @"D:\unityProject\MyProject\Assets\StreamingAssets\Capture\小地图_22";
+
+            // count++;
+            for (int i = 11; i <= 21; i++)
             {
                 var file_path = dir + $"/{i}.png";
                 _mapData.Capture(new Bitmap(file_path));
             }
+
 
             var save_path = Application.streamingAssetsPath + $"/SmallMap/big_map.png";
             _mapData.Save(save_path);
 
         }
 
-        void OnBtn4thClick()
+        void OnClickBtn4th()
         {
+            if (_mapData == null)
+            {
+                OnClickBtn3th();
+            }
+
             var str = InputText.text;
             str.Replace(" ", "");
             str = str.Substring(1, str.Length - 2);
@@ -557,83 +691,29 @@ namespace Script.UI.Panel.Auto
             var target = new Vector2Int(int.Parse(arr[2]), int.Parse(arr[3]));
 
 
-
-            // if (_mapData == null)
-            // {
-            MapDataManager.Inst.Remove("Map-22");
-            MapDataManager.Inst.Create("Map-22",new CVRect(0, 0, 200, 200));
-            _mapData = MapDataManager.Inst.Get("Map-22");
-            var dir = @"D:\unityProject\MyProject\Assets\StreamingAssets\SmallMap\小地图_22";
-            for (int i = 14; i <= 22; i++)
-            {
-                var file_path = dir + $"/{i}.png";
-                _mapData.Capture(new Bitmap(file_path));
-            }
-            // }
-
-            // string path = WU.OpenFileDialog("选择图片", Application.streamingAssetsPath, "图片 *.png *.jpg)|*.png;*.jpg");
-            // if (string.IsNullOrEmpty(path)) return;
-            // _mapData.Capture(new Bitmap(path));
-
-
-
-            // _mapData.InitGridOriginal();
-
-            // DU.RunWithTimer(() =>
-            // {
-            //     _mapData.StartAStarOri(start, target);
-            // }, "AStarOri");
-
-            // _mapData.InitGrid();
-
-            // DU.RunWithTimer(() =>
-            // {
-            //     _mapData.StartAStar(start, target);
-            // }, "AStar");
-
-            // _mapData.InitGrid();
-            // DU.RunWithTimer(() =>
-            // {
-            //     _mapData.StartAStarAVL(start, target);
-            // }, "AStarAVLTree");
-
-
-            _mapData.InitGridOriginal();
             DU.RunWithTimer(() =>
             {
-                _mapData.StartAStarRedBlack(start, target);
-            }, "AStarRedBlackTree");
-
-
-            DU.RunWithTimer(() =>
-            {
+                // for (int i =0;i<10;i++)
                 _mapData.StartAStarBigGrid(start, target);
             }, "StartAStarBigGrid");
 
-
-            // _mapData.Print();
-
-            var save_path = Application.streamingAssetsPath + $"/SmallMap/astar.png";
+            var save_path = Application.streamingAssetsPath + $"/SmallMap/big_map.png";
             _mapData.SaveAStar(save_path);
 
         }
 
-        Sprite _show_sprite;
         void Update()
         {
             if (Input.GetKeyDown(KeyCode.Space))
             {
-                for (int i = 0; i < 5; i++)
-                    _mapData.Step();
-                _mapData.Print();
-                var save_path = Application.streamingAssetsPath + $"/SmallMap/astar.png";
-                _mapData.SaveAStar(save_path);
 
-                _show_sprite = ImageManager.Inst.LoadSpriteInStreaming(save_path);
-                RightImage.SetData(_show_sprite);
             }
+
+
         }
 
+
+        Sprite _show_sprite;
         void OnDestroy()
         {
             if (_show_sprite != null)
@@ -641,12 +721,19 @@ namespace Script.UI.Panel.Auto
                 Destroy(_show_sprite);
                 Destroy(_show_sprite.texture);
                 _show_sprite = null;
+
+                ClearMapImage(true);
+                ClearMapImage(false);
             }
         }
 
 
         #endregion
-
+        public override void Close()
+        {
+            base.Close();
+            UIManager.Inst.ShowPanel(PanelEnum.TemplateMatchDrawResultPanel, new List<object> { null, 0 });
+        }
     }
 
 

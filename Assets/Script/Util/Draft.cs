@@ -1,14 +1,23 @@
 
+using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Runtime.CompilerServices;
 using OpenCvSharp;
+using Script.Model.Auto;
+using Script.Model.ListStruct;
+using UnityEngine;
+using static Script.Model.Auto.MapData;
 using static Script.Util.IU;
 using Mathf = UnityEngine.Mathf;
+using Rect = OpenCvSharp.Rect;
 
 namespace Script.Util
 {
-    public static class Draft
+    public class Draft
     {
-         
+        #region  IU
+
         // 自己写。结果与opencv接口是一致的。
         // 耗时8600ms 优化跟不上。 我估计官方是用窗口思想优化的 只动变的
         // 优化了一版 4300ms。应该就是思路上的优化了。窗口移动时只用关注删行和新行，优化计算总和。
@@ -332,5 +341,781 @@ namespace Script.Util
             return matchResults;
         }
 
+        #endregion
+
+        #region MapData
+
+        // A星寻路，几种数据结构
+
+        public CellType[,] _map;            // 只有Capture可写，其他方法可读
+
+
+        Vector2Int _xRange;          // 内容x轴范围
+        Vector2Int _yRange;          // 内容y轴范围
+        int _w;                             // 内容宽  
+        int _h;                             // 内容高
+
+        /// <summary>
+        /// Type: 0-为暗地 2-边界 4-迷雾边界 5-已遍历过 
+        /// </summary>
+        AStarCell[,] _grid;
+        int times;
+        int change_times;
+
+        BinarySearchTree<AStarCell> openList;
+        Vector2Int astar_target;
+
+
+        public void InitGridOriginal()
+        {
+
+            _grid = new AStarCell[_w + 2, _h + 2];
+
+            // 小格子寻路 特殊处理
+            for (int i = 0; i < _h; i++)
+                for (int j = 0; j < _w; j++)
+                {
+                    var x = j + _xRange.x;
+                    var y = i + _yRange.x;
+                    var data = _map[x, y];
+                    if (data == CellType.NewObstacleEdge)
+                    {
+                        data = CellType.ObstacleEdge;
+                        _map[x, y] = data;
+                    }
+                }
+
+
+            // 填充 斜对角 成 斜着不能过的边界
+            for (int i = 0; i < _h; i++)
+                for (int j = 0; j < _w; j++)
+                {
+                    var x = j + _xRange.x;
+                    var y = i + _yRange.x;
+                    var data = _map[x, y];
+
+                    // 左上，右上斜对角，检测
+                    if (data == CellType.ObstacleEdge)
+                    {
+                        if (j > 0 && i < _h - 1 && _map[x - 1, y + 1] == CellType.ObstacleEdge
+                        && _map[x - 1, y] == CellType.Empty && _map[x, y + 1] == CellType.Empty)
+                        {
+                            _map[x - 1, y] = CellType.Temp;
+                            _map[x, y + 1] = CellType.Temp;
+                        }
+
+                        if (j < _w - 1 && i < _h - 1 && _map[x + 1, y + 1] == CellType.ObstacleEdge
+                        && _map[x + 1, y] == CellType.Empty && _map[x, y + 1] == CellType.Empty)
+                        {
+
+                            _map[x + 1, y] = CellType.Temp;
+                            _map[x, y + 1] = CellType.Temp;
+                        }
+                    }
+
+                }
+
+
+            for (int i = 0; i < _h; i++)
+                for (int j = 0; j < _w; j++)
+                {
+                    var data = _map[j + _xRange.x, i + _yRange.x];
+                    var cell = new AStarCell()
+                    {
+                        x = j + 1,
+                        y = i + 1,
+                        G = 0,
+                        F = 0,
+                        Type = (byte)data == 1 ? (byte)0 : (byte)data, //先不管"迷雾边界"
+                        ParentPos = new Vector2Int(-1, -1)
+                    };
+                    if (data == CellType.ObstacleEdge || data == CellType.Temp)
+                    {
+                        cell.Type = 2;
+                    }
+                    // 还原
+                    if (data == CellType.Temp)
+                    {
+                        _map[j + _xRange.x, i + _yRange.x] = CellType.Empty;
+                    }
+
+                    _grid[j + 1, i + 1] = cell;
+                }
+
+            for (int i = 0; i < _h + 2; i++)
+            {
+                _grid[0, i] = new AStarCell() { x = 0, y = i, Type = 10 };
+                _grid[_w + 1, i] = new AStarCell() { x = _w + 1, y = i, Type = 10 };
+            }
+            for (int i = 0; i < _w + 2; i++)
+            {
+                _grid[i, 0] = new AStarCell() { x = i, y = 0, Type = 10 };
+                _grid[i, _h + 1] = new AStarCell() { x = i, y = _h + 1, Type = 10 };
+            }
+
+        }
+
+        AStarCell GridGet(int x, int y)
+        {
+            return _grid[x + 1, y + 1];
+        }
+
+        void GridSet(int x, int y, AStarCell cell)
+        {
+            _grid[x + 1, y + 1] = cell;
+        }
+
+        public void StartAStar(Vector2Int start, Vector2Int target)
+        {
+            if (_grid == null) return;
+            astar_target = target;
+            times = 0;
+            openList = new BinarySearchTree<AStarCell>();
+
+            var startNode = _grid[start.x, start.y];
+            startNode.G = 0;
+            startNode.F = Estimate(start.x, start.y, target.x, target.y); // 使用启发式函数计算H值
+            // _grid[start.x, start.y] = startNode;
+
+            openList.Insert(startNode);
+
+            var method_list = new Vector2Int[8];
+            var method_count = 0;
+            int x_end = _grid.GetLength(0) - 1;
+            int y_end = _grid.GetLength(1) - 1;
+
+
+            // openList 要排序，也要查找
+            while (!openList.Empty())
+            {
+                times++;
+                // 获取F值最低的节点
+                var current = openList.FindMin().Value;
+
+                if (current.x == target.x && current.y == target.y)
+                {
+                    break;
+                }
+                // var current = _grid[current_pos.x, current_pos.y];
+                openList.Delete(current);
+                current.Type = 5; // 标记为已遍历过
+                // _grid[current_pos.x, current_pos.y] = current;
+
+                method_count = 0;
+                int x = current.x;
+                int y = current.y;
+                var current_pos = new Vector2Int(x, y);
+
+                if (y > 0 && _grid[x, y - 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x, y - 1);
+                if (x > 0 && _grid[x - 1, y].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x - 1, y);
+                if (y < y_end && _grid[x, y + 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x, y + 1);
+                if (x < x_end && _grid[x + 1, y].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x + 1, y);
+                if (y > 0 && x > 0 && _grid[x - 1, y - 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x - 1, y - 1);
+                if (y < y_end && x > 0 && _grid[x - 1, y + 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x - 1, y + 1);
+                if (y < y_end && x < x_end && _grid[x + 1, y + 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x + 1, y + 1);
+                if (y > 0 && x < x_end && _grid[x + 1, y - 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x + 1, y - 1);
+
+                for (int i = 0; i < method_count; i++)
+                {
+                    var neighbor_pos = method_list[i];
+                    var neighbor = _grid[neighbor_pos.x, neighbor_pos.y];
+
+                    int new_G = current.G + GetDistance(current_pos, neighbor_pos);
+
+                    //新的邻节点或者要更新G值的邻节点
+                    bool is_new = neighbor.G == 0;
+
+                    if (is_new)
+                    {
+                        neighbor.G = new_G;
+                        neighbor.F = new_G + Estimate(neighbor_pos.x, neighbor_pos.y, target.x, target.y);
+                        neighbor.ParentPos = current_pos;
+                        openList.Insert(neighbor);
+                    }
+                    else if (new_G < neighbor.G)
+                    {
+                        var success = openList.Delete(neighbor);
+                        if (!success)
+                            DU.LogError("Delete fail");
+
+                        neighbor.F = neighbor.F - neighbor.G + new_G;
+                        neighbor.G = new_G;
+                        neighbor.ParentPos = current_pos;
+                        // _grid[neighbor_pos.x, neighbor_pos.y] = neighbor;
+                        openList.Insert(neighbor);
+                    }
+
+                }
+            }
+
+        }
+
+
+        public void StartAStarAVL(Vector2Int start, Vector2Int target)
+        {
+            if (_grid == null) return;
+            astar_target = target;
+            times = 0;
+            change_times = 0;
+            var openList = new AVLTree<AStarCell>();
+
+            var startNode = _grid[start.x, start.y];
+            startNode.G = 0;
+            startNode.F = Estimate(start.x, start.y, target.x, target.y); // 使用启发式函数计算H值
+            // _grid[start.x, start.y] = startNode;
+
+            openList.Insert(startNode);
+
+            var method_list = new Vector2Int[8];
+            var method_count = 0;
+            int x_end = _grid.GetLength(0) - 1;
+            int y_end = _grid.GetLength(1) - 1;
+
+
+            // openList 要排序，也要查找
+            while (!openList.Empty())
+            {
+                times++;
+                // 获取F值最低的节点
+                var current = openList.FindMin().Value;
+
+                if (current.x == target.x && current.y == target.y)
+                {
+                    break;
+                }
+                // var current = _grid[current_pos.x, current_pos.y];
+                openList.Delete(current);
+                current.Type = 5; // 标记为已遍历过
+                // _grid[current_pos.x, current_pos.y] = current;
+
+                method_count = 0;
+                int x = current.x;
+                int y = current.y;
+                var current_pos = new Vector2Int(x, y);
+
+                if (y > 0 && _grid[x, y - 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x, y - 1);
+                if (x > 0 && _grid[x - 1, y].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x - 1, y);
+                if (y < y_end && _grid[x, y + 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x, y + 1);
+                if (x < x_end && _grid[x + 1, y].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x + 1, y);
+                if (y > 0 && x > 0 && _grid[x - 1, y - 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x - 1, y - 1);
+                if (y < y_end && x > 0 && _grid[x - 1, y + 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x - 1, y + 1);
+                if (y < y_end && x < x_end && _grid[x + 1, y + 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x + 1, y + 1);
+                if (y > 0 && x < x_end && _grid[x + 1, y - 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x + 1, y - 1);
+
+                for (int i = 0; i < method_count; i++)
+                {
+                    var neighbor_pos = method_list[i];
+                    var neighbor = _grid[neighbor_pos.x, neighbor_pos.y];
+
+                    int new_G = current.G + GetDistance(current_pos, neighbor_pos);
+
+                    //新的邻节点或者要更新G值的邻节点
+                    bool is_new = neighbor.G == 0;
+
+                    if (is_new)
+                    {
+                        neighbor.G = new_G;
+                        neighbor.F = new_G + Estimate(neighbor_pos.x, neighbor_pos.y, target.x, target.y);
+                        neighbor.ParentPos = current_pos;
+                        openList.Insert(neighbor);
+                    }
+                    else if (new_G < neighbor.G)
+                    {
+                        // var success = openList.Delete(neighbor);
+                        // if (!success)
+                        //     DU.LogError("Delete fail");
+                        change_times++;
+                        openList.Delete(neighbor);
+                        neighbor.F = neighbor.F - neighbor.G + new_G;
+                        neighbor.G = new_G;
+                        neighbor.ParentPos = current_pos;
+                        // _grid[neighbor_pos.x, neighbor_pos.y] = neighbor;
+                        openList.Insert(neighbor);
+                    }
+
+                }
+            }
+
+            DU.LogWarning($"AStar times:{times}  change_times:{change_times}");
+        }
+
+        public void StartAStarRedBlack(Vector2Int start, Vector2Int target)
+        {
+            if (_grid == null) return;
+            start = start + new Vector2Int(1, 1);
+            target = target + new Vector2Int(1, 1);
+            astar_target = target;
+            times = 0;
+            change_times = 0;
+            var openList = new RedBlackTree<AStarCell>();
+
+            var startNode = _grid[start.x, start.y];
+            startNode.G = 0;
+            startNode.F = Estimate(start.x, start.y, target.x, target.y); // 使用启发式函数计算H值
+            // _grid[start.x, start.y] = startNode;
+
+            openList.Insert(startNode);
+
+            var method_list = new Vector2Int[8];
+            var method_count = 0;
+
+
+            // openList 要排序，也要查找
+            while (!openList.Empty())
+            {
+                times++;
+                // 获取F值最低的节点
+                var current = openList.FindMin();
+
+                if (current.x == target.x && current.y == target.y)
+                {
+                    break;
+                }
+                // var current = _grid[current_pos.x, current_pos.y];
+                openList.Delete(current);
+                current.Type = 5; // 标记为已遍历过
+                // _grid[current_pos.x, current_pos.y] = current;
+
+                method_count = 0;
+                int x = current.x;
+                int y = current.y;
+                var current_pos = new Vector2Int(x, y);
+
+                if (_grid[x, y - 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x, y - 1);
+                if (_grid[x - 1, y].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x - 1, y);
+                if (_grid[x, y + 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x, y + 1);
+                if (_grid[x + 1, y].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x + 1, y);
+                if (_grid[x - 1, y - 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x - 1, y - 1);
+                if (_grid[x - 1, y + 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x - 1, y + 1);
+                if (_grid[x + 1, y + 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x + 1, y + 1);
+                if (_grid[x + 1, y - 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x + 1, y - 1);
+
+                for (int i = 0; i < method_count; i++)
+                {
+                    var neighbor_pos = method_list[i];
+                    var neighbor = _grid[neighbor_pos.x, neighbor_pos.y];
+
+                    int new_G = current.G + GetDistance(current_pos, neighbor_pos);
+
+                    //新的邻节点或者要更新G值的邻节点
+                    bool is_new = neighbor.G == 0;
+
+                    if (is_new)
+                    {
+                        neighbor.G = new_G;
+                        neighbor.F = new_G + Estimate(neighbor_pos.x, neighbor_pos.y, target.x, target.y);
+                        neighbor.ParentPos = current_pos;
+                        openList.Insert(neighbor);
+                    }
+                    else if (new_G < neighbor.G)
+                    {
+                        // var success = openList.Delete(neighbor);
+                        // if (!success)
+                        //     DU.LogError("Delete fail");
+                        change_times++;
+                        openList.Delete(neighbor);
+                        neighbor.F = neighbor.F - neighbor.G + new_G;
+                        neighbor.G = new_G;
+                        neighbor.ParentPos = current_pos;
+                        // _grid[neighbor_pos.x, neighbor_pos.y] = neighbor;
+                        openList.Insert(neighbor);
+                    }
+
+                }
+            }
+
+            DU.LogWarning($"AStar times:{times}  change_times:{change_times}");
+        }
+
+        public void Print()
+        {
+            openList.InOrderTraversal();
+            openList.InOrderTraversalCount();
+
+        }
+        public void Step()
+        {
+            if (openList.Empty()) return;
+
+            // 获取F值最低的节点
+            var current = openList.FindMin().Value;
+            DU.Log(current.F);
+            if (current.x == astar_target.x && current.y == astar_target.y)
+            {
+                return;
+            }
+
+            times++;
+            openList.Delete(current);
+            current.Type = 5; // 标记为已遍历过
+
+            int x_end = _grid.GetLength(0) - 1;
+            int y_end = _grid.GetLength(1) - 1;
+            var method_list = new Vector2Int[8];
+            int method_count = 0;
+            int x = current.x;
+            int y = current.y;
+            var current_pos = new Vector2Int(x, y);
+
+            if (y > 0 && _grid[x, y - 1].Type == 0)
+                method_list[method_count++] = new Vector2Int(x, y - 1);
+            if (x > 0 && _grid[x - 1, y].Type == 0)
+                method_list[method_count++] = new Vector2Int(x - 1, y);
+            if (y < y_end && _grid[x, y + 1].Type == 0)
+                method_list[method_count++] = new Vector2Int(x, y + 1);
+            if (x < x_end && _grid[x + 1, y].Type == 0)
+                method_list[method_count++] = new Vector2Int(x + 1, y);
+            if (y > 0 && x > 0 && _grid[x - 1, y - 1].Type == 0)
+                method_list[method_count++] = new Vector2Int(x - 1, y - 1);
+            if (y < y_end && x > 0 && _grid[x - 1, y + 1].Type == 0)
+                method_list[method_count++] = new Vector2Int(x - 1, y + 1);
+            if (y < y_end && x < x_end && _grid[x + 1, y + 1].Type == 0)
+                method_list[method_count++] = new Vector2Int(x + 1, y + 1);
+            if (y > 0 && x < x_end && _grid[x + 1, y - 1].Type == 0)
+                method_list[method_count++] = new Vector2Int(x + 1, y - 1);
+
+            for (int i = 0; i < method_count; i++)
+            {
+                var neighbor_pos = method_list[i];
+                var neighbor = _grid[neighbor_pos.x, neighbor_pos.y];
+
+                int new_G = current.G + GetDistance(current_pos, neighbor_pos);
+
+                //新的邻节点或者要更新G值的邻节点
+                bool is_new = neighbor.G == 0;
+
+                if (is_new)
+                {
+                    neighbor.G = new_G;
+                    neighbor.F = new_G + Estimate(neighbor_pos.x, neighbor_pos.y, astar_target.x, astar_target.y);
+                    neighbor.ParentPos = current_pos;
+                    openList.Insert(neighbor);
+                }
+                else if (new_G < neighbor.G)
+                {
+                    var success = openList.Delete(neighbor);
+                    if (!success)
+                        DU.LogError("Delete fail");
+
+                    neighbor.F = neighbor.F - neighbor.G + new_G;
+                    neighbor.G = new_G;
+                    neighbor.ParentPos = current_pos;
+                    // _grid[neighbor_pos.x, neighbor_pos.y] = neighbor;
+
+                    openList.Insert(neighbor);
+                }
+
+            }
+        }
+        public void StartAStarOri(Vector2Int start, Vector2Int target)
+        {
+            if (_grid == null) return;
+            astar_target = target;
+            times = 0;
+            var openList = new HashSet<Vector2Int>();
+
+            var startNode = _grid[start.x, start.y];
+            startNode.G = 0;
+            startNode.F = Estimate(start.x, start.y, target.x, target.y); // 使用启发式函数计算H值
+            // _grid[start.x, start.y] = startNode;
+
+            openList.Add(start);
+
+            var method_list = new Vector2Int[8];
+            var method_count = 0;
+            int x_end = _grid.GetLength(0) - 1;
+            int y_end = _grid.GetLength(1) - 1;
+
+
+            // openList 要排序，也要查找
+            while (openList.Count > 0)
+            {
+                times++;
+                // 获取F值最低的节点
+                var current_pos = GetLowestFScore(openList);
+
+                if (current_pos.x == target.x && current_pos.y == target.y)
+                {
+                    break;
+                }
+                var current = _grid[current_pos.x, current_pos.y];
+                openList.Remove(current_pos);
+                current.Type = 5; // 标记为已遍历过
+                // _grid[current_pos.x, current_pos.y] = current;
+
+                method_count = 0;
+                int x = current_pos.x;
+                int y = current_pos.y;
+
+                if (y > 0 && _grid[x, y - 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x, y - 1);
+                if (x > 0 && _grid[x - 1, y].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x - 1, y);
+                if (y < y_end && _grid[x, y + 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x, y + 1);
+                if (x < x_end && _grid[x + 1, y].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x + 1, y);
+                if (y > 0 && x > 0 && _grid[x - 1, y - 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x - 1, y - 1);
+                if (y < y_end && x > 0 && _grid[x - 1, y + 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x - 1, y + 1);
+                if (y < y_end && x < x_end && _grid[x + 1, y + 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x + 1, y + 1);
+                if (y > 0 && x < x_end && _grid[x + 1, y - 1].Type == 0)
+                    method_list[method_count++] = new Vector2Int(x + 1, y - 1);
+
+                for (int i = 0; i < method_count; i++)
+                {
+                    var neighbor_pos = method_list[i];
+                    var neighbor = _grid[neighbor_pos.x, neighbor_pos.y];
+
+                    int new_G = current.G + GetDistance(current_pos, neighbor_pos);
+
+                    //新的邻节点或者要更新G值的邻节点
+                    bool is_new = neighbor.G == 0;
+                    if (new_G < neighbor.G)
+                    {
+                        neighbor.F = neighbor.F - neighbor.G + new_G;
+                        neighbor.G = new_G;
+                        neighbor.ParentPos = current_pos;
+                        // _grid[neighbor_pos.x, neighbor_pos.y] = neighbor;
+
+                    }
+                    if (is_new)
+                    {
+                        neighbor.G = new_G;
+                        neighbor.F = new_G + Estimate(neighbor_pos.x, neighbor_pos.y, target.x, target.y);
+                        neighbor.ParentPos = current_pos;
+                        openList.Add(neighbor_pos);
+                    }
+                    else if (new_G < neighbor.G)
+                    {
+                        neighbor.F = neighbor.F - neighbor.G + new_G;
+                        neighbor.G = new_G;
+                        neighbor.ParentPos = current_pos;
+                        // _grid[neighbor_pos.x, neighbor_pos.y] = neighbor;
+                    }
+
+                }
+
+                // foreach (var neighbor_pos in GetNeighbors(current_pos))
+                // {
+
+                // }
+            }
+
+            DU.LogWarning("AStar times:" + times);
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int Estimate(int x0, int y0, int x1, int y1)
+        {
+            int delta_x = x0 - x1;
+            delta_x = delta_x < 0 ? -delta_x : delta_x;
+            int delta_y = y0 - y1;
+            delta_y = delta_y < 0 ? -delta_y : delta_y;
+            return (delta_x + delta_y) * 1000;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int GetDistance(Vector2Int a, Vector2Int b)
+        {
+            var dx = a.x - b.x;
+            var dy = a.y - b.y;
+            var c = dx * dx + dy * dy;
+            if (c == 1) return 1000;
+            if (c == 2) return 1414;
+            return 0;
+        }
+
+        private Vector2Int GetLowestFScore(HashSet<Vector2Int> list)
+        {
+            var def = new Vector2Int(-1, -1);
+            Vector2Int min_pos = def;
+            AStarCell min = default;
+
+            foreach (var pos in list)
+            {
+                var node = _grid[pos.x, pos.y];
+                if (min_pos == def || node.F < min.F || node.F == min.F && node.H < min.H)
+                {
+                    min = node;
+                    min_pos = pos;
+                }
+            }
+
+            return min_pos;
+        }
+
+
+
+
+    }
+
+    public class AStarCell : IComparable<AStarCell>
+    {
+        public int x;
+        public int y;
+
+        public byte Type; // 0-为暗地 2-边界 4-迷雾边界 5-已遍历过
+
+        /// <summary>
+        /// 实际值
+        /// </summary>
+        public int G;
+
+        /// <summary>
+        /// 启发值、估计值
+        /// </summary>
+        public int H => F - G;
+
+        public int F;
+
+        /// <summary>
+        /// 链表
+        /// </summary>
+        public Vector2Int ParentPos;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int CompareTo(AStarCell other)
+        {
+            if (F != other.F)
+                return F - other.F > 0 ? 1 : -1;
+            else if (G != other.G)
+                return G - other.G < 0 ? 1 : -1;
+            else if (x != other.x)
+                return x - other.x > 0 ? 1 : -1;
+            else
+                return y.CompareTo(other.y);
+
+        }
+
+        public override string ToString()
+        {
+            return $"{F}";
+        }
+
+
+
+        ////////////////////   在ImageCompareTestPanel中的，对MapData的A*寻路的测试方法  ///////////////
+        Sprite _show_sprite;
+        MapData _mapData;
+
+        void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                // for (int i = 0; i < 5; i++)
+                //     _mapData.Step();
+
+                // _mapData.Print();
+                // var save_path = Application.streamingAssetsPath + $"/SmallMap/astar.png";
+                // _mapData.SaveAStar(save_path);
+
+                // _show_sprite = ImageManager.Inst.LoadSpriteInStreaming(save_path);
+                // RightImage.SetData(_show_sprite);
+            }
+        }
+
+        void OnClickBtn4th()
+        {
+            // var str = InputText.text;
+            var str = "(60,40,200,230)";
+            str.Replace(" ", "");
+            str = str.Substring(1, str.Length - 2);
+            var arr = str.Split(',');
+            var start = new Vector2Int(int.Parse(arr[0]), int.Parse(arr[1]));
+            var target = new Vector2Int(int.Parse(arr[2]), int.Parse(arr[3]));
+
+
+
+            // if (_mapData == null)
+            // {
+            MapDataManager.Inst.Remove("Map-22");
+            MapDataManager.Inst.Create("Map-22", new CVRect(0, 0, 200, 200));
+            _mapData = MapDataManager.Inst.Get("Map-22");
+            // var dir = @"D:\unityProject\MyProject\Assets\StreamingAssets\SmallMap\小地图_22";
+            var dir = @"D:\unityProject\MyProject\Assets\StreamingAssets\Capture\小地图_22";
+
+
+            for (int i = 11; i <= 21; i++)
+            {
+                var file_path = dir + $"/{i}.png";
+                _mapData.Capture(new Bitmap(file_path));
+            }
+            // }
+
+
+
+
+            // _mapData.InitGridOriginal();
+
+            // DU.RunWithTimer(() =>
+            // {
+            //     _mapData.StartAStarOri(start, target);
+            // }, "AStarOri");
+
+            // _mapData.InitGrid();
+
+            // DU.RunWithTimer(() =>
+            // {
+            //     _mapData.StartAStar(start, target);
+            // }, "AStar");
+
+            // _mapData.InitGrid();
+            // DU.RunWithTimer(() =>
+            // {
+            //     _mapData.StartAStarAVL(start, target);
+            // }, "AStarAVLTree");
+
+
+            // _mapData.InitGridOriginal();
+            // DU.RunWithTimer(() =>
+            // {
+            //     _mapData.StartAStarRedBlack(start, target);
+            // }, "AStarRedBlackTree");
+
+
+            // DU.RunWithTimer(() =>
+            // {
+            //     _mapData.StartAStarBigGrid(start, target);
+            // }, "StartAStarBigGrid");
+
+
+            // _mapData.Print();
+
+            var save_path = Application.streamingAssetsPath + $"/SmallMap/astar.png";
+            _mapData.SaveAStar(save_path);
+
+        }
+
+
+        ////////////////////   End     //////////////////// 
+        #endregion
     }
 }

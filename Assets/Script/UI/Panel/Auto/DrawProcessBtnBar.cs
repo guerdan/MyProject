@@ -11,6 +11,7 @@ namespace Script.UI.Panel.Auto
     public class DrawProcessBtnBar : MonoBehaviour
     {
         [SerializeField] private Button RunBtn;         //运行按钮
+        [SerializeField] private Button CloseBtn;       //关闭按钮
         [SerializeField] private Button CreateNodeBtn;  //创建节点按钮
         [SerializeField] private Button DebugBtn;       //打开Debug窗
 
@@ -18,9 +19,10 @@ namespace Script.UI.Panel.Auto
 
         void Awake()
         {
-            RunBtn.onClick.AddListener(OnRunBtnClick);
-            CreateNodeBtn.onClick.AddListener(OnCreateNodeBtnClick);
-            DebugBtn.onClick.AddListener(OnDebugBtnClick);
+            RunBtn.onClick.AddListener(OnClickRunBtn);
+            CloseBtn.onClick.AddListener(OnClickCloseBtn);
+            CreateNodeBtn.onClick.AddListener(OnClickCreateNodeBtn);
+            DebugBtn.onClick.AddListener(OnClickDebugBtn);
         }
 
 
@@ -49,7 +51,7 @@ namespace Script.UI.Panel.Auto
 
         }
 
-        void OnRunBtnClick()
+        void OnClickRunBtn()
         {
             if (AutoScriptManager.Inst.IsRuning(_panel._id))
             {
@@ -63,12 +65,18 @@ namespace Script.UI.Panel.Auto
             RefreshBtn();
         }
 
-        void OnCreateNodeBtnClick()
+        void OnClickCloseBtn()
+        {
+            AutoScriptManager.Inst.TerminateScript(_panel._id);
+        }
+
+
+        void OnClickCreateNodeBtn()
         {
             _panel.CreateNewNode();
         }
 
-        void OnDebugBtnClick()
+        void OnClickDebugBtn()
         {
             UIManager.Inst.ShowPanel(PanelEnum.ProcessDebugPanel, _panel);
         }

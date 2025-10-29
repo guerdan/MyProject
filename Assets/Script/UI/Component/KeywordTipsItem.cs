@@ -35,7 +35,7 @@ namespace Script.UI.Component
 
         public void Refresh()
         {
-            if (_index == _parent.SelectIndex)
+            if (_parent.UseSelect && _index == _parent.SelectIndex)
             {
                 Bg.color = Utils.ParseHtmlString("#BBBBBB");
                 Text.color = Utils.ParseHtmlString("#222222");

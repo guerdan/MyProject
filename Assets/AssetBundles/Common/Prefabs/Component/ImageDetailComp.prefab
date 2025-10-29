@@ -781,6 +781,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0aaabaa3c7b34c842ad6c0bafed1b6f4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  DefaultSprite: {fileID: 21300000, guid: c554b13610552ba4baa86365ea916807, type: 3}
   ScrollRect: {fileID: 941308678867230462}
   Image: {fileID: 3406103845491172248}
   LineParent: {fileID: 8746445408777160172}

@@ -10,6 +10,7 @@ using Script.Framework.AssetLoader;
 using Script.Framework.UI;
 using Script.Util;
 using UnityEngine;
+using static Script.Model.Auto.MapData;
 using Random = UnityEngine.Random;
 using Rect = OpenCvSharp.Rect;
 
@@ -176,17 +177,18 @@ namespace Script.Model.Auto
 
         // 运行时数据
         [JsonIgnore]
-        public float ExcuteTimes = 0;                   // 执行过多少次
-        [JsonIgnore]
         public NodeStatus Status = NodeStatus.Off;      // 节点状态。In表示流程处在此节点，否则就是Off
         [JsonIgnore]
         public float Timer = 0;                         // 内部计时器.In时开始累加，直到 Delay执行一次内容
         [JsonIgnore]
-        public bool CanAction => Timer >= Delay;        // 是否可以执行内容了 
+        public float ExcuteTimes = 0;                   // 执行过多少次
         [JsonIgnore]
         public object InData;                           // 输入数据。由上个节点传入 
         [JsonIgnore]
         public object OutData;                          // 输出数据。传出给下个节点  
+
+        [JsonIgnore]
+        public bool CanAction => Timer >= Delay;        // 是否可以执行内容了 
 
         #endregion
 
@@ -212,6 +214,9 @@ namespace Script.Model.Auto
 
         public virtual void Clear()
         {
+            Status = NodeStatus.Off;
+            Timer = 0;
+            ExcuteTimes = 0;
             InData = null;
             OutData = null;
         }
@@ -310,6 +315,13 @@ namespace Script.Model.Auto
         public static int CountDefault = 1;
         public static string RegionExpressionDefault = "Screen{}";
 
+        ////////// debug
+        [JsonIgnore]
+        public float Meet_min_score = 2;
+        [JsonIgnore]
+        public float Unmeet_max_score = -1;
+        //////////
+
         [JsonProperty("template_path")]
         public string TemplatePath = "";
         [JsonProperty("region_expression")]
@@ -323,8 +335,11 @@ namespace Script.Model.Auto
         [JsonProperty("save_capture_to_local_path")]
         public string SaveCaptureToLocalPath = "";
 
+
         Vector4 _region;
         List<CVMatchResult> _result;
+
+
         public static TemplateMatchOperNode CreateNew()
         {
             var node = new TemplateMatchOperNode();
@@ -419,7 +434,17 @@ namespace Script.Model.Auto
             if (Count == 1)
             {
                 if (_result.Count > 0)
-                    OutData = _result[0].Rect.ToVector4();
+                {
+                    _result.Sort((a, b) => b.Score.CompareTo(a.Score));
+                    var r = _result[0];
+                    OutData = r.Rect.ToVector4();
+
+                    Meet_min_score = Mathf.Min(Meet_min_score, r.Score);
+                }
+                else
+                {
+                    Unmeet_max_score = Mathf.Max(Unmeet_max_score, max_score_r.Score);
+                }
             }
             else if (Count > 1)
             {
@@ -508,27 +533,27 @@ namespace Script.Model.Auto
         public override void Action()
         {
             base.Action();
+
             Vector2 pos = _scriptData.FormulaGetResultV2(ClickPos);
             int x = (int)pos.x;
             int y = (int)pos.y;
+            WU.SetCursorPos(x, y);
 
             // 移动鼠标
             //
             // WU.mouse_event(WU.MOUSEEVENTF_MOVE | WU.MOUSEEVENTF_ABSOLUTE
             //     , x * 65535 / 1920, y * 65535 / 1080, 0, UIntPtr.Zero);
 
-            WU.SetCursorPos(x, y);
             if (ClickType == 0)
             {
-                WU.mouse_event(WU.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
-                WU.mouse_event(WU.MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
+                WU.mouse_event(WU.MOUSEEVENTF_LEFTDOWN | WU.MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
             }
             else if (ClickType == 1)
             {
-                WU.mouse_event(WU.MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, UIntPtr.Zero);
-                WU.mouse_event(WU.MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
+                WU.mouse_event(WU.MOUSEEVENTF_RIGHTDOWN | WU.MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
             }
         }
+
 
         public override void Copy(BaseNodeData source)
         {
@@ -968,6 +993,11 @@ namespace Script.Model.Auto
 
             using (Bitmap bitmap = WU.CaptureWindow(CVRect.GetByRegion(_region)))
             {
+                if (bitmap.Width != _region.z)
+                {
+                    DU.LogWarning("找不到小地图");
+                    return;
+                }
                 _mapData.Capture(bitmap);
             }
         }
@@ -1004,8 +1034,11 @@ namespace Script.Model.Auto
     #region AutoScriptData
     public partial class AutoScriptData
     {
+        // 打印输出
+        public Dictionary<string, (int, List<double>)> RunTimeDic = new Dictionary<string, (int, List<double>)>();
+
         public bool Running => _running;
-        public bool Finish => _finish;
+        public bool IsEnd => _isEnd;
         // 仅编辑模式下展示
         public Dictionary<string, List<TriggerEventNode>> Edit_TriggerNodes = new Dictionary<string, List<TriggerEventNode>>();
         public AutoScriptConfig Config;
@@ -1014,7 +1047,7 @@ namespace Script.Model.Auto
         public Dictionary<string, BaseNodeData> ActiveNodes = new Dictionary<string, BaseNodeData>();
         private Dictionary<string, List<ListenEventNode>> _listenNodes = new Dictionary<string, List<ListenEventNode>>();
         private bool _running = false;
-        private bool _finish = true;
+        private bool _isEnd = true;
 
         public AutoScriptData(AutoScriptConfig config, AutoScriptManager manager)
         {
@@ -1177,7 +1210,8 @@ namespace Script.Model.Auto
             {
                 if (n.CanAction)
                 {
-                    DU.RunWithTimer(() => n.Action(), $"节点 {n.Id} 执行", 2);
+                    var ms = DU.RunWithTimer(() => n.Action());
+                    Record($"节点 {n.Id} 执行", ms);
                     // n.Action();
                     TransferNode(n);
                 }
@@ -1186,7 +1220,7 @@ namespace Script.Model.Auto
             if (ActiveNodes.Count == 0)
             {
                 _running = false;
-                _finish = true;
+                _isEnd = true;
                 Manager.OnScriptEnd?.Invoke();
             }
         }
@@ -1201,7 +1235,7 @@ namespace Script.Model.Auto
             }
 
             _running = true;
-            _finish = false;
+            _isEnd = false;
 
             //如果起点被删了，修改Config.FirstNode
             if (Config.FirstNode == "" || !NodeDatas.ContainsKey(Config.FirstNode))
@@ -1234,6 +1268,18 @@ namespace Script.Model.Auto
             _running = true;
         }
 
+        public void TerminateScript()
+        {
+            _running = false;
+            _isEnd = true;
+
+            foreach (var n in NodeDatas.Values)
+            {
+                n.Clear();
+            }
+
+            ActiveNodes.Clear();
+        }
         public void StartNode(BaseNodeData node)
         {
             if (node.Status == NodeStatus.In)
@@ -1264,7 +1310,8 @@ namespace Script.Model.Auto
                 if (next.CanAction)
                 {
                     next.BeforeAction();
-                    DU.RunWithTimer(() => next.Action(), $"节点 {next.Id} 执行", 2);
+                    var ms = DU.RunWithTimer(() => next.Action());
+                    Record($"节点 {next.Id} 执行", ms);
                     // next.Action();
                     TransferNode(next);
                 }
@@ -1373,6 +1420,31 @@ namespace Script.Model.Auto
             }
             return new List<TriggerEventNode>();
         }
+
+        // 做成，n次-100ms-100ms-100ms的形式。
+        // >=1ms 才会被记录时间
+        public void Record(string message, double ms)
+        {
+            DU.Log($"[{message}] 耗时{ms}ms");
+
+            if (!RunTimeDic.TryGetValue(message, out var tuple))
+            {
+                tuple = (0, new List<double>());
+            }
+            tuple.Item1 += 1;
+
+            if (ms >= 1)
+            {
+                tuple.Item2.Insert(0, ms);
+                if (tuple.Item2.Count > 5)
+                {
+                    tuple.Item2.RemoveAt(tuple.Item2.Count - 1);
+                }
+            }
+
+            RunTimeDic[message] = tuple;
+        }
+
     }
 
     #endregion
@@ -1459,7 +1531,7 @@ namespace Script.Model.Auto
         public void StartScript(string id)
         {
             var scriptData = _scriptDatas[id];
-            if (scriptData.Finish)
+            if (scriptData.IsEnd)
             {
                 scriptData.StartScript();
             }
@@ -1473,6 +1545,10 @@ namespace Script.Model.Auto
         public void StopScript(string id)
         {
             _scriptDatas[id].StopScript();
+        }
+        public void TerminateScript(string id)
+        {
+            _scriptDatas[id].TerminateScript();
         }
 
         public void OnUpdate(float deltaTime)
@@ -1604,8 +1680,16 @@ namespace Script.Model.Auto
                         SaveCaptureToLocal(bitmap);
                     };
 
-                    DU.RunWithTimer(action, "CaptureWindow");   // 25ms
-                    DU.RunWithTimer(action1, "BitmapToMat");    // 1ms
+                    var ms0 = DU.RunWithTimer(action);
+                    var ms1 = DU.RunWithTimer(action1);
+
+                    foreach (var script in _scriptDatas.Values)
+                    {
+                        if (!script.Running) continue;
+                        script.Record("CaptureWindow", ms0);
+                        script.Record("BitmapToMat", ms1);
+                    }
+
                     if (_saveCaptureToLocal) DU.RunWithTimer(action2, "SaveCaptureToLocal");    // 0ms
 
                     bitmap.Dispose();
@@ -1890,12 +1974,12 @@ namespace Script.Model.Auto
                 case NodeType.TemplateMatchOper:
                 case NodeType.MouseOper:
                 case NodeType.KeyBoardOper:
-                case NodeType.MapCapture:
                     return 0.01f;
                 case NodeType.AssignOper:
                 case NodeType.ConditionOper:
                 case NodeType.TriggerEvent:
                 case NodeType.ListenEvent:
+                case NodeType.MapCapture:
                     return 0;
                 default:
                     return 0.01f;

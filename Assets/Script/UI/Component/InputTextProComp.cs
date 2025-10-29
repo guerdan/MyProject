@@ -176,7 +176,7 @@ namespace Script.UI.Component
             var tipsCompRectT = _tipsComp.GetComponent<RectTransform>();
             if (_relativePos == Vector2.zero)
                 _relativePos = Utils.GetPos(tipsCompRectT, textComp.GetComponent<RectTransform>()
-                , Vector2.zero, true);
+                , default, true);
 
 
             //没有提取函数，就用全部文本

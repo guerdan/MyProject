@@ -14,6 +14,18 @@ namespace Script.Util
         public const string StartOperationStringFormat = ">>>----------Start {0}---------->>>";
         public const string EndOperationStringFormat = "<<<----------End {0}----------<<<";
 
+        public static readonly Vector2Int[] SurroundList = new Vector2Int[]{
+                                new Vector2Int(-1, -1),
+                                new Vector2Int(-1, 0),
+                                new Vector2Int(-1, 1),
+                                new Vector2Int(0, 1),
+                                new Vector2Int(1, 1),
+                                new Vector2Int(1, 0),
+                                new Vector2Int(1, -1),
+                                new Vector2Int(0, -1),
+                            };
+
+
         /// <summary>
         /// 如果没有什么特别组件而想存成List[GameObject]，就改用存List[Transform]或者List[RectTransform]
         /// 以达到相同的效果

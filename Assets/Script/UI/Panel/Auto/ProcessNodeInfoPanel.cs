@@ -31,6 +31,7 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private Button UnfoldBtn;
         [SerializeField] private Button FoldBtn;
         [SerializeField] private GameObject RightPanel;
+        [SerializeField] private Button LookDebugBtn;            //debug按钮
 
 
 
@@ -73,7 +74,6 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private GameObject MapCaptureGO;
         [SerializeField] private InputTextProComp MapCaptureRegionInput;
         [SerializeField] private InputTextComp MapCaptureIdInput;
-        [SerializeField] private Button MapCaptureDetailBtn;
 
         AutoScriptManager manager => AutoScriptManager.Inst;
         BaseNodeData _data;
@@ -89,7 +89,7 @@ namespace Script.UI.Panel.Auto
             UnfoldBtn.onClick.AddListener(OnFoldChangeBtnClick);
             FoldBtn.onClick.AddListener(OnFoldChangeBtnClick);
             TemplateImageBtn.onClick.AddListener(OnTemplateImageBtnClick);
-            MapCaptureDetailBtn.onClick.AddListener(MapCaptureDetailBtnOnClick);
+            LookDebugBtn.onClick.AddListener(OnClickLookDebugBtn);
         }
 
 
@@ -247,6 +247,7 @@ namespace Script.UI.Panel.Auto
             }
             else
             {
+                _data.Delay = minDelay;
                 DelayInput.SetText(minDelay + "s");
             }
 
@@ -497,8 +498,8 @@ namespace Script.UI.Panel.Auto
             };
 
 
-            string format = AutoDataUIConfig.FormulaFormat(data.Formula);  //格式化
-            ConditionInput.SetData(format, save_func);
+            string t_format = AutoDataUIConfig.FormulaFormat(data.Formula);  //格式化
+            ConditionInput.SetData(t_format, save_func);
 
             var varRef = _scriptData.GetInEditVarRef();
             ConditionInput.UseKeywordTips(TipsComp
@@ -654,7 +655,37 @@ namespace Script.UI.Panel.Auto
             });
         }
 
-        void MapCaptureDetailBtnOnClick()
+        void OnClickLookDebugBtn()
+        {
+            if (_nodeType == NodeType.TemplateMatchOper)
+                OnClickTemplateMatchDebug();
+            if (_nodeType == NodeType.MapCapture)
+                OnClickMapCaptureDebug();
+        }
+        void OnClickTemplateMatchDebug()
+        {
+            var data = _data as TemplateMatchOperNode;
+            List<string> options = new List<string>();
+            if (data.Meet_min_score <= 1)
+            {
+                options.Add($"<color='#069D00'>匹配中的最小值：{data.Meet_min_score}</color>");
+            }
+
+            if (data.Unmeet_max_score >= 0)
+            {
+                options.Add($"<color='#df3106ff'>未匹配上的最大值：{data.Unmeet_max_score}</color>");
+            }
+
+            Utils.SetActive(TipsComp, true);
+            TipsComp.SetData(options, null, 400);
+
+            var tipsCompRectT = TipsComp.GetComponent<RectTransform>();
+            var targetR = LookDebugBtn.GetComponent<RectTransform>();
+            var offset = new Vector2(targetR.rect.width / 2, targetR.rect.height / 2) + new Vector2(5, -5);
+            var pos = Utils.GetPos(tipsCompRectT, targetR, offset, true);
+            tipsCompRectT.anchoredPosition = pos;
+        }
+        void OnClickMapCaptureDebug()
         {
             var data = _data as MapCaptureNode;
             UIManager.Inst.ShowPanel(PanelEnum.ImageCompareTestPanel, data.MapId);

@@ -16,9 +16,9 @@ namespace Script.UI.Component
         [SerializeField] private VirtualListComp ListComp;
         [SerializeField] private GameObject Prefab;
         [SerializeField] private Text NumText;
-
-
         [HideInInspector] public int SelectIndex = -1;
+        public bool UseSelect;
+
         List<string> _strList;
         Action<int> _onSelect;
         float _itemWidth;
@@ -49,6 +49,10 @@ namespace Script.UI.Component
             comp.SetData(_strList[index], index, _onSelect, _itemWidth, this);
 
         }
+
+        /// <summary>
+        /// 不传onSelect代表不用选项。
+        /// </summary>
         public void SetData(List<string> strList, Action<int> onSelect, float width = 160
             , int maxShowCount = 5)
         {
@@ -59,6 +63,7 @@ namespace Script.UI.Component
                 onSelect?.Invoke(i);
                 gameObject.SetActive(false);
             };
+            UseSelect = onSelect != null;
             // 初始化
             SelectIndex = 0;
 

@@ -39,8 +39,8 @@ namespace Script.UI.Panel.Auto
         void Refresh()
         {
 
-            SourceImage.SetData(source_path, new Vector2(1000, 600), false);
-            TemplateImage.SetData(template_path, new Vector2(800, 400), false);
+            SourceImage.SetData(source_path,default,false);
+            TemplateImage.SetData(template_path,default,false);
             var s_size = SourceImage.GetSize();
             var t_size = TemplateImage.GetSize();
             var max_h = Mathf.Max(s_size.y, t_size.y);
@@ -62,7 +62,7 @@ namespace Script.UI.Panel.Auto
             Mat t_mat = IU.GetMat(template_path, true);
             Mat r_mat = IU.MatchTemplate1(s_mat, t_mat);
             // 先以0为阈值
-            var results = IU.FindResult(r_mat, t_mat.Width, t_mat.Height, 0.9f, out var _);
+            var results = IU.FindResult(r_mat, t_mat.Width, t_mat.Height, 0f, out var _);
             DU.Log($"匹配到{results.Count}个结果");
             results.Sort((a, b) =>
             {
@@ -82,21 +82,21 @@ namespace Script.UI.Panel.Auto
                 index = 0;
                 var item = results[index];
                 str += $"第{index + 1}名，分数<color='#069D00'>{DU.FloatFormat(item.Score, 2)}</color>"
-                +$"，坐标P({ (int)item.Rect.x},{ (int)item.Rect.y})\n";
+                + $"，坐标P({(int)item.Rect.x},{(int)item.Rect.y})\n";
             }
             if (results.Count > 1)
             {
                 index = 1;
                 var item = results[index];
                 str += $"第{index + 1}名，分数<color='#069D00'>{DU.FloatFormat(item.Score, 2)}</color>"
-                +$"，坐标P({ (int)item.Rect.x},{ (int)item.Rect.y})\n";
+                + $"，坐标P({(int)item.Rect.x},{(int)item.Rect.y})\n";
             }
             if (results.Count > 2)
             {
                 index = 2;
                 var item = results[index];
                 str += $"第{index + 1}名，分数<color='#069D00'>{DU.FloatFormat(item.Score, 2)}</color>"
-                +$"，坐标P({ (int)item.Rect.x},{ (int)item.Rect.y})\n";
+                + $"，坐标P({(int)item.Rect.x},{(int)item.Rect.y})\n";
             }
 
             ResultText.text = str;
@@ -111,18 +111,15 @@ namespace Script.UI.Panel.Auto
             var worldPos = SourceImage.Image.transform.position;
             Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(null, worldPos);
 
-            float scale = SourceImage.GetScale();
-            // foreach (var item in results)
-            // {
-            //     var rect = item.Rect;
-            //     rect.x = screenPoint.x - s_size.x * 0.5f + rect.x * scale;
-            //     rect.y = Screen.height - (screenPoint.y + s_size.y * 0.5f) + rect.y * scale;
-            //     rect.w *= scale;
-            //     rect.h *= scale;
-            //     item.Rect = rect;
-            // }
+            foreach (var item in results)
+            {
+                var rect = item.Rect;
+                rect.x = (int)(screenPoint.x - s_size.x * 0.5f) + rect.x;
+                rect.y = (int)(Screen.height - (screenPoint.y + s_size.y * 0.5f)) + rect.y;
+                item.Rect = rect;
+            }
 
-            // UIManager.Inst.ShowPanel(PanelEnum.TemplateMatchDrawResultPanel, new List<object> { results, 1000.0f });
+            UIManager.Inst.ShowPanel(PanelEnum.TemplateMatchDrawResultPanel, new List<object> { results, 1000.0f });
         }
 
         void OnClickSourceBtn()

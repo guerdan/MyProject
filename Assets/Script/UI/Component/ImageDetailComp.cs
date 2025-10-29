@@ -26,6 +26,7 @@ namespace Script.UI.Component
     /// </summary>
     public class ImageDetailComp : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
     {
+        [SerializeField] private Sprite DefaultSprite;
         [SerializeField] public ScrollRect ScrollRect;
         [SerializeField] public Image Image;
         [SerializeField] public RectTransform LineParent;
@@ -67,7 +68,7 @@ namespace Script.UI.Component
         List<RectTransform> _horizonLines1 = new List<RectTransform>();          // 参考线实例缓存
         List<SquareFrameUI> _colorPixelObjs = new List<SquareFrameUI>();           // 颜色格子实例缓存
 
-
+        Sprite _spr;
         Vector2 _cursor_down_pos;
         Vector2Int _select_pixel_pos;                      // 选中像素点的位置, 以左下角为原点
 
@@ -126,6 +127,7 @@ namespace Script.UI.Component
 
         public void SetData(Sprite spr)
         {
+            _spr = spr;
             spr.texture.filterMode = FilterMode.Point;
             Image.sprite = spr;
             _imageSize = new Vector2Int(spr.texture.width, spr.texture.height);
@@ -141,6 +143,19 @@ namespace Script.UI.Component
             ScrollRect.normalizedPosition = new Vector2(0.5f, 0.5f);
         }
 
+        public void ClearData()
+        {
+            _spr = null;
+            Image.sprite = DefaultSprite;
+            _imageSize = default;
+            if (SizeText) SizeText.text = " * ";
+
+            _sizeScale = 1;
+            _select_pixel_pos = new Vector2Int(-1, -1);
+            ScrollRect.normalizedPosition = new Vector2(0.5f, 0.5f);
+
+        }
+
         public void Change(Action<float> onScaleChange
             , Action<Vector2> onScroll, Action<Vector2Int> onSelectPixel)
         {
@@ -151,18 +166,36 @@ namespace Script.UI.Component
 
         void Update()
         {
+            if (_spr == null)
+                return;
+
             // 检测鼠标滚轮滚动
             float scroll = Input.GetAxis("Mouse ScrollWheel");
 
             // 滚轮有滚动
             if (Mathf.Abs(scroll) > 0.01f && Utils.IsPointerOverUIObject(gameObject, Root.Inst.Canvas))
             {
-                // 调整 _sizeScale
-                _sizeScale *= scroll > 0 ? ScaleStep : 1 / ScaleStep;
-                _sizeScale = Mathf.Clamp(_sizeScale, MinScale, MaxScale); // 限制范围
-                RefreshScale();
-                _onScaleChange?.Invoke(_sizeScale);
+                DoScale(scroll > 0);
             }
+
+            if (Input.GetKeyDown(KeyCode.Equals))
+            {
+                DoScale(true);
+            }
+
+            if (Input.GetKeyDown(KeyCode.Minus))
+            {
+                DoScale(false);
+            }
+        }
+
+        void DoScale(bool positive)
+        {
+            // 调整 _sizeScale
+            _sizeScale *= positive ? ScaleStep : 1 / ScaleStep;
+            _sizeScale = Mathf.Clamp(_sizeScale, MinScale, MaxScale); // 限制范围
+            RefreshScale();
+            _onScaleChange?.Invoke(_sizeScale);
         }
 
         void RefreshScale()
@@ -270,6 +303,9 @@ namespace Script.UI.Component
         void OnScroll(Vector2 cur)
         {
             // DU.Log($"OnScroll {cur}");
+
+            if (_spr == null)
+                return;
 
             RefreshLine();
             RefreshSelectPixel();

@@ -111,6 +111,16 @@ namespace Script.Util
             return str;
         }
 
+        public static double RunWithTimer(Action action)
+        {
+            var pre = DateTime.Now;
+
+            action.Invoke();
+
+            var back = DateTime.Now;
+            double ms = (back - pre).TotalMilliseconds;
+            return ms;
+        }
 
         public static string GetListString(List<string> list)
         {

@@ -126,6 +126,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 97e1e7cbd8c56414698e32f68d19bf49, type: 3}
   - {fileID: 21300000, guid: a81ed4dbd5814784daa82c4fe42a7441, type: 3}
   - {fileID: 21300000, guid: 39fb5fdb4a6efd34180db51a9098dc0e, type: 3}
+  - {fileID: 21300000, guid: 2a78d40cc2a5ba94b99d8891292578cc, type: 3}
   - {fileID: 21300000, guid: 03a85c4c76c16904faf168f507a208c7, type: 3}
   - {fileID: 21300000, guid: 1b58147cb1da32247a67e97bd84ed039, type: 3}
   - {fileID: 21300000, guid: 1037297cf0a984d4f88f86839f8d674a, type: 3}
@@ -226,6 +227,7 @@ SpriteAtlas:
   - Cartoon_buttons_3
   - bg_color_hero_bottom
   - b_create
+  - b_close
   - folder_icon
   - bg_bag_title_deco
   - selectBox_bg

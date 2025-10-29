@@ -25,12 +25,40 @@ namespace Script.UI.Panel.Auto
             base.Awake();
             inst = this;
 
+            // WU.Init();
+            // WU.AddMouseListener(MouseRecord);
+            // WU.AddKeyboardListener(KeyboardRecord);
+        }
+
+        void OnDestroy()
+        {
+            // WU.RemoveMouseListener(MouseRecord);
+            // WU.RemoveKeyboardListener(KeyboardRecord);
+            // WU.Release();
+
+        }
+
+        void Start()
+        {
             // 获取 System.Drawing 的加载路径
             // string assemblyPath = typeof(Bitmap).Assembly.Location;
             // DU.LogWarning($"System.Drawing.dll is loaded from: {assemblyPath}");
         }
 
+        void KeyboardRecord(KeyboardHookEnum action, WU.KBDLLHOOKSTRUCT hookStruct)
+        {
 
+            // 普通键，
+            if (action == KeyboardHookEnum.KeyDown)
+            {
+                if (hookStruct.vkCode == (uint)KeyboardEnum.Esc)
+                {
+                    string id = DrawProcessPanel.LastOpenId;
+                    AutoScriptManager.Inst.StopScript(id);
+                }
+            }
+
+        }
 
 
         void Update()
@@ -101,8 +129,7 @@ namespace Script.UI.Panel.Auto
 
             if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.C))
             {
-                string id = Application.streamingAssetsPath + "/MatchTemplate/folder.png";
-                UIManager.Inst.ShowPanel(PanelEnum.ImageCompareTestPanel, id);
+                UIManager.Inst.ShowPanel(PanelEnum.ImageCompareTestPanel, null);
             }
         }
 
