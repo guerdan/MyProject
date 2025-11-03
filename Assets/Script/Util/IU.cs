@@ -131,8 +131,12 @@ namespace Script.Util
                 throw new ArgumentException("Mat is null or empty!");
             }
 
-            // 保存 Mat 到指定路径
-            Cv2.ImWrite(filePath, mat);
+            // 中文路径直接保存会失败。先暂存再移动文件
+            string tempPath = "temp_image.png";
+            Cv2.ImWrite(tempPath, mat);
+            File.Delete(filePath);
+            File.Move(tempPath, filePath);
+
         }
 
         #region MatchTemplate
@@ -355,11 +359,10 @@ namespace Script.Util
 
         public static void SaveBitmap(Bitmap bitmap, string folder, string name)
         {
-            string dir = Path.Combine(Application.streamingAssetsPath, folder);
-            if (!Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
+            if (!Directory.Exists(folder))
+                Directory.CreateDirectory(folder);
 
-            string path = Path.Combine(dir, name + ".png");
+            string path = $"{folder}/{name}.png";
             bitmap.Save(path, ImageFormat.Png);
         }
 
@@ -387,6 +390,17 @@ namespace Script.Util
             }
             return bl;
         }
+
+        public static Color32[] Color32ReverseVertical(Color32[] pixels, int w)
+        {
+            int h = pixels.Length / w;
+            Color32[] result = new Color32[pixels.Length];
+            for (int i = 0; i < h; i++)
+                for (int j = 0; j < w; j++)
+                    result[(h - 1 - i) * w + j] = pixels[i * w + j];
+            return result;
+        }
+
 
     }
     #endregion

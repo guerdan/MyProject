@@ -78,11 +78,12 @@ namespace Script.UI.Panel.Auto
             Utils.SetActive(LeftMemoryBtn, false);
             Utils.SetActive(RightMemoryBtn, false);
 
-            if (data is string mapId)
+            if (data is string[] list)
             {
                 RightImage.ClearData();
                 LeftImage.ClearData();
-                _mapId = mapId;
+                _mapId = list[0];
+                _scriptId = list[1];
                 RefreshMapPanel();
             }
 
@@ -94,12 +95,14 @@ namespace Script.UI.Panel.Auto
         #region 拍摄地图
 
         string _mapId;
+        string _scriptId;
         Texture2D _mapLTexture;
         Sprite _mapLSprite;
         Texture2D _mapRTexture;
         Sprite _mapRSprite;
 
         bool _clickLeft;
+        int[] _optionSelectStatus = new int[] { -1, -1 };
 
         void RefreshMapPanel()
         {
@@ -119,11 +122,16 @@ namespace Script.UI.Panel.Auto
 
             List<string> options = new List<string>()
             {
-                "_map",
-                "_map1",
-                "大格子寻路",
+                "_map",         // 像素粒度
+                "_map1",        // 像素粒度
+                "_grid",        // 5X5大格子粒度
+                "A*寻路",       // 5X5大格子粒度
+                "保存全部地图",       // 保存至本地
+                "_map1_mapT",        // _map1的临时绘图
+                "_map1_mapT1",        // _map1的临时绘图
             };
-            TipsComp.SetData(options, OnSelectMapOption, 120);
+            TipsComp.SetData(options, OnSelectMapOption, 140,7);
+            TipsComp.SetCurIndex(_optionSelectStatus[_clickLeft ? 0 : 1]);
 
             var tipsCompRectT = TipsComp.GetComponent<RectTransform>();
             var pos = Utils.GetPos(tipsCompRectT, comp.GetComponent<RectTransform>()
@@ -138,62 +146,114 @@ namespace Script.UI.Panel.Auto
         /// </summary>
         void OnSelectMapOption(int option)
         {
-            ImageDetailComp comp = _clickLeft ? LeftImage : RightImage;
-
+            if (option < 0)
+                return;
             MapData mapData = MapDataManager.Inst.Get(_mapId);
             if (mapData == null)
                 return;
 
+            if (option == 4)
+            {
+                //保存
+                var script = AutoScriptManager.Inst.GetScriptData(_scriptId);
+                string dir = $"{script.GetCapturePath()}/拍摄地图节点";
+                if (!Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+                mapData.Save($"{dir}/map.png");
+                return;
+            }
+
+            ImageDetailComp comp = _clickLeft ? LeftImage : RightImage;
+            _optionSelectStatus[_clickLeft ? 0 : 1] = option;
 
             mapData.GetContentAttr(out Vector2Int xRange, out Vector2Int yRange
                 , out var w, out var h);
 
             // 使用 rgba 格式
-            var mapTexture = new Texture2D(w, h, TextureFormat.RGBA32, false);
-            Color32[] pixels = new Color32[w * h];
-            CellType[,] map = mapData._map;
-            CellType[,] map1 = mapData._map1;
+            // Texture2D 是以左下角为像素坐标系原点，而 Mat、Bitmap是左上角
+            Color32[] pixels = null;
+            Vector2Int size = new Vector2Int(w, h);
 
-            // 填充纹理数据
             if (option == 0)
             {
-                for (int y = 0; y < h; y++)
-                    for (int x = 0; x < w; x++)
-                    {
-                        int index = y * w + x;
-                        var data = map[x + xRange.x, y + yRange.x];
-                        if (data == CellType.Empty)
-                            pixels[index] = new Color32(0, 0, 0, 255);
-                        else if (data == CellType.ObstacleEdge || data == CellType.NewObstacleEdge)
-                            pixels[index] = new Color32(255, 255, 255, 255);
-                        else if (data == CellType.Fog)
-                            pixels[index] = new Color32(0, 0, 255, 255);
-
-                    }
+                pixels = mapData.GetImageMap0();
             }
             else if (option == 1)
             {
-                for (int y = 0; y < h; y++)
-                    for (int x = 0; x < w; x++)
-                    {
-                        int index = y * w + x;
-                        var data = map1[x + xRange.x, y + yRange.x];
-                        if (data == CellType.Empty)
-                            pixels[index] = new Color32(0, 0, 0, 255);
-                        else if (data == CellType.ObstacleEdge || data == CellType.NewObstacleEdge)
-                            pixels[index] = new Color32(255, 255, 255, 255);
-
-                    }
+                pixels = mapData.GetImageMap1();
             }
+            else if (option == 2)
+            {
+                pixels = mapData.GetImageGrid();
+            }
+            else if (option == 3)
+            {
+                var str = InputText.text;
+                str.Replace(" ", "");
+                str = str.Substring(1, str.Length - 2);
+                var arr = str.Split(',');
+                try
+                {
+                    var start = new Vector2Int(int.Parse(arr[0]), int.Parse(arr[1]));
+                    var target = new Vector2Int(int.Parse(arr[2]), int.Parse(arr[3]));
+
+                    _mapData.StartAStarBigGrid(start, target);
+                    pixels = mapData.GetImageGridAStart();
+                }
+                catch
+                {
+                    DU.LogError("[A*寻路 打印图像] 输入文本格式不对");
+                    return;
+                }
+
+            }
+            else if (option == 5)
+            {
+                size = new Vector2Int(150, 150);
+                pixels = mapData.GetImageMap1MapT();
+            }
+
+
+            var mapTexture = new Texture2D(size.x, size.y, TextureFormat.RGBA32, false);
+
+            if (pixels.Length == 0)
+                return;
+            pixels = IU.Color32ReverseVertical(pixels, size.x);
 
             // 应用像素数据到纹理
             mapTexture.SetPixels32(pixels);
             mapTexture.Apply();
 
-            var mapSprite = Sprite.Create(mapTexture, new UnityEngine.Rect(0, 0, w, h), new Vector2(0.5f, 0.5f));
+            var line_offset = new Vector2Int(-(xRange.x % 5), -(yRange.x % 5));
+            var mapSprite = Sprite.Create(mapTexture, new UnityEngine.Rect(0, 0, size.x, size.y), new Vector2(0.5f, 0.5f));
             comp.SetData(mapSprite);
+            comp.SetLineOffset(line_offset);
 
             SaveMapImage(_clickLeft, mapTexture, mapSprite);
+
+
+            // 加个选择像素回调，为了方便查看内存
+            comp.SyncOnSelectPixel(v2 =>
+            {
+                var grid_px = (v2.x + xRange.x) / 5;
+                var grid_py = (v2.y + yRange.x) / 5;
+
+                BigCell cell = mapData._gridData._grid[grid_px, grid_py];
+                if (cell == null)
+                    return;
+                CellType[,] map1 = _mapData._map1;
+
+                int x_start = cell.x * 5;
+                int y_start = cell.y * 5;
+                var s_map = new CellType[5, 5];
+                for (int m = y_start; m < y_start + 5; m++)
+                    for (int n = x_start; n < x_start + 5; n++)
+                    {
+                        s_map[n - x_start, m - y_start] = map1[n, m];
+                    }
+
+
+            });
         }
 
         void SaveMapImage(bool isLeft, Texture2D texture, Sprite sprite)
@@ -264,32 +324,47 @@ namespace Script.UI.Panel.Auto
             RightImage.SetData(right_path);
         }
 
+        #region Update
+        void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.Space) && _mapData != null && _index <= _max_index)
+            {
+                var file_path = _debug_dir + $"/{_index++}.png";
+                _mapData.Capture(new Bitmap(file_path));
 
+                _clickLeft = false;
+                OnSelectMapOption(_optionSelectStatus[_clickLeft ? 0 : 1]);
+                _clickLeft = true;
+                OnSelectMapOption(_optionSelectStatus[_clickLeft ? 0 : 1]);
+                _mapData.PrintResult();
+            }
+        }
+
+        #endregion
         void OnSyncCB(bool isOn)
         {
             if (isOn)
             {
-                LeftImage.Change(
-                    f => RightImage.ScaleTo(f),
-                    v2 => RightImage.ScrollTo(v2),
-                    v2 => RightImage.SelectPixel(v2)
-                );
-                RightImage.Change(
-                    f => LeftImage.ScaleTo(f),
-                    v2 => LeftImage.ScrollTo(v2),
-                    v2 => LeftImage.SelectPixel(v2)
-                );
+                LeftImage.SyncOnScaleChange(f => RightImage.ScaleTo(f));
+                LeftImage.SyncOnScroll(v2 => RightImage.ScrollTo(v2));
+                LeftImage.SyncOnSelectPixel(v2 => RightImage.SelectPixel(v2));
+
+                RightImage.SyncOnScaleChange(f => LeftImage.ScaleTo(f));
+                RightImage.SyncOnScroll(v2 => LeftImage.ScrollTo(v2));
+                RightImage.SyncOnSelectPixel(v2 => LeftImage.SelectPixel(v2));
+
             }
             else
             {
-                LeftImage.Change(null, null, null);
-                RightImage.Change(null, null, null);
+                LeftImage.SyncOnScaleChange(null);
+                LeftImage.SyncOnScroll(null);
+                LeftImage.SyncOnSelectPixel(null);
+
+                RightImage.SyncOnScaleChange(null);
+                RightImage.SyncOnScroll(null);
+                RightImage.SyncOnSelectPixel(null);
             }
         }
-
-
-
-
 
 
         #region 找角色坐标
@@ -355,13 +430,25 @@ namespace Script.UI.Panel.Auto
             // if (!float.TryParse(arr[2], out float b)) return;
             // var target = new Color32((byte)r, (byte)g, (byte)b, 255);
 
-            var min_1th = new Color32(117, 123, 128, 255);
-            var max_1th = new Color32(173, 165, 180, 255);
+            // 第1版  颜色偏白，微蓝   
+            //
+            // var min_1th = new Color32(117, 123, 128, 255);
+            // var max_1th = new Color32(173, 165, 180, 255);
+            // var min_2th = new Color32(86, 88, 90, 255);
+            // var max_2th = max_1th;
+            // var min_3th = new Color32(65, 120, 135, 255);
+            // var max_3th = new Color32(95, 140, 170, 255);
+            // var B_to_G = new Vector2Int(5, 30);
+
+            // 第2版  颜色偏蓝   
+            //
+            var min_1th = new Color32(120, 120, 150, 255);
+            var max_1th = new Color32(145, 145, 195, 255);
             var min_2th = new Color32(86, 88, 90, 255);
             var max_2th = max_1th;
-            var min_3th = new Color32(65, 120, 135, 255);
-            var max_3th = new Color32(95, 140, 170, 255);
-            var B_to_G = new Vector2Int(5, 30);
+            var min_3th = new Color32(0, 120, 135, 255);
+            var max_3th = new Color32(85, 140, 195, 255);
+            var B_to_G = new Vector2Int(30, 60);
 
             //colorData中，0-为不可通行空地，1-为可通行区域，2-边界
             int[,] colorData = new int[_imgW, _imgH];
@@ -647,12 +734,16 @@ namespace Script.UI.Panel.Auto
             // TestExecutionTime.Inst.Test();
         }
 
-        // int count = 13;
+        int _index;
+        int _max_index;
+        string _debug_dir;
+
         void OnClickBtn3th()
         {
             // if (_mapData == null)
             // {
-            _mapData = new MapData(new CVRect(0, 0, 200, 200));
+            MapDataManager.Inst.Create("Map-22", new CVRect(0, 0, 200, 200));
+            _mapData = MapDataManager.Inst.Get("Map-22");
             // }
 
             // string path = WU.OpenFileDialog("选择图片", Application.streamingAssetsPath, "图片 *.png *.jpg)|*.png;*.jpg");
@@ -661,18 +752,21 @@ namespace Script.UI.Panel.Auto
 
 
             // var dir = @"D:\unityProject\MyProject\Assets\StreamingAssets\SmallMap\小地图_22";
-            var dir = @"D:\unityProject\MyProject\Assets\StreamingAssets\Capture\小地图_22";
+
+            _index = 31;
+            _max_index = 111;
+            _debug_dir = @"C:\Users\hp\Desktop\path\图\0.2间隔";
 
             // count++;
-            for (int i = 11; i <= 21; i++)
-            {
-                var file_path = dir + $"/{i}.png";
-                _mapData.Capture(new Bitmap(file_path));
-            }
+            // for (int i = 31; i <= 111; i++)
+            // {
+            //     var file_path = dir + $"/{i}.png";
+            //     _mapData.Capture(new Bitmap(file_path));
+            // }
 
 
-            var save_path = Application.streamingAssetsPath + $"/SmallMap/big_map.png";
-            _mapData.Save(save_path);
+            // var save_path = Application.streamingAssetsPath + $"/SmallMap/big_map.png";
+            // _mapData.Save(save_path);
 
         }
 
@@ -702,15 +796,6 @@ namespace Script.UI.Panel.Auto
 
         }
 
-        void Update()
-        {
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-
-            }
-
-
-        }
 
 
         Sprite _show_sprite;

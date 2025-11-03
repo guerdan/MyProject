@@ -11,16 +11,14 @@ namespace Script.Model.Auto
 {
     public enum CellType : byte
     {
-        Undefined = 0,      // 默认，此块不会参与功能
-        Empty = 1,          // 空地
-        ObstacleEdge = 2,   // 障碍边界, 处理过后代表所有障碍。
-        NewObstacleEdge = 3,// 新障碍边界，用于通知大格子更新，后变为ObstacleEdge
-        Fog = 4,            // 迷雾边界
-        Abandoned = 5,      // 废弃地块
-        Visited = 6,        // 已遍历过
+        Undefined = 0,      // 默认，此块不会参与功能。          灰色
+        Empty = 1,          // 空地。                          黑色
+        ObstacleEdge = 2,   // 障碍边界, 处理过后代表所有障碍。  白色
+        ObstacleFill = 3,   // 障碍填充区域                    浅白色
+        ObstacleByBig = 4,  // 大格子标定的障碍                 橙色
+        NewObstacleEdge = 5,// 新障碍边界，用于通知大格子更新，后变为ObstacleEdge
+        Fog = 6,            // 迷雾边界
         Temp = 7,           // 临时
-        ObstacleByBig = 8,  // 大格子标定的障碍
-
     }
 
     /// <summary>
@@ -30,6 +28,8 @@ namespace Script.Model.Auto
     /// </summary>
     public class MapData
     {
+        public Vector2Int Debug_SmallMap_Start;
+        public int Debug_SmallMap_Player_In_Obstacle;
         readonly Color32 gray = new Color32(80, 80, 80, 255);      // 灰色,代表CellType.Undefined
         readonly int mapInitialEdge = 200;      // 初始地图边长
         readonly int mapDistanceThreshold = 10; // 移动阈值，距边10  这样不用判断map取值出界
@@ -105,7 +105,7 @@ namespace Script.Model.Auto
                     // 转成像素数组, 再垂直方向反序一下，从下至上，和人观察习惯一致
                     // 
                     pixels = IU.BitmapToColor32(bitmap);
-                    pixels = ReverseVerticalColor(pixels, _rectW);
+                    pixels = IU.Color32ReverseVertical(pixels, _rectW);
                 }
                 CellType[,] small_map = ColorToData(pixels);
 
@@ -123,8 +123,10 @@ namespace Script.Model.Auto
                         using (Mat result = IU.MatchTemplate1(source, _template))
                         {
 
-                            var list = IU.FindResult(result, templateEdge, templateEdge, 0.5f, out _);
+                            var list = IU.FindResult(result, templateEdge, templateEdge, 0.1f, out _);
                             list.Sort((a, b) => b.Score.CompareTo(a.Score));
+                            var score = list.Count > 0 ? list[0].Score : 0;
+                            DU.LogWarning($"[Capture FindResult] {list.Count}个  {score}分");
                             if (list.Count == 0)
                                 return;
                             var rect = list[0].Rect;
@@ -151,15 +153,6 @@ namespace Script.Model.Auto
         }
 
 
-        Color32[] ReverseVerticalColor(Color32[] pixels, int w)
-        {
-            int h = pixels.Length / w;
-            Color32[] result = new Color32[pixels.Length];
-            for (int i = 0; i < h; i++)
-                for (int j = 0; j < w; j++)
-                    result[(h - 1 - i) * w + j] = pixels[i * w + j];
-            return result;
-        }
 
 
         /// <summary>
@@ -168,13 +161,14 @@ namespace Script.Model.Auto
         CellType[,] ColorToData(Color32[] pixels)
         {
             CellType[,] result = new CellType[_rectH, _rectW]; // 200 * 200 
-            var min_1th = new Color32(117, 123, 128, 255);
-            var max_1th = new Color32(173, 165, 180, 255);
+            var min_1th = new Color32(120, 120, 150, 255);
+            var max_1th = new Color32(145, 145, 195, 255);
             var min_2th = new Color32(86, 88, 90, 255);
             var max_2th = max_1th;
-            var min_3th = new Color32(65, 120, 135, 255);
-            var max_3th = new Color32(95, 140, 170, 255);
-            var B_to_G = new Vector2Int(5, 30);
+            var min_3th = new Color32(0, 120, 135, 255);
+            var max_3th = new Color32(85, 140, 195, 255);
+            var B_to_G = new Vector2Int(30, 60);
+
 
             var first_list = new List<Vector2Int>();
 
@@ -390,6 +384,7 @@ namespace Script.Model.Auto
             _gridData.Apply(start + new Vector2Int(25, 25), new Vector2Int(150, 150));
 
             // }, "Apply");
+            Debug_SmallMap_Start = start;
         }
         /// <summary>
         /// 更新内容的宽高
@@ -446,10 +441,12 @@ namespace Script.Model.Auto
             {
                 // 计算地图的新偏移。让非空内容居中，并满足_gridData的整除要求
 
-                var x = _gridData.GetDivisibleInt((_mapEdge - x_len) / 2);
-                var y = _gridData.GetDivisibleInt((_mapEdge - y_len) / 2);
+                var x = (_mapEdge - x_len) / 2;         //理想的重建位置
+                var y = (_mapEdge - y_len) / 2;
                 var start = new Vector2Int(x, y);
                 offset = new Vector2Int(start.x - _xRange.x, start.y - _yRange.x);
+                offset = new Vector2Int(_gridData.GetDivisibleInt(offset.x), _gridData.GetDivisibleInt(offset.y));
+
 
                 CellType[,] newMap = new CellType[_mapEdge, _mapEdge];
                 CellType[,] newMap1 = new CellType[_mapEdge, _mapEdge];
@@ -480,19 +477,9 @@ namespace Script.Model.Auto
         }
 
         #endregion
-
-
-
         #endregion
 
-
-
-
-
-
-
         #region map1
-
 
         public void ApplyMap1(Vector2Int start)
         {
@@ -502,7 +489,7 @@ namespace Script.Model.Auto
             for (int y = 0; y < 150; y++)
                 for (int x = 0; x < 150; x++)
                 {
-                    _mapT[x, y] = CellType.ObstacleEdge;
+                    _mapT[x, y] = CellType.ObstacleFill;
                 }
 
             var x_start = start.x + 25;
@@ -510,9 +497,19 @@ namespace Script.Model.Auto
             var x_end = x_start + 150 - 1;
             var y_end = y_start + 150 - 1;
 
-
             var count = 0;
-            _stack[count++] = new Vector2Int(start.x + 100, start.y + 99);
+            // 栈初始有中心3X3的空地。
+            //
+            var center = new Vector2Int(start.x + 100, start.y + 99);
+            for (int i = -2; i <= 2; i++)
+                for (int j = -2; j <= 2; j++)
+                {
+                    var pos = new Vector2Int(center.x + j, center.y + i);
+                    if (_map[pos.x, pos.y] == CellType.Empty)
+                        _stack[count++] = pos;
+                }
+
+            if (count == 0) Debug_SmallMap_Player_In_Obstacle++;
 
             while (count > 0)
             {
@@ -520,35 +517,84 @@ namespace Script.Model.Auto
                 int x = pop.x;
                 int y = pop.y;
 
-                _mapT[x - x_start, y - y_start] = CellType.Empty;
-
-
                 if (y > y_start && _map[x, y - 1] == CellType.Empty && _mapT[x - x_start, y - y_start - 1] != CellType.Empty)
+                {
+                    _mapT[x - x_start, y - y_start - 1] = CellType.Empty;
                     _stack[count++] = new Vector2Int(x, y - 1);
+                }
                 if (x > x_start && _map[x - 1, y] == CellType.Empty && _mapT[x - x_start - 1, y - y_start] != CellType.Empty)
+                {
+                    _mapT[x - x_start - 1, y - y_start] = CellType.Empty;
                     _stack[count++] = new Vector2Int(x - 1, y);
+                }
                 if (y < y_end && _map[x, y + 1] == CellType.Empty && _mapT[x - x_start, y - y_start + 1] != CellType.Empty)
+                {
+                    _mapT[x - x_start, y - y_start + 1] = CellType.Empty;
                     _stack[count++] = new Vector2Int(x, y + 1);
+                }
                 if (x < x_end && _map[x + 1, y] == CellType.Empty && _mapT[x - x_start + 1, y - y_start] != CellType.Empty)
+                {
+                    _mapT[x - x_start + 1, y - y_start] = CellType.Empty;
                     _stack[count++] = new Vector2Int(x + 1, y);
+                }
             }
 
+            var grid = _gridData._grid;
+            var list_obstacleFill_to_empty = new List<Vector2Int>();
             for (int y = 0; y < 150; y++)
                 for (int x = 0; x < 150; x++)
                 {
-                    var data0 = _map[x + x_start, y + y_start];
+                    var px = x + x_start;
+                    var py = y + y_start;
+                    var data0 = _map[px, py];
                     if (data0 == CellType.Undefined)
                         continue;
 
-                    // _map的"障碍"最高优先级, _map1的"格子障碍"第2优先级， _map1的"空地"第3优先级。
+                    var cx = px / 5;
+                    var cy = py / 5;
+                    var cell = grid[cx, cy];
+
+                    // "障碍边界"   第1优先级
+                    // "大格子障碍" 第2
+                    // "空地"       第3
+                    // "障碍填充"   第4
+                    // "Undefined"  第5
+
+                    // _map1 只含Undefined、ObstacleEdge、ObstacleFill、ObstacleByBig、Empty
+                    // 最初全是Undefined。然后听_map的写入ObstacleEdge 。听_grid的写入ObstacleByBig。
+                    // 本部分内容： Undefined||ObstacleFill的像素 更新成 ObstacleFill 还是 Empty
                     if (data0 == CellType.NewObstacleEdge)
-                        _map1[x + x_start, y + y_start] = CellType.ObstacleEdge;
-                    // else if (_map1[x + x_start, y + y_start] == CellType.ObstacleEdge)
-                    else if (_map1[x + x_start, y + y_start] == CellType.Undefined
-                        || _map1[x + x_start, y + y_start] == CellType.ObstacleEdge)
-                        _map1[x + x_start, y + y_start] = _mapT[x, y];
+                    {
+                        if (cell != null) cell.NeedRefresh = true;
+
+                        _map[px, py] = CellType.ObstacleEdge;
+                        _map1[px, py] = CellType.ObstacleEdge;
+                    }
+                    else if (_map1[px, py] == CellType.Undefined
+                        || _map1[px, py] == CellType.ObstacleFill)
+                    {
+                        // "障碍填充" 转 "空地" 要通知大格子
+                        if (cell != null && _map1[px, py] == CellType.ObstacleFill
+                            && _mapT[x, y] == CellType.Empty)
+                            list_obstacleFill_to_empty.Add(new Vector2Int(cx, cy));
+
+                        _map1[px, py] = _mapT[x, y];
+                    }
                 }
 
+            foreach (var cp in list_obstacleFill_to_empty)
+            {
+                for (int i = -1; i <= 1; i++)
+                    for (int j = -1; j <= 1; j++)
+                    {
+                        var cell = grid[cp.x + j, cp.y + i];
+                        if (cell != null)
+                        {
+                            if (!cell.NeedRefresh) _gridData.ObstacleFill2EmptyCount++;
+                            cell.NeedRefresh = true;
+                        }
+                    }
+            }
         }
 
 
@@ -569,6 +615,53 @@ namespace Script.Model.Auto
         #endregion
 
         #region Save
+
+        public void Save(string path)
+        {
+            Color32[] colors = GetImageMap0();
+            byte[] bytes = IU.Color32ToByte(colors);
+            using (Mat mat = Mat.FromPixelData(_h, _w, MatType.CV_8UC3, bytes))
+            {
+                IU.SaveMat(mat, path);
+            }
+
+
+            colors = GetImageMap1();
+            bytes = IU.Color32ToByte(colors);
+            var path1 = path.Substring(0, path.Length - 4) + "_1.png";
+            using (Mat mat = Mat.FromPixelData(_h, _w, MatType.CV_8UC3, bytes))
+            {
+                IU.SaveMat(mat, path1);
+            }
+
+            colors = GetImageGrid();
+            bytes = IU.Color32ToByte(colors);
+            var path2 = path.Substring(0, path.Length - 4) + "_grid.png";
+            using (Mat mat = Mat.FromPixelData(_h, _w, MatType.CV_8UC3, bytes))
+            {
+                IU.SaveMat(mat, path2);
+            }
+            PrintResult();
+        }
+
+        public void PrintResult()
+        {
+            var print = "";
+            if (Debug_SmallMap_Player_In_Obstacle > 0)
+            {
+                print += $"[error] 进入障碍{Debug_SmallMap_Player_In_Obstacle}次  ";
+            }
+
+            print += $"大格子重建 {_gridData.RebuildCellCount}次  多侧空地的大格子 {_gridData.MultiEmptyCellCount}个  ";
+
+            if (_gridData.ObstacleFill2EmptyCount > 0)
+            {
+                print += $"障碍填充转空地 {_gridData.ObstacleFill2EmptyCount}个 ";
+            }
+
+            DU.LogWarning(print);
+        }
+
 
         public Color32[] GetImageMap0()
         {
@@ -600,14 +693,93 @@ namespace Script.Model.Auto
 
                     Color32 color = gray;
                     if (pix == CellType.ObstacleEdge) color = new Color32(240, 240, 240, 255);
-                    if (pix == CellType.Empty || pix == CellType.ObstacleByBig)
-                        color = new Color32(20, 20, 20, 255);
+                    if (pix == CellType.ObstacleFill) color = new Color32(210, 210, 210, 255);
+                    if (pix == CellType.Empty) color = new Color32(20, 20, 20, 255);
+                    if (pix == CellType.ObstacleByBig) color = new Color32(240, 140, 0, 255);
 
                     bytes[index] = color;
                 }
 
+            var player_pos = new Vector2Int(Debug_SmallMap_Start.x - _xRange.x + 100
+                , Debug_SmallMap_Start.y - _yRange.x + 99);
+
+            var player_block_list = new Vector2Int[]
+            {
+                new Vector2Int(0,0),
+                new Vector2Int(-1,-1),
+                new Vector2Int(-1,1),
+                new Vector2Int(1,1),
+                new Vector2Int(1,-1),
+            };
+            foreach (var _ in player_block_list)
+            {
+                var pos = new Vector2Int(player_pos.x + _.x, player_pos.y + _.y);
+                bytes[(_h - 1 - pos.y) * _w + pos.x] = new Color32(0, 255, 0, 255);
+            }
+
             return bytes;
         }
+        public Color32[] GetImageMap1MapT()
+        {
+            Color32[] bytes = new Color32[150 * 150];
+            for (int y = 0; y < 150; y++)
+                for (int x = 0; x < 150; x++)
+                {
+                    var pix = _mapT[x, y];
+                    int index = (150 - 1 - y) * 150 + x;                // 反转y轴，因为之前翻转过一次  
+
+                    Color32 color = gray;
+                    if (pix == CellType.ObstacleFill) color = new Color32(210, 210, 210, 255);
+                    if (pix == CellType.Empty) color = new Color32(20, 20, 20, 255);
+                    bytes[index] = color;
+                }
+
+
+            if (moveRecord.Count > 0)
+            {
+                var move = moveRecord[moveRecord.Count - 1];
+                if (move.x > 0)
+                {
+                    var start = 150 - move.x;
+                    for (int y = 0; y < 150; y++)
+                        for (int x = start; x < 150; x++)
+                            Set1(bytes, x, y);
+                }
+                else
+                {
+                    var end = -move.x;
+                    for (int y = 0; y < 150; y++)
+                        for (int x = 0; x < end; x++)
+                            Set1(bytes, x, y);
+                }
+
+                if (move.y > 0)
+                {
+                    var start = 150 - move.y;
+                    for (int y = start; y < 150; y++)
+                        for (int x = 0; x < 150; x++)
+                            Set1(bytes, x, y);
+                }
+                else
+                {
+                    var end = -move.y;
+                    for (int y = 0; y < end; y++)
+                        for (int x = 0; x < 150; x++)
+                            Set1(bytes, x, y);
+                }
+
+            }
+
+            return bytes;
+        }        public void Set1(Color32[] bytes, int x, int y)
+        {
+            int index = (150 - 1 - y) * 150 + x;
+            Color32 color = bytes[index];
+            var r = new Color32((byte)Math.Clamp(color.a * 2, 0, 255), 0, 0, 255);
+            bytes[index] = r;
+        }
+
+
         public Color32[] GetImageGrid()
         {
             Color32[] colors = new Color32[_w * _h];
@@ -620,6 +792,7 @@ namespace Script.Model.Auto
 
                     Color32 color = gray;
                     if (pix == CellType.ObstacleEdge) color = new Color32(240, 240, 240, 255);
+                    if (pix == CellType.ObstacleFill) color = new Color32(210, 210, 210, 255);
                     if (pix == CellType.Empty) color = new Color32(20, 20, 20, 255);
                     if (pix == CellType.ObstacleByBig) color = new Color32(240, 140, 0, 255);
 
@@ -707,8 +880,9 @@ namespace Script.Model.Auto
             return (_h - 1 - (y - _yRange.x)) * _w + (x - _xRange.x);
         }
 
-        public Color32[] GetImageGridAStart(Color32[] colors)
+        public Color32[] GetImageGridAStart()
         {
+            Color32[] colors = GetImageGrid();
             var target_c = _gridData._target_c;
 
             var grid = _gridData._grid;
@@ -770,36 +944,6 @@ namespace Script.Model.Auto
             return result;
         }
 
-        public void Save(string path)
-        {
-            Color32[] colors = GetImageMap0();
-            byte[] bytes = IU.Color32ToByte(colors);
-            using (Mat mat = Mat.FromPixelData(_h, _w, MatType.CV_8UC3, bytes))
-            {
-                Cv2.ImWrite(path, mat);
-            }
-
-
-            colors = GetImageMap1();
-            bytes = IU.Color32ToByte(colors);
-            var path1 = path.Substring(0, path.Length - 4) + "_1.png";
-            using (Mat mat = Mat.FromPixelData(_h, _w, MatType.CV_8UC3, bytes))
-            {
-                Cv2.ImWrite(path1, mat);
-            }
-
-            colors = GetImageGrid();
-            bytes = IU.Color32ToByte(colors);
-            var path2 = path.Substring(0, path.Length - 4) + "_grid.png";
-            using (Mat mat = Mat.FromPixelData(_h, _w, MatType.CV_8UC3, bytes))
-            {
-                Cv2.ImWrite(path2, mat);
-            }
-
-
-
-            DU.LogWarning($"大格子重建 {_gridData.RebuildCellCount}次    多侧空地的大格子 {_gridData.MultiEmptyCellCount}个  ");
-        }
 
         public void SaveAStar(string path)
         {
@@ -808,7 +952,7 @@ namespace Script.Model.Auto
                 return;
 
 
-            var colors = GetImageGridAStart(GetImageGrid());
+            var colors = GetImageGridAStart();
             var bytes = IU.Color32ToByte(colors);
             var path3 = path.Substring(0, path.Length - 4) + "_grid_AStar.png";
             using (Mat mat = Mat.FromPixelData(_h, _w, MatType.CV_8UC3, bytes))

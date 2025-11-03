@@ -69,6 +69,7 @@ namespace Script.UI.Component
         List<SquareFrameUI> _colorPixelObjs = new List<SquareFrameUI>();           // 颜色格子实例缓存
 
         Sprite _spr;
+        Vector2Int _line_offset;
         Vector2 _cursor_down_pos;
         Vector2Int _select_pixel_pos;                      // 选中像素点的位置, 以左下角为原点
 
@@ -143,6 +144,12 @@ namespace Script.UI.Component
             ScrollRect.normalizedPosition = new Vector2(0.5f, 0.5f);
         }
 
+        public void SetLineOffset(Vector2Int offset)
+        {
+            _line_offset = offset;
+        }
+
+
         public void ClearData()
         {
             _spr = null;
@@ -156,13 +163,22 @@ namespace Script.UI.Component
 
         }
 
-        public void Change(Action<float> onScaleChange
-            , Action<Vector2> onScroll, Action<Vector2Int> onSelectPixel)
+        public void SyncOnScaleChange(Action<float> onScaleChange)
         {
             _onScaleChange = onScaleChange;
-            _onScroll = onScroll;
-            _onSelectPixel = onSelectPixel;
+            
         }
+        public void SyncOnScroll(Action<Vector2> onScroll)
+        {
+            _onScroll = onScroll;
+            
+        }
+        public void SyncOnSelectPixel(Action<Vector2Int> onSelectPixel)
+        {
+            _onSelectPixel = onSelectPixel;
+            
+        }
+
 
         void Update()
         {
@@ -220,13 +236,15 @@ namespace Script.UI.Component
 
         void RefreshLine()
         {
-            RefreshLine(1, _verticalLines, _horizonLines, new Color(1, 1, 1, 0.25f), 1);
-            RefreshLine(5, _verticalLines1, _horizonLines1, new Color(0, 1, 0, 0.3f), 2);
+            RefreshLine(1, Vector2Int.zero, _verticalLines, _horizonLines, new Color(1, 1, 1, 0.25f), 1);
+            RefreshLine(5, _line_offset, _verticalLines1, _horizonLines1, new Color(0, 1, 0, 0.3f), 2);
         }
-        void RefreshLine(int pixel_interval, List<RectTransform> verticalList, List<RectTransform> horizonList
+        void RefreshLine(int pixel_interval, Vector2Int line_offset, List<RectTransform> verticalList, List<RectTransform> horizonList
             , Color color, float thickness = 1)
         {
             var spacing = pixel_interval * _sizeScale;
+            var offset = new Vector2(line_offset.x * _sizeScale, line_offset.y * _sizeScale); //大格子的偏移
+
             var normalPos = ScrollRect.normalizedPosition;
             // DU.Log($"normal {ScrollRect.normalizedPosition}");
             if (showLine)
@@ -253,7 +271,7 @@ namespace Script.UI.Component
                         endXIndex = (int)Math.Floor((x + _viewW / 2 - del) / spacing);
                     }
 
-                    var count = endXIndex - startXIndex + 1;
+                    var count = endXIndex - startXIndex + 1 + 1;  //末尾是因为offset而加, offset是负的
 
                     Utils.RefreshItemListByCount<RectTransform>(verticalList, count, LinePre, LineParent, (rect, i) =>
                         {
@@ -261,7 +279,7 @@ namespace Script.UI.Component
                             rect.sizeDelta = new Vector2(thickness, _imageH);
                             rect.anchorMin = new Vector2(0, 0.5f);
                             rect.anchorMax = new Vector2(0, 0.5f);
-                            rect.anchoredPosition = new Vector2((startXIndex + i) * spacing + _viewW / 2, 0);
+                            rect.anchoredPosition = new Vector2((startXIndex + i) * spacing + _viewW / 2 + offset.x, 0);
                         });
                 }
 
@@ -281,14 +299,14 @@ namespace Script.UI.Component
                         endYIndex = (int)Math.Floor((y + _viewH / 2 - del) / spacing);
                     }
 
-                    var count = endYIndex - startYIndex + 1;
+                    var count = endYIndex - startYIndex + 1 + 1;
                     Utils.RefreshItemListByCount<RectTransform>(horizonList, count, LinePre, LineParent, (rect, i) =>
                         {
                             rect.GetComponent<Image>().color = color;
                             rect.sizeDelta = new Vector2(_imageW, thickness);
                             rect.anchorMin = new Vector2(0.5f, 0);
                             rect.anchorMax = new Vector2(0.5f, 0);
-                            rect.anchoredPosition = new Vector2(0, (startYIndex + i) * spacing + _viewH / 2);
+                            rect.anchoredPosition = new Vector2(0, (startYIndex + i) * spacing + _viewH / 2 + offset.y);
                         });
 
                 }

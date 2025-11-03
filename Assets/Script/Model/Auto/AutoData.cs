@@ -1423,9 +1423,10 @@ namespace Script.Model.Auto
 
         // 做成，n次-100ms-100ms-100ms的形式。
         // >=1ms 才会被记录时间
-        public void Record(string message, double ms)
+        public void Record(string message, double ms, bool print = true)
         {
-            DU.Log($"[{message}] 耗时{ms}ms");
+            if (!print)
+                DU.Log($"[{message}] 耗时{ms}ms");
 
             if (!RunTimeDic.TryGetValue(message, out var tuple))
             {
@@ -1443,6 +1444,12 @@ namespace Script.Model.Auto
             }
 
             RunTimeDic[message] = tuple;
+        }
+        
+
+        public string GetCapturePath()
+        {
+            return $"{Application.streamingAssetsPath}/Capture/{Config.Name}_{Config.Id.Substring(7)}";
         }
 
     }
@@ -1686,11 +1693,11 @@ namespace Script.Model.Auto
                     foreach (var script in _scriptDatas.Values)
                     {
                         if (!script.Running) continue;
-                        script.Record("CaptureWindow", ms0);
-                        script.Record("BitmapToMat", ms1);
+                        script.Record("CaptureWindow", ms0, false);
+                        script.Record("BitmapToMat", ms1, false);
                     }
 
-                    if (_saveCaptureToLocal) DU.RunWithTimer(action2, "SaveCaptureToLocal");    // 0ms
+                    if (_saveCaptureToLocal) DU.RunWithTimer(action2);    // 0ms  "SaveCaptureToLocal"
 
                     bitmap.Dispose();
                 }
@@ -1766,12 +1773,12 @@ namespace Script.Model.Auto
                         if (!save)
                         {
                             var id = script.Config.Id.Replace(AutoScriptConfig.IdStart, "");
-                            var relative_path = $"Capture/{script.Config.Name}_{id}";
+                            var folder = script.GetCapturePath();
 
                             script.Config.CaptureEndIndex++;
                             var name = $"{script.Config.CaptureEndIndex}";
-                            IU.SaveBitmap(bitmap, relative_path, name);
-                            path = $"{relative_path}/{name}.png";
+                            IU.SaveBitmap(bitmap, folder, name);
+                            path = $"{folder}/{name}.png";
                         }
                         save = true;
                         templateNode.SaveCaptureToLocalPath = path;

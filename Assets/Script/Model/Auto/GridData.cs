@@ -22,8 +22,9 @@ namespace Script.Model.Auto
     {
         public int RebuildCellCount = 0;
         public int MultiEmptyCellCount = 0;
+        public int ObstacleFill2EmptyCount = 0;
         MapData _mapData;               // 上层的地图数据
-        int _s;                         // _scale, 定义大格子的边长, _scale x _scale的小格子
+        public int _s;                         // _scale, 定义大格子的边长, _scale x _scale的小格子
 
         public BigCell[,] _grid;        // 大格子网格
         int _gridEdge;                  // 网格边长
@@ -98,43 +99,43 @@ namespace Script.Model.Auto
                     var y_start = y * _s;
                     var x_end = x_start + _s;
                     var y_end = y_start + _s;
-                    bool has_undefined = false;
-                    bool need_refresh = false;
 
-                    for (int m = y_start; m < y_end; m++)
-                        for (int n = x_start; n < x_end; n++)
-                        {
-                            var pixel = map0[n, m];
-                            if (pixel == CellType.Undefined)
-                                has_undefined = true;
-
-                            if (pixel == CellType.NewObstacleEdge)
-                            {
-                                map0[n, m] = CellType.ObstacleEdge;
-                                need_refresh = true;
-                            }
-                        }
-
-                    if (has_undefined)
-                        continue;
-
-
-                    BigCell cell = _grid[x, y];
                     bool init = false;
+                    BigCell cell = _grid[x, y];
+
                     if (cell == null)
                     {
+                        bool has_undefined = false;
+
+                        for (int m = y_start; m < y_end; m++)
+                            for (int n = x_start; n < x_end; n++)
+                            {
+                                var pixel = map0[n, m];
+                                if (pixel == CellType.Undefined)
+                                {
+                                    has_undefined = true;
+                                    break;
+                                }
+                            }
+                        if (has_undefined)
+                            continue;
+
                         cell = new BigCell(x, y);
                         _grid[x, y] = cell;
                         init = true;
                     }
-                    if (init || need_refresh)
+
+
+                    // debug    
+                    if (cell.NeedRefresh && !init)
+                        RebuildCellCount++;
+
+                    if (init || cell.NeedRefresh)
                     {
+                        cell.NeedRefresh = false;
                         _needList.Add(cell);
                     }
 
-                    // debug    
-                    if (need_refresh && !init)
-                        RebuildCellCount++;
                 }
 
             foreach (var cell in _needList)
@@ -153,8 +154,10 @@ namespace Script.Model.Auto
                 AfterRefreshCell(cell);
 
 
-            VerifyDirction();
+            SyncDirection();
         }
+
+        #region RefreshCell
 
         // 预处理
         public void RefreshCell(BigCell cell)
@@ -167,20 +170,20 @@ namespace Script.Model.Auto
 
             CellType[,] map0 = _mapData._map;
             CellType[,] map1 = _mapData._map1;
-            // debug    
-            var s_map = new CellType[5, 5];
-            for (int m = y_start; m < y_end; m++)
-                for (int n = x_start; n < x_end; n++)
-                {
-                    s_map[n - x_start, m - y_start] = map0[n, m];
-                }
+            // // debug    
+            // var s_map = new CellType[5, 5];
+            // for (int m = y_start; m < y_end; m++)
+            //     for (int n = x_start; n < x_end; n++)
+            //     {
+            //         s_map[n - x_start, m - y_start] = map0[n, m];
+            //     }
 
 
-            // debug
-            if (cell.x == 52 && cell.y == 61)
-            {
-                var a = 2;
-            }
+            // // debug
+            // if (cell.x == 52 && cell.y == 61)
+            // {
+            //     var a = 2;
+            // }
 
             int have_obstacle_count = 0;
             bool have_fog = false;
@@ -193,7 +196,7 @@ namespace Script.Model.Auto
                 for (int n = x_start; n < x_end; n++)
                 {
                     var data = map1[n, m];
-                    if (data == CellType.ObstacleEdge)
+                    if (data == CellType.ObstacleEdge || data == CellType.ObstacleFill)
                     {
                         have_obstacle_count++;
                         _cMap[n - x_start, m - y_start] = 1;
@@ -292,6 +295,10 @@ namespace Script.Model.Auto
             }
 
         }
+
+        #endregion
+
+        #region AfterRefreshCell
         public void AfterRefreshCell(BigCell cell)
         {
             int x_start = cell.x * _s;
@@ -370,8 +377,8 @@ namespace Script.Model.Auto
             }
 
         }
-
-        public void VerifyDirction()
+        #region  SyncDirection
+        public void SyncDirection()
         {
             foreach (var cell in _obstacleCellList)
             {
@@ -437,6 +444,7 @@ namespace Script.Model.Auto
             }
         }
 
+        #endregion
         /// <summary>
         /// 返回个数，连通方向
         /// </summary>
@@ -480,6 +488,7 @@ namespace Script.Model.Auto
 
         }
 
+        #endregion
         #endregion
 
         #region Rebuild
@@ -550,7 +559,7 @@ namespace Script.Model.Auto
                 // 获取F值最低的节点
                 var current = openList.FindMin().Value;
                 openList.Delete(current);
-                
+
                 current.Access = true;
                 accessList.Add(current);
 
@@ -740,6 +749,7 @@ namespace Script.Model.Auto
 
     public class BigCell : IComparable<BigCell>
     {
+        public bool NeedRefresh;
         public bool Access;
         public int x;
         public int y;
@@ -755,7 +765,7 @@ namespace Script.Model.Auto
         public int H => F - G;      // 启发值、估计值
         public Vector2Int ParentPos;        // 指向上一格，实现链表
 
-        public BigCell(int x, int y)
+        public  BigCell(int x, int y)
         {
             this.x = x;
             this.y = y;

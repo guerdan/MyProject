@@ -688,7 +688,7 @@ namespace Script.UI.Panel.Auto
         void OnClickMapCaptureDebug()
         {
             var data = _data as MapCaptureNode;
-            UIManager.Inst.ShowPanel(PanelEnum.ImageCompareTestPanel, data.MapId);
+            UIManager.Inst.ShowPanel(PanelEnum.ImageCompareTestPanel, new string[] { data.MapId, _drawPanel._id });
         }
 
 
