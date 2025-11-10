@@ -14,6 +14,12 @@ namespace Script.Util
         public const string StartOperationStringFormat = ">>>----------Start {0}---------->>>";
         public const string EndOperationStringFormat = "<<<----------End {0}----------<<<";
 
+        public static readonly Vector2Int[] FourDirList = new Vector2Int[]{
+                                new Vector2Int(-1, 0),
+                                new Vector2Int(0, 1),
+                                new Vector2Int(1, 0),
+                                new Vector2Int(0, -1),
+                            };
         public static readonly Vector2Int[] SurroundList = new Vector2Int[]{
                                 new Vector2Int(-1, -1),
                                 new Vector2Int(-1, 0),

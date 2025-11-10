@@ -343,7 +343,11 @@ namespace Script.Util
 
         #endregion
 
+
+
         #region MapData
+
+
 
         // A星寻路，几种数据结构
 
@@ -973,7 +977,187 @@ namespace Script.Util
         }
 
 
+        #endregion
 
+
+        #region 筛选
+
+        public class MapRegion
+        {
+            public int type = 0;        // 0-暗地，1-亮地（迷雾和边界）
+            public int team_index = -1; // 所属分类，4向相邻为1类。用-2代表 由连线生成的“亮地”
+        }
+
+
+        public void Filter()
+        {
+            #region 筛-初始亮地
+
+
+            // int[,] colorData = new int[_imgW + 4, _imgH + 4];
+            int[,] colorData = null;
+
+
+            int region_len = 20;
+            int region_map_len = 200 / region_len;
+            MapRegion[,] regions = new MapRegion[region_map_len, region_map_len];
+            for (int ry = 0; ry < region_map_len; ry++)
+                for (int rx = 0; rx < region_map_len; rx++)
+                {
+                    regions[rx, ry] = new MapRegion();
+                }
+
+            Action<int, int> action = (rx, ry) =>
+            {
+                int px_start = rx * region_len;
+                int py_start = ry * region_len;
+                int px_end = (rx + 1) * region_len;
+                int py_end = (ry + 1) * region_len;
+                // 防止游动图标干扰。废弃顶部、底部21个像素
+                //
+                px_start = Math.Clamp(px_start, 22, 178);
+                py_start = Math.Clamp(py_start, 22, 178);
+                px_end = Math.Clamp(px_end, 22, 178);
+                py_end = Math.Clamp(py_end, 22, 178);
+                for (int py = py_start; py < py_end; py++)
+                    for (int px = px_start; px < px_end; px++)
+                    {
+                        if (colorData[px, py] != 0)
+                        {
+                            regions[rx, ry].type = 1;
+                            return;
+                        }
+                    }
+            };
+            // 外圈可能有动态图标，咱们往内缩一格
+            //
+            for (int ry = 1; ry < region_map_len - 1; ry++)
+                for (int rx = 1; rx < region_map_len - 1; rx++)
+                {
+                    action(rx, ry);
+                }
+
+            #endregion
+
+            #region 筛-分类亮地
+            // 全部连线
+            Dictionary<int, List<Vector2Int>> all_line = new Dictionary<int, List<Vector2Int>>();
+            Dictionary<int, List<Vector2Int>> top_line = new Dictionary<int, List<Vector2Int>>();
+            Dictionary<int, List<Vector2Int>> right_line = new Dictionary<int, List<Vector2Int>>();
+            Dictionary<int, List<Vector2Int>> bottom_line = new Dictionary<int, List<Vector2Int>>();
+            Dictionary<int, List<Vector2Int>> left_line = new Dictionary<int, List<Vector2Int>>();
+
+            int team_index = 0;
+            for (int ry = 1; ry < region_map_len - 1; ry++)
+                for (int rx = 1; rx < region_map_len - 1; rx++)
+                {
+                    MapRegion region = regions[rx, ry];
+                    if (region.type == 1 && region.team_index == -1)
+                    {
+                        var list = Traversal1(regions, new Vector2Int(rx, ry), team_index);
+                        all_line[team_index] = list;
+                        List<Vector2Int> top = new List<Vector2Int>();
+                        List<Vector2Int> right = new List<Vector2Int>();
+                        List<Vector2Int> bottom = new List<Vector2Int>();
+                        List<Vector2Int> left = new List<Vector2Int>();
+
+                        foreach (var pos in list)
+                        {
+                            int x = pos.x;
+                            int y = pos.y;
+                            if (x + y >= 9 && y >= x) top.Add(pos);
+                            if (x + y <= 9 && y <= x) bottom.Add(pos);
+                            if (x + y >= 9 && y <= x) right.Add(pos);
+                            if (x + y <= 9 && y >= x) left.Add(pos);
+                        }
+                        if (top.Count > 0) top_line[team_index] = top;
+                        if (right.Count > 0) right_line[team_index] = right;
+                        if (bottom.Count > 0) bottom_line[team_index] = bottom;
+                        if (left.Count > 0) left_line[team_index] = left;
+
+                        team_index++;
+                    }
+                }
+            #endregion
+
+
+            #region 筛-
+
+            for (int ry = 1; ry < region_map_len - 1; ry++)
+                for (int rx = 1; rx < region_map_len - 1; rx++)
+                {
+                    MapRegion region = regions[rx, ry];
+                    if (region.type == 1 && region.team_index == -1)
+                    {
+
+                    }
+                }
+
+
+            #endregion
+
+
+
+            #region 筛-画图
+
+            // Check    
+            for (int ry = 1; ry < region_map_len - 1; ry++)
+                for (int rx = 1; rx < region_map_len - 1; rx++)
+                {
+                    MapRegion region = regions[rx, ry];
+                    if (region.type == 1)
+                    {
+                        int px_start = rx * region_len;
+                        int py_start = ry * region_len;
+                        int px_end = (rx + 1) * region_len;
+                        int py_end = (ry + 1) * region_len;
+                        for (int py = py_start; py < py_end; py++)
+                            for (int px = px_start; px < px_end; px++)
+                            {
+                                if (colorData[px, py] == 0)
+                                {
+                                    colorData[px, py] = 20 + region.team_index;
+                                }
+                            }
+                    }
+                }
+
+            #endregion
+
+        }
+
+        List<Vector2Int> Traversal1(MapRegion[,] colorData, Vector2Int start, int teamId)
+        {
+            var result = new List<Vector2Int>();
+            colorData[start.x, start.y].team_index = teamId;
+
+            var count = 0;
+            var stack = new Vector2Int[64];
+            stack[count++] = start;
+
+            while (count > 0)
+            {
+                var pop = stack[--count];
+                int x = pop.x;
+                int y = pop.y;
+                result.Add(pop);
+
+                foreach (var offset in Utils.FourDirList)
+                {
+                    MapRegion r = colorData[offset.x + x, offset.y + y];
+                    if (r.type == 1 && r.team_index == -1)
+                    {
+                        r.team_index = teamId;
+                        stack[count++] = new Vector2Int(offset.x + x, offset.y + y);
+                    }
+                }
+            }
+
+              
+
+            return result;
+        }
+        #endregion
 
     }
 
@@ -1114,8 +1298,7 @@ namespace Script.Util
 
         }
 
-
         ////////////////////   End     //////////////////// 
-        #endregion
     }
+
 }

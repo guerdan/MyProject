@@ -66,6 +66,8 @@ namespace Script.UI.Component
         List<RectTransform> _horizonLines = new List<RectTransform>();          // 参考线实例缓存
         List<RectTransform> _verticalLines1 = new List<RectTransform>();         // 参考线实例缓存
         List<RectTransform> _horizonLines1 = new List<RectTransform>();          // 参考线实例缓存
+        List<RectTransform> _verticalLines2 = new List<RectTransform>();         // 参考线实例缓存
+        List<RectTransform> _horizonLines2 = new List<RectTransform>();          // 参考线实例缓存
         List<SquareFrameUI> _colorPixelObjs = new List<SquareFrameUI>();           // 颜色格子实例缓存
 
         Sprite _spr;
@@ -114,7 +116,7 @@ namespace Script.UI.Component
 
 
 
-        public void SetData(string path)
+        public void SetData(string path, string name = "")
         {
             if (!ImageManager.Inst.TryLoadSprite(path, Image, out var spr, true, true))
             {
@@ -123,16 +125,22 @@ namespace Script.UI.Component
                 return;
             }
             _path = path;
-            SetData(spr);
+            SetData(spr, name);
         }
 
-        public void SetData(Sprite spr)
+        public void SetData(Sprite spr, string name = "")
         {
             _spr = spr;
             spr.texture.filterMode = FilterMode.Point;
             Image.sprite = spr;
             _imageSize = new Vector2Int(spr.texture.width, spr.texture.height);
-            if (SizeText) SizeText.text = string.Format("{0} * {1}", _imageSize.x, _imageSize.y);
+            if (SizeText)
+            {
+                var str = string.Format($"{_imageSize.x} * {_imageSize.y}");
+                if (!string.IsNullOrEmpty(name))
+                    str = $"{name} — " + str;
+                SizeText.text = str;
+            }
 
 
             MinScale = Math.Min(_edgeLen / _imageSize.x, _edgeLen / _imageSize.y);
@@ -166,17 +174,17 @@ namespace Script.UI.Component
         public void SyncOnScaleChange(Action<float> onScaleChange)
         {
             _onScaleChange = onScaleChange;
-            
+
         }
         public void SyncOnScroll(Action<Vector2> onScroll)
         {
             _onScroll = onScroll;
-            
+
         }
         public void SyncOnSelectPixel(Action<Vector2Int> onSelectPixel)
         {
             _onSelectPixel = onSelectPixel;
-            
+
         }
 
 
@@ -238,16 +246,17 @@ namespace Script.UI.Component
         {
             RefreshLine(1, Vector2Int.zero, _verticalLines, _horizonLines, new Color(1, 1, 1, 0.25f), 1);
             RefreshLine(5, _line_offset, _verticalLines1, _horizonLines1, new Color(0, 1, 0, 0.3f), 2);
+            // RefreshLine(20, _line_offset, _verticalLines2, _horizonLines2, new Color(1, 0, 0, 0.6f), 2, false);
         }
         void RefreshLine(int pixel_interval, Vector2Int line_offset, List<RectTransform> verticalList, List<RectTransform> horizonList
-            , Color color, float thickness = 1)
+            , Color color, float thickness = 1, bool when_show_line = true)
         {
             var spacing = pixel_interval * _sizeScale;
             var offset = new Vector2(line_offset.x * _sizeScale, line_offset.y * _sizeScale); //大格子的偏移
 
             var normalPos = ScrollRect.normalizedPosition;
             // DU.Log($"normal {ScrollRect.normalizedPosition}");
-            if (showLine)
+            if (!when_show_line || showLine)
             {
                 // 视窗的左下角在Content(以左下角为原点)下的坐标
                 //

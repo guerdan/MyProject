@@ -86,6 +86,11 @@ namespace Script.UI.Panel.Auto
                 _scriptId = list[1];
                 RefreshMapPanel();
             }
+            else
+            {
+                var path = @"C:\Users\hp\Desktop\path\图\0.2间隔\31.png";
+                LoadLeftImage(path);
+            }
 
             InputText.text = "(95,120,279,65)";
             SyncCB.SetData(false, OnSyncCB);
@@ -127,10 +132,10 @@ namespace Script.UI.Panel.Auto
                 "_grid",        // 5X5大格子粒度
                 "A*寻路",       // 5X5大格子粒度
                 "保存全部地图",       // 保存至本地
-                "_map1_mapT",        // _map1的临时绘图
-                "_map1_mapT1",        // _map1的临时绘图
+                "_small_map",        // 像素粒度
+                "_judge_map",        // 像素粒度
             };
-            TipsComp.SetData(options, OnSelectMapOption, 140,7);
+            TipsComp.SetData(options, OnSelectMapOption, 140, 7);
             TipsComp.SetCurIndex(_optionSelectStatus[_clickLeft ? 0 : 1]);
 
             var tipsCompRectT = TipsComp.GetComponent<RectTransform>();
@@ -209,8 +214,12 @@ namespace Script.UI.Panel.Auto
             }
             else if (option == 5)
             {
-                size = new Vector2Int(150, 150);
-                pixels = mapData.GetImageMap1MapT();
+                size = new Vector2Int(200, 200);
+                pixels = mapData.GetImageSmallMap();
+            }
+            else if (option == 6)
+            {
+                pixels = mapData.GetImageJudgeMap();
             }
 
 
@@ -296,15 +305,21 @@ namespace Script.UI.Panel.Auto
 
         void OnClickLeftPathBtn()
         {
-            string path = WU.OpenFileDialog("选择图片", Application.streamingAssetsPath, "图片 *.png *.jpg)|*.png;*.jpg");
-            if (string.IsNullOrEmpty(path)) return;
+            // string init_path = Application.streamingAssetsPath;
+            string init_path = @"C:\Users\hp\Desktop\path\图\0.2间隔";
+            string path = WU.OpenFileDialog("选择图片", init_path, "图片 *.png *.jpg)|*.png;*.jpg");
+            LoadLeftImage(path);
+        }
 
+        void LoadLeftImage(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return;
             ClearMat();
 
             _sourceMat = IU.GetMat(path);
 
             left_path = path;
-            LeftImage.SetData(left_path);
+            LeftImage.SetData(left_path, Path.GetFileName(path));
 
             _sourceTex = LeftImage.Image.sprite.texture;
             // 是获取托管像素数组，修改的是托管内存
@@ -315,6 +330,7 @@ namespace Script.UI.Panel.Auto
             _imgW = _sourceTex.width;
             _imgH = _sourceTex.height;
         }
+
         void OnClickRightPathBtn()
         {
             string path = WU.OpenFileDialog("选择图片", Application.streamingAssetsPath, "图片 *.png *.jpg)|*.png;*.jpg");
@@ -414,6 +430,7 @@ namespace Script.UI.Panel.Auto
             _sourceTex.Apply();
         }
         #region 筛选
+        int max_r = 0;
 
         void FilterPixel()
         {
@@ -442,81 +459,128 @@ namespace Script.UI.Panel.Auto
 
             // 第2版  颜色偏蓝   
             //
-            var min_1th = new Color32(120, 120, 150, 255);
+            // 1类边界
+            var min_1th = new Color32(110, 110, 150, 255);
             var max_1th = new Color32(145, 145, 195, 255);
+            var B_to_G_1th = new Vector2Int(30, 60);
+            // 2类边界
             var min_2th = new Color32(86, 88, 90, 255);
             var max_2th = max_1th;
-            var min_3th = new Color32(0, 120, 135, 255);
-            var max_3th = new Color32(85, 140, 195, 255);
-            var B_to_G = new Vector2Int(30, 60);
+            // 1类迷雾
+            var min_3th = new Color32(0, 130, 170, 255);
+            var max_3th = new Color32(90, 142, 192, 255);
+            var B_to_G_3th = new Vector2Int(38, 55);
 
-            //colorData中，0-为不可通行空地，1-为可通行区域，2-边界
-            int[,] colorData = new int[_imgW, _imgH];
+
+            var x_start = 2;
+            var x_end = _imgW + 2;
+            var y_start = 2;
+            var y_end = _imgH + 2;
+            //colorData中，0-未定义,1-空地,2和5-边界，10和11-迷雾
+            int[,] colorData = new int[_imgW + 4, _imgH + 4];
+
             // var fit_one_list = new List<Vector2Int>();
             var first_list = new List<Vector2Int>();
-            var second_list = new List<Vector2Int>();
-            FindRole();   //标记角色位置
+
+            var fog_constant = new Vector2Int[]{
+                new Vector2Int(-2,0),new Vector2Int(-1,0),new Vector2Int(1,0),new Vector2Int(2,0),
+                new Vector2Int(-1,1),new Vector2Int(0,1),new Vector2Int(1,1),
+                new Vector2Int(-1,-1),new Vector2Int(0,-1),new Vector2Int(1,-1),
+                new Vector2Int(0,2),new Vector2Int(0,-2),
+            };
+
+            #region 筛-初始像素
 
             DU.RunWithTimer(() =>
             {
                 DU.RunWithTimer(() =>
                 {
-                    for (int i = 0; i < _imgH; i++)
-                    {
-                        for (int j = 0; j < _imgW; j++)
+                    // 先处理迷雾
+                    for (int i = y_start; i < y_end; i++)
+                        for (int j = x_start; j < x_end; j++)
                         {
-                            int index = i * _imgW + j;
+                            int index = (i - 2) * _imgW + j - 2;
                             var color = _pixels[index];
+                            byte r = color.r;
+                            byte g = color.g;
+                            byte b = color.b;
+
+                            if (r == 0 && g == 0 && b == 0) // 文字描边
+                                colorData[j, i] = 0;
+
+                            else if (r < 50 && g < 50 && b < 50) // 空地
+                                colorData[j, i] = 1;
+
+                            else if (Between(color, min_3th, max_3th)
+                                && b - g >= B_to_G_3th.x && b - g <= B_to_G_3th.y)
+                            {
+                                // fog_first_list.Add(new Vector2Int(j, i));
+                                colorData[j, i] = 10;
+                                // max_r = color.r > max_r ? color.r : max_r;
+
+                                foreach (var offset in fog_constant)
+                                {
+                                    int px = j + offset.x;
+                                    int py = i + offset.y;
+                                    var data = colorData[px, py];
+                                    if (data != 10)
+                                        colorData[px, py] = 11;
+                                }
+                            }
+                        }
+
+
+                    // 再处理边界
+                    for (int i = y_start; i < y_end; i++)
+                        for (int j = x_start; j < x_end; j++)
+                        {
+                            int index = (i - 2) * _imgW + j - 2;
+                            var color = _pixels[index];
+                            byte r = color.r;
+                            byte g = color.g;
+                            byte b = color.b;
+                            if (colorData[j, i] == 1 || colorData[j, i] > 9)
+                                continue;
 
                             if (Between(color, min_1th, max_1th)
-                                && color.b - color.g >= B_to_G.x && color.b - color.g <= B_to_G.y)
+                                && b - g >= B_to_G_1th.x && b - g <= B_to_G_1th.y)
                             {
                                 first_list.Add(new Vector2Int(j, i));
                                 colorData[j, i] = 2;
                             }
-                            else if (Between(color, min_3th, max_3th))
-                            {
-                                colorData[j, i] = 4;
-                            }
-
                             else if (Between(color, min_2th, max_2th))
                             {
                                 colorData[j, i] = 3;
                             }
-
                         }
-                    }
+
+
+
                 }, "Condition check");
 
-                // < 1ms
-                // DU.RunWithTimer(() =>
-                // {
-                second_list = Traversal(colorData, first_list);
-                // }, "Traversal");
-
-                for (int i = 0; i < _imgH; i++)
-                    for (int j = 0; j < _imgW; j++)
-                        if (colorData[j, i] == 3)
-                            colorData[j, i] = 0;
-
+                Traversal(colorData, first_list);
 
 
             }, "GenerateMap");
 
+            #endregion
+
+            var temp = new int[_imgW, _imgH];
+
+            for (int i = y_start; i < y_end; i++)
+                for (int j = x_start; j < x_end; j++)
+                    if (colorData[j, i] == 3)
+                        temp[j - 2, i - 2] = 0;
+                    else
+                        temp[j - 2, i - 2] = colorData[j, i];
+
+            colorData = temp;
 
 
 
-            var full_show_color = Color.green;
-            // var one_show_color = new Color(77 / 255f, 77 / 255f, 254 / 255f);
-            var one_show_color = Color.red;
-            // var full_show_color = new Color(128/255f, 195/255f, 66/255f);
-            LeftImage.ClearPixelColor(full_show_color);
-            LeftImage.ClearPixelColor(one_show_color);
-            LeftImage.SetPixelColor(first_list, full_show_color, 1);
-            LeftImage.SetPixelColor(second_list, one_show_color, 0, 0.5f);
 
 
-            // 使用 R8 格式（单通道红色）
+
             Texture2D texture = new Texture2D(_imgW, _imgH, TextureFormat.RGBA32, false);
 
             // 填充纹理数据
@@ -525,15 +589,22 @@ namespace Script.UI.Panel.Auto
                 for (int j = 0; j < _imgW; j++)
                 {
                     int index = i * _imgW + j;
-                    if (colorData[j, i] == 0)
+                    var data = colorData[j, i];
+                    if (data == 0)
+                        pixels[index] = new Color32(128, 128, 128, 255);
+                    if (data == 1)
                         pixels[index] = new Color32(0, 0, 0, 255);
-                    else if (colorData[j, i] == 2)      // 边界     
+                    else if (data == 2)      // 边界     
                         pixels[index] = new Color32(255, 255, 255, 255);
-                    else if (colorData[j, i] == 5)      // 二阶边界,弱一点                 
+                    else if (data == 5)      // 二阶边界,弱一点                 
                         pixels[index] = new Color32(255, 0, 0, 255);
-                    else if (colorData[j, i] == 4)
+                    else if (data == 10)
                         pixels[index] = new Color32(0, 0, 255, 255);
+                    else if (data == 11)
+                        pixels[index] = new Color32(128, 128, 200, 255);
+
                 }
+            #endregion
 
 
             // 应用像素数据到纹理
@@ -550,6 +621,10 @@ namespace Script.UI.Panel.Auto
             }
             _targetSpr = Sprite.Create(texture, new UnityEngine.Rect(0, 0, _imgW, _imgH), new Vector2(0.5f, 0.5f));
             RightImage.SetData(_targetSpr);
+
+
+            // DU.LogWarning($"max_r: {max_r}");
+
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] // 告诉编译器要内联
@@ -564,13 +639,13 @@ namespace Script.UI.Panel.Auto
         /// 递归,发散型递归。感觉用栈可以实现非递归
         /// 猜想优化点：将colorData扩展为[w+1,h+1]，边缘设置为0，这样就不用每次都判断边界了
         /// </summary>
-        List<Vector2Int> Traversal(int[,] colorData, List<Vector2Int> first_list)
+        void Traversal(int[,] colorData, List<Vector2Int> first_list)
         {
-            var result = new List<Vector2Int>();
             int y_end = _imgH - 1;
             int x_end = _imgW - 1;
 
             Vector2Int[] stack = new Vector2Int[first_list.Count * 4];
+            // var count_debug = 0;
             var count = 0;
             foreach (var pos in first_list)
             {
@@ -582,31 +657,61 @@ namespace Script.UI.Panel.Auto
                 var pop = stack[--count];
                 int x = pop.x;
                 int y = pop.y;
-                if (colorData[x, y] == 3)
+
+
+                foreach (var offset in Utils.SurroundList)
                 {
-                    result.Add(new Vector2Int(x, y));
-                    colorData[x, y] = 5; // 标记为"边界"
+                    int px = offset.x + x;
+                    int py = offset.y + y;
+                    if (colorData[px, py] == 3)
+                    {
+                        colorData[px, py] = 5;
+                        stack[count++] = new Vector2Int(px, py);
+                    }
+
                 }
 
-                if (y > 0 && colorData[x, y - 1] == 3)
-                    stack[count++] = new Vector2Int(x, y - 1);
-                if (x > 0 && colorData[x - 1, y] == 3)
-                    stack[count++] = new Vector2Int(x - 1, y);
-                if (y < y_end && colorData[x, y + 1] == 3)
-                    stack[count++] = new Vector2Int(x, y + 1);
-                if (x < x_end && colorData[x + 1, y] == 3)
-                    stack[count++] = new Vector2Int(x + 1, y);
-                if (y > 0 && x > 0 && colorData[x - 1, y - 1] == 3)
-                    stack[count++] = new Vector2Int(x - 1, y - 1);
-                if (y < y_end && x > 0 && colorData[x - 1, y + 1] == 3)
-                    stack[count++] = new Vector2Int(x - 1, y + 1);
-                if (y < y_end && x < x_end && colorData[x + 1, y + 1] == 3)
-                    stack[count++] = new Vector2Int(x + 1, y + 1);
-                if (y > 0 && x < x_end && colorData[x + 1, y - 1] == 3)
-                    stack[count++] = new Vector2Int(x + 1, y - 1);
+                // if (colorData[x, y - 1] == 3)
+                // {
+                //     colorData[x, y - 1] = 5;
+                //     stack[count++] = new Vector2Int(x, y - 1);
+                // }
+                // if (colorData[x - 1, y] == 3)
+                // {
+                //     colorData[x - 1, y] = 5;
+                //     stack[count++] = new Vector2Int(x - 1, y);
+                // }
+                // if (colorData[x, y + 1] == 3)
+                // {
+                //     colorData[x, y + 1] = 5;
+                //     stack[count++] = new Vector2Int(x, y + 1);
+                // }
+                // if (colorData[x + 1, y] == 3)
+                // {
+                //     colorData[x + 1, y] = 5;
+                //     stack[count++] = new Vector2Int(x + 1, y);
+                // }
+                // if (colorData[x - 1, y - 1] == 3)
+                // {
+                //     colorData[x - 1, y - 1] = 5;
+                //     stack[count++] = new Vector2Int(x - 1, y - 1);
+                // }
+                // if (colorData[x - 1, y + 1] == 3)
+                // {
+                //     colorData[x - 1, y + 1] = 5;
+                //     stack[count++] = new Vector2Int(x - 1, y + 1);
+                // }
+                // if (colorData[x + 1, y + 1] == 3)
+                // {
+                //     colorData[x + 1, y + 1] = 5;
+                //     stack[count++] = new Vector2Int(x + 1, y + 1);
+                // }
+                // if (colorData[x + 1, y - 1] == 3)
+                // {
+                //     colorData[x + 1, y - 1] = 5;
+                //     stack[count++] = new Vector2Int(x + 1, y - 1);
+                // }
             }
-
-            return result;
         }
 
 
@@ -648,7 +753,6 @@ namespace Script.UI.Panel.Auto
             }
         }
 
-        #endregion
 
         void ClearMat()
         {
@@ -662,8 +766,6 @@ namespace Script.UI.Panel.Auto
                 // Destroy(_sourceTex);  //有人回收
                 _sourceTex = null;
             }
-
-
 
             _imgW = 0;
             _imgH = 0;
@@ -728,10 +830,11 @@ namespace Script.UI.Panel.Auto
         }
         void OnClickBtn2th()
         {
-            FilterPixel();
+            // FilterPixel();
 
             //  比较下谁执快
-            // TestExecutionTime.Inst.Test();
+            TestExecutionTime.Inst.Test1();
+            // TestExecutionTime.Inst.Test2();
         }
 
         int _index;
