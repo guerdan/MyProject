@@ -872,7 +872,7 @@ namespace Script.UI.Panel.Auto
 
             _index = 31;
             _max_index = 111;
-            _debug_dir = @"C:\Users\hp\Desktop\path\图\0.2间隔";
+            _debug_dir = @"D:\unityProject\MyProject\TestResource\图\0.2间隔";
 
             // count++;
             // for (int i = 31; i <= 111; i++)
