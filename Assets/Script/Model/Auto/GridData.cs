@@ -20,26 +20,23 @@ namespace Script.Model.Auto
     // 需要额外的废弃边界优化吗？不需要，大格子寻路可以搞，但是其总耗时不高
     public class GridData
     {
-        public int RebuildCellCount = 0;
+        public int BuildCellTimes = 0;
         public int MultiEmptyCellCount = 0;
         public int ObstacleFill2EmptyCount = 0;
         MapData _mapData;               // 上层的地图数据
-        public int _s;                         // _scale, 定义大格子的边长, _scale x _scale的小格子
+        public int _s;                  // _scale, 定义大格子的边长, _scale x _scale的小格子
 
         public BigCell[,] _grid;        // 大格子网格
         int _gridEdge;                  // 网格边长
 
-        List<BigCell> _needList = new List<BigCell>();      // 用于构造大格子，需要刷新的 大格子列表        
-        HashSet<BigCell> _suppleList = new HashSet<BigCell>(); // 用于构造大格子，补充的待刷 大格子列表       
-        byte[,] _cMap = new byte[5, 5];                     // 用于构造大格子，暂存的二维数组
-        Vector2Int[] stack = new Vector2Int[25];            // 用于构造大格子，栈
-        Vector2Int[] mList = new Vector2Int[25];            // 用于构造大格子，复用动态列表
-        int mList_count = 0;                                // 用于构造大格子，复用动态列表
-        Vector2Int[] checkList;                             // 用于构造大格子，预存待遍历目标
+
         /// 用于构造大格子，同步相邻大格子的方向                                                         
         Dictionary<BigCell, (int, byte[,])> _afterDic = new Dictionary<BigCell, (int, byte[,])>();
-        List<BigCell> _obstacleCellList = new List<BigCell>();  // 用于构造大格子，同步相邻大格子的方向
-
+        Vector2Int[] checkList;                             // 用于构造大格子，预存待遍历目标
+        byte[,] _cMap = new byte[5, 5];                     // 用于构造大格子，暂存的二维数组
+        Vector2Int[] _stack = new Vector2Int[25];           // 用于构造大格子，栈
+        Vector2Int[] _mList = new Vector2Int[25];           // 用于构造大格子，复用动态列表
+        int _mList_count = 0;                               // 用于构造大格子，复用动态列表
 
 
         public Vector2Int _target_c = new Vector2Int(-1, -1);       //寻路目标，大格子粒度
@@ -67,100 +64,59 @@ namespace Script.Model.Auto
                 checkList[y + 13 - 1] = new Vector2Int(4, y);
             }
 
-
             _gridEdge = mapData._mapEdge / _s;
             _grid = new BigCell[_gridEdge, _gridEdge];
-
-
         }
+
+        public int GetActiveCount()
+        {
+            int result = 0;
+            int w = _grid.GetLength(0);
+            int h = _grid.GetLength(1);
+
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    if (_grid[x, y] != null)
+                        result++;
+                }
+
+            return result;
+        }
+
         #endregion
+
 
         #region Apply
 
-        public void Apply(Vector2Int map_start_pos, Vector2Int size)
+        public void Apply(List<BigCell> needList)
         {
-            var map_end_pos = map_start_pos + size - Vector2Int.one;
-            var start_pos = map_start_pos / _s;
-            var end_pos = map_end_pos / _s;
-
-
-            // 把起点算出来，然后遍历更新
-            // 大格子中有NewObstacleEdge就更新
-            _needList.Clear();
-            _suppleList.Clear();
             _afterDic.Clear();
-            _obstacleCellList.Clear();
-            var map0 = _mapData._map;
-            for (int y = start_pos.y; y <= end_pos.y; y++)
-                for (int x = start_pos.x; x <= end_pos.x; x++)
-                {
-                    // 解决bug，因为只能初始化一次，所以边界有可能碰到Undefined。等信息全了再更新
-                    var x_start = x * _s;
-                    var y_start = y * _s;
-                    var x_end = x_start + _s;
-                    var y_end = y_start + _s;
 
-                    bool init = false;
-                    BigCell cell = _grid[x, y];
+            // needList的大格子需要重建
+            foreach (var cell in needList)
+                CellConstruction(cell);
 
-                    if (cell == null)
-                    {
-                        bool has_undefined = false;
-
-                        for (int m = y_start; m < y_end; m++)
-                            for (int n = x_start; n < x_end; n++)
-                            {
-                                var pixel = map0[n, m];
-                                if (pixel == CellType.Undefined)
-                                {
-                                    has_undefined = true;
-                                    break;
-                                }
-                            }
-                        if (has_undefined)
-                            continue;
-
-                        cell = new BigCell(x, y);
-                        _grid[x, y] = cell;
-                        init = true;
-                    }
+            // needList的HasObstacle大格子需要刷方向
+            // ，并且改"有变化的方向"对应的相邻大格子的方向
+            // 信息重点醒目并且提前。
+            foreach (var cell in needList)
+                if (cell.Type == BigCellType.HasObstacle)
+                    CellRefreshDir(cell);
 
 
-                    // debug    
-                    if (cell.NeedRefresh && !init)
-                        RebuildCellCount++;
-
-                    if (init || cell.NeedRefresh)
-                    {
-                        cell.NeedRefresh = false;
-                        _needList.Add(cell);
-                    }
-
-                }
-
-            foreach (var cell in _needList)
-                RefreshCell(cell);
-
-            // 第一遍可能要补充一些需要刷的大格子
-            foreach (var cell in _needList)
-                _suppleList.Remove(cell);
-            foreach (var cell in _suppleList)
-            {
-                RefreshCell(cell);
-                RebuildCellCount++;
-            }
-
-            foreach (var cell in _afterDic.Keys)
-                AfterRefreshCell(cell);
+            //重置needRefresh标记
+            foreach (var cell in needList)
+                cell.NeedRefresh = false;
 
 
-            SyncDirection();
+            BuildCellTimes += needList.Count;
         }
 
-        #region RefreshCell
+        #region CellConstruction
 
-        // 预处理
-        public void RefreshCell(BigCell cell)
+        // 大格子的构造
+        public void CellConstruction(BigCell cell)
         {
             // 连通性，斜边-含障碍的，
             int x_start = cell.x * _s;
@@ -168,8 +124,7 @@ namespace Script.Model.Auto
             int x_end = x_start + _s;
             int y_end = y_start + _s;
 
-            CellType[,] map0 = _mapData._map;
-            CellType[,] map1 = _mapData._map1;
+            CellType[,] map = _mapData._map;
             // // debug    
             // var s_map = new CellType[5, 5];
             // for (int m = y_start; m < y_end; m++)
@@ -185,8 +140,8 @@ namespace Script.Model.Auto
             //     var a = 2;
             // }
 
+
             int have_obstacle_count = 0;
-            bool have_fog = false;
 
             for (int y = 0; y < _s; y++)
                 for (int x = 0; x < _s; x++)
@@ -195,22 +150,26 @@ namespace Script.Model.Auto
             for (int m = y_start; m < y_end; m++)
                 for (int n = x_start; n < x_end; n++)
                 {
-                    var data = map1[n, m];
-                    if (data == CellType.ObstacleEdge || data == CellType.ObstacleFill)
+                    var data = map[n, m];
+                    // 先重置 ObstacleByBig，后面再刷
+                    if (data == CellType.ObstacleByBig)
+                    {
+                        data = CellType.Empty;
+                        map[n, m] = data;
+                    }
+
+                    if (data != CellType.Empty)
                     {
                         have_obstacle_count++;
                         _cMap[n - x_start, m - y_start] = 1;
                     }
                 }
 
-            cell.Direction = 0;
 
             if (have_obstacle_count > 0)
             {
                 var old_type = cell.Type;
 
-                _obstacleCellList.Add(cell);
-                cell.Type = BigCellType.HasObstacle;
                 // 计算连通性
                 if (have_obstacle_count < _s * _s)  // 起码有空地
                 {
@@ -229,17 +188,17 @@ namespace Script.Model.Auto
                         var save_num = sort_count + 2;
                         sort_count++;
                         Traversal(_cMap, pos.x, pos.y, save_num);
-                        if (mList_count > 3)
+                        if (_mList_count > 3)
                         {
                             save_num_when_1 = save_num;
                             sort_3_count++;
                         }
                         else
                         {
-                            for (int j = 0; j < mList_count; j++)
+                            for (int j = 0; j < _mList_count; j++)
                             {
-                                var p = mList[j];
-                                map1[p.x + x_start, p.y + y_start] = CellType.ObstacleByBig;
+                                var p = _mList[j];
+                                map[p.x + x_start, p.y + y_start] = CellType.ObstacleByBig;
                             }
                         }
                     }
@@ -252,196 +211,169 @@ namespace Script.Model.Auto
                         Array.Copy(_cMap, copy, _s * _s);
                         _afterDic[cell] = (save_num_when_1, copy);
 
-                        // 补漏洞。大格子从”多边空地“的黑名单，经过障碍变多，会来到白名单。
-                        if (old_type == BigCellType.MutiSideEmpty)
-                        {
-                            foreach (var _ in Utils.SurroundList)
-                            {
-                                var tCell = _grid[cell.x + _.x, cell.y + _.y];
-                                if (tCell != null)
-                                {
-                                    _suppleList.Add(tCell);
-                                }
-                            }
-                        }
+                        cell.Type = BigCellType.HasObstacle;
+
                     }
                     else if (sort_3_count >= 2)
                     {
-                        cell.Direction = 0;
                         cell.Type = BigCellType.MutiSideEmpty;
-
-                        if (old_type != BigCellType.MutiSideEmpty)
-                        {
-                            MultiEmptyCellCount++;
-                        }
-
+                        cell.Direction = 0;
+                        if (old_type != BigCellType.MutiSideEmpty) MultiEmptyCellCount++;
                     }
                     else
                     {
+                        cell.Type = BigCellType.AllObstacle;
                         cell.Direction = 0;
                     }
 
                 }
+                else
+                {
+                    cell.Type = BigCellType.AllObstacle;
+                    cell.Direction = 0;
+                }
 
             }
-            // else if (have_fog)
-            // {
-            //     cell.Type = BigCellType.HasFog;
-            // }
             else
             {
                 cell.Type = BigCellType.AllEmpty;
                 cell.Direction = 0b1111_1111;
             }
 
+
         }
 
         #endregion
 
-        #region AfterRefreshCell
-        public void AfterRefreshCell(BigCell cell)
+        #region CellRefreshDir
+
+
+        //大格子刷新方向，并统计有变化的方向 对应的大格子，对方也要刷
+        public void CellRefreshDir(BigCell cell)
         {
             int x_start = cell.x * _s;
             int y_start = cell.y * _s;
+            int cx = cell.x;
+            int cy = cell.y;
 
-            // CellType[,] map0 = _mapData._map;
-            CellType[,] map1 = _mapData._map1;
+            CellType[,] map = _mapData._map;
 
             // debug
-            var s_map = new CellType[5, 5];
-            for (int m = y_start; m < y_start + 5; m++)
-                for (int n = x_start; n < x_start + 5; n++)
-                {
-                    s_map[n - x_start, m - y_start] = map1[n, m];
-                }
+            // var s_map = new CellType[5, 5];
+            // for (int m = y_start; m < y_start + 5; m++)
+            //     for (int n = x_start; n < x_start + 5; n++)
+            //     {
+            //         s_map[n - x_start, m - y_start] = map1[n, m];
+            //     }
 
+            // debug
+            // if (cell.x == 52 && cell.y == 61)
+            // {
+            //     var a = 2;
+            // }
 
             if (!_afterDic.TryGetValue(cell, out var r))
                 return;
 
-            // debug
-            if (cell.x == 52 && cell.y == 61)
-            {
-                var a = 2;
-            }
+            int left = 0;
+            int right = 0;
+            int top = 0;
+            int bottom = 0;
+            int left_top = 0;
+            int left_bottom = 0;
+            int right_bottom = 0;
+            int right_top = 0;
+
+            cell.Direction = 0;
 
             var save_num = r.Item1;
             var cMap = r.Item2;
 
             for (int mx = 0; mx < _s; mx++)
-                if (cMap[mx, 0] == save_num && map1[mx + x_start, y_start - 1] == CellType.Empty)
+                if (cMap[mx, 0] == save_num && map[mx + x_start, y_start - 1] == CellType.Empty)
                 {
                     cell.Direction |= 1 << 7; // 下
+                    bottom = 1;   // 下
                     break;
                 }
 
 
             for (int mx = 0; mx < _s; mx++)
-                if (cMap[mx, 4] == save_num && map1[mx + x_start, y_start + 5] == CellType.Empty)
+                if (cMap[mx, 4] == save_num && map[mx + x_start, y_start + 5] == CellType.Empty)
                 {
-                    cell.Direction |= 1 << 3; // 上
+                    cell.Direction |= 1 << 3;
+                    top = 1;   // 上
                     break;
                 }
             for (int my = 0; my < _s; my++)
-                if (cMap[0, my] == save_num && map1[x_start - 1, my + y_start] == CellType.Empty)
+                if (cMap[0, my] == save_num && map[x_start - 1, my + y_start] == CellType.Empty)
                 {
-                    cell.Direction |= 1 << 1; // 左
+                    cell.Direction |= 1 << 1;
+                    left = 1;   // 左
                     break;
                 }
             for (int my = 0; my < _s; my++)
-                if (cMap[4, my] == save_num && map1[x_start + 5, my + y_start] == CellType.Empty)
+                if (cMap[4, my] == save_num && map[x_start + 5, my + y_start] == CellType.Empty)
                 {
-                    cell.Direction |= 1 << 5; // 右
+                    cell.Direction |= 1 << 5;
+                    right = 1;   // 右
                     break;
                 }
 
-            if (cMap[0, 0] == save_num && map1[x_start - 1, y_start - 1] == CellType.Empty
-            && (map1[x_start - 1, y_start] == CellType.Empty || map1[x_start, y_start - 1] == CellType.Empty))
+            if (cMap[0, 0] == save_num && map[x_start - 1, y_start - 1] == CellType.Empty
+                && (map[x_start - 1, y_start] == CellType.Empty || map[x_start, y_start - 1] == CellType.Empty))
             {
-                cell.Direction |= 1 << 0; // 左下
+                cell.Direction |= 1 << 0;
+                left_bottom = 1;   // 左下
             }
-            if (cMap[4, 0] == save_num && map1[x_start + 5, y_start - 1] == CellType.Empty
-            && (map1[x_start + 5, y_start] == CellType.Empty || map1[x_start + 4, y_start - 1] == CellType.Empty))
+            if (cMap[4, 4] == save_num && map[x_start + 5, y_start + 5] == CellType.Empty
+                && (map[x_start + 5, y_start + 4] == CellType.Empty || map[x_start + 4, y_start + 5] == CellType.Empty))
             {
-                cell.Direction |= 1 << 6; // 右下
-            }
-            if (cMap[0, 4] == save_num && map1[x_start - 1, y_start + 5] == CellType.Empty
-            && (map1[x_start - 1, y_start + 4] == CellType.Empty || map1[x_start, y_start + 5] == CellType.Empty))
-            {
-                cell.Direction |= 1 << 2; // 左上
-            }
-            if (cMap[4, 4] == save_num && map1[x_start + 5, y_start + 5] == CellType.Empty
-            && (map1[x_start + 5, y_start + 4] == CellType.Empty || map1[x_start + 4, y_start + 5] == CellType.Empty))
-            {
-                cell.Direction |= 1 << 4; // 右上
+                cell.Direction |= 1 << 4;
+                right_top = 1;   // 右上
             }
 
-        }
-        #region  SyncDirection
-        public void SyncDirection()
-        {
-            foreach (var cell in _obstacleCellList)
+            if (cMap[0, 4] == save_num && map[x_start - 1, y_start + 5] == CellType.Empty
+                && (map[x_start - 1, y_start + 4] == CellType.Empty || map[x_start, y_start + 5] == CellType.Empty))
             {
-                int x = cell.x;
-                int y = cell.y;
-
-                // debug
-                if (cell.x == 52 && cell.y == 62)
-                {
-                    var a = 2;
-                }
-
-                byte direction = cell.Direction;
-                if (_grid[x, y - 1] != null && ((_grid[x, y - 1].Direction & (1 << 3)) == 0 || (direction & (1 << 7)) == 0))
-                {
-                    _grid[x, y - 1].Direction &= 0b1111_0111;
-                    cell.Direction &= 0b0111_1111;
-                }
-
-                if (_grid[x, y + 1] != null && ((_grid[x, y + 1].Direction & (1 << 7)) == 0 || (direction & (1 << 3)) == 0))
-                {
-                    _grid[x, y + 1].Direction &= 0b0111_1111;
-                    cell.Direction &= 0b1111_0111;
-                }
-
-                if (_grid[x - 1, y] != null && ((_grid[x - 1, y].Direction & (1 << 5)) == 0 || (direction & (1 << 1)) == 0))
-                {
-                    _grid[x - 1, y].Direction &= 0b1101_1111;
-                    cell.Direction &= 0b1111_1101;
-                }
-
-                if (_grid[x + 1, y] != null && ((_grid[x + 1, y].Direction & (1 << 1)) == 0 || (direction & (1 << 5)) == 0))
-                {
-                    _grid[x + 1, y].Direction &= 0b1111_1101;
-                    cell.Direction &= 0b1101_1111;
-                }
-
-                if (_grid[x - 1, y - 1] != null && ((_grid[x - 1, y - 1].Direction & (1 << 4)) == 0 || (direction & (1 << 0)) == 0))
-                {
-                    _grid[x - 1, y - 1].Direction &= 0b1110_1111;
-                    cell.Direction &= 0b1111_1110;
-                }
-
-                if (_grid[x + 1, y + 1] != null && ((_grid[x + 1, y + 1].Direction & (1 << 0)) == 0 || (direction & (1 << 4)) == 0))
-                {
-                    _grid[x + 1, y + 1].Direction &= 0b1111_1110;
-                    cell.Direction &= 0b1110_1111;
-                }
-
-                if (_grid[x - 1, y + 1] != null && ((_grid[x - 1, y + 1].Direction & (1 << 6)) == 0 || (direction & (1 << 2)) == 0))
-                {
-                    _grid[x - 1, y + 1].Direction &= 0b1011_1111;
-                    cell.Direction &= 0b1111_1011;
-                }
-
-                if (_grid[x + 1, y - 1] != null && ((_grid[x + 1, y - 1].Direction & (1 << 2)) == 0 || (direction & (1 << 6)) == 0))
-                {
-                    _grid[x + 1, y - 1].Direction &= 0b1111_1011;
-                    cell.Direction &= 0b1011_1111;
-                }
-
-
+                cell.Direction |= 1 << 2;
+                left_top = 1;   // 左上
             }
+
+            if (cMap[4, 0] == save_num && map[x_start + 5, y_start - 1] == CellType.Empty
+                && (map[x_start + 5, y_start] == CellType.Empty || map[x_start + 4, y_start - 1] == CellType.Empty))
+            {
+                cell.Direction |= 1 << 6;
+                right_bottom = 1;   // 右下
+            }
+
+
+            BigCell adjacent = null;
+            adjacent = _grid[cx, cy - 1];
+            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 3)) | (bottom << 3));
+
+            adjacent = _grid[cx, cy + 1];
+            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 7)) | (top << 7));
+
+            adjacent = _grid[cx - 1, cy];
+            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 5)) | (left << 5));
+
+            adjacent = _grid[cx + 1, cy];
+            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 1)) | (right << 1));
+
+            adjacent = _grid[cx - 1, cy - 1];
+            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 4)) | (left_bottom << 4));
+
+            adjacent = _grid[cx + 1, cy + 1];
+            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 0)) | (right_top << 0));
+
+            adjacent = _grid[cx - 1, cy + 1];
+            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 6)) | (left_top << 6));
+
+            adjacent = _grid[cx + 1, cy - 1];
+            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 2)) | (right_bottom << 2));
+
+
         }
 
         #endregion
@@ -450,45 +382,44 @@ namespace Script.Model.Auto
         /// </summary>
         public void Traversal(byte[,] cMap, int start_x, int start_y, int save_num)
         {
-            mList_count = 0;
+            _mList_count = 0;
 
             var count = 0;
-            stack[count++] = new Vector2Int(start_x, start_y);
+            _stack[count++] = new Vector2Int(start_x, start_y);
             cMap[start_x, start_y] = (byte)save_num;
 
             while (count > 0)
             {
-                var pop = stack[--count];
+                var pop = _stack[--count];
                 int x = pop.x;
                 int y = pop.y;
 
-                mList[mList_count++] = new Vector2Int(x, y);
+                _mList[_mList_count++] = new Vector2Int(x, y);
 
                 if (y > 0 && cMap[x, y - 1] == 0)
                 {
                     cMap[x, y - 1] = (byte)save_num;
-                    stack[count++] = new Vector2Int(x, y - 1);
+                    _stack[count++] = new Vector2Int(x, y - 1);
                 }
                 if (x > 0 && cMap[x - 1, y] == 0)
                 {
                     cMap[x - 1, y] = (byte)save_num;
-                    stack[count++] = new Vector2Int(x - 1, y);
+                    _stack[count++] = new Vector2Int(x - 1, y);
                 }
                 if (y < 4 && cMap[x, y + 1] == 0)
                 {
                     cMap[x, y + 1] = (byte)save_num;
-                    stack[count++] = new Vector2Int(x, y + 1);
+                    _stack[count++] = new Vector2Int(x, y + 1);
                 }
                 if (x < 4 && cMap[x + 1, y] == 0)
                 {
                     cMap[x + 1, y] = (byte)save_num;
-                    stack[count++] = new Vector2Int(x + 1, y);
+                    _stack[count++] = new Vector2Int(x + 1, y);
                 }
             }
 
         }
 
-        #endregion
         #endregion
 
         #region Rebuild
@@ -765,7 +696,7 @@ namespace Script.Model.Auto
         public int H => F - G;      // 启发值、估计值
         public Vector2Int ParentPos;        // 指向上一格，实现链表
 
-        public  BigCell(int x, int y)
+        public BigCell(int x, int y)
         {
             this.x = x;
             this.y = y;
@@ -797,11 +728,10 @@ namespace Script.Model.Auto
 
     public enum BigCellType : byte
     {
-        AllObstacle = 0,    // 纯障碍
-        AllEmpty = 1,       // 纯空地
+        AllObstacle = 0,    // 全障碍
+        AllEmpty = 1,       // 全空地
         HasObstacle = 2,    // 含障碍
-        HasFog = 3,         // 含迷雾
-        MutiSideEmpty = 4,  // 多侧空地
+        MutiSideEmpty = 3,  // 多侧空地，在系统中等同于全障碍
     }
 
 
@@ -978,21 +908,15 @@ namespace Script.Model.Auto
             }
 
             List<Vector2Int> result = new List<Vector2Int>();
-            try
-            {
 
-                var cell = _grid[target.x, target.y];
-                result.Add(new Vector2Int(cell.x - 1, cell.y - 1));
-                while (cell.ParentPos != new Vector2Int(-1, -1))
-                {
-                    cell = _grid[cell.ParentPos.x, cell.ParentPos.y];
-                    result.Add(new Vector2Int(cell.x - 1, cell.y - 1));
-                }
-            }
-            catch (Exception e)
+            var cell = _grid[target.x, target.y];
+            result.Add(new Vector2Int(cell.x - 1, cell.y - 1));
+            while (cell.ParentPos != new Vector2Int(-1, -1))
             {
-                DU.LogError($"Error 报错在{target}");
+                cell = _grid[cell.ParentPos.x, cell.ParentPos.y];
+                result.Add(new Vector2Int(cell.x - 1, cell.y - 1));
             }
+
 
             return result;
         }

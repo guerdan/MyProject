@@ -382,7 +382,7 @@ namespace Script.Util
                     var x = j + _xRange.x;
                     var y = i + _yRange.x;
                     var data = _map[x, y];
-                    if (data == CellType.NewObstacleEdge)
+                    // if (data == CellType.NewObstacleEdge)
                     {
                         data = CellType.ObstacleEdge;
                         _map[x, y] = data;
@@ -404,16 +404,16 @@ namespace Script.Util
                         if (j > 0 && i < _h - 1 && _map[x - 1, y + 1] == CellType.ObstacleEdge
                         && _map[x - 1, y] == CellType.Empty && _map[x, y + 1] == CellType.Empty)
                         {
-                            _map[x - 1, y] = CellType.Temp;
-                            _map[x, y + 1] = CellType.Temp;
+                            _map[x - 1, y] = CellType.ObstacleEdgeTemp;
+                            _map[x, y + 1] = CellType.ObstacleEdgeTemp;
                         }
 
                         if (j < _w - 1 && i < _h - 1 && _map[x + 1, y + 1] == CellType.ObstacleEdge
                         && _map[x + 1, y] == CellType.Empty && _map[x, y + 1] == CellType.Empty)
                         {
 
-                            _map[x + 1, y] = CellType.Temp;
-                            _map[x, y + 1] = CellType.Temp;
+                            _map[x + 1, y] = CellType.ObstacleEdgeTemp;
+                            _map[x, y + 1] = CellType.ObstacleEdgeTemp;
                         }
                     }
 
@@ -433,12 +433,12 @@ namespace Script.Util
                         Type = (byte)data == 1 ? (byte)0 : (byte)data, //先不管"迷雾边界"
                         ParentPos = new Vector2Int(-1, -1)
                     };
-                    if (data == CellType.ObstacleEdge || data == CellType.Temp)
+                    if (data == CellType.ObstacleEdge || data == CellType.ObstacleEdgeTemp)
                     {
                         cell.Type = 2;
                     }
                     // 还原
-                    if (data == CellType.Temp)
+                    if (data == CellType.ObstacleEdgeTemp)
                     {
                         _map[j + _xRange.x, i + _yRange.x] = CellType.Empty;
                     }

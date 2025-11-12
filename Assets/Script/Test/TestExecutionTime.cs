@@ -113,18 +113,18 @@ namespace Script.Test
               for (int i = 0; i < 10000000; i++)    //41ms
               {
                   s = new StructT();
-                //   s = default;                   //两者一样
+                  //   s = default;                   //两者一样
                   s.a = 2;
                   s.a1 = 3;
               }
           }, "赋值栈变量-StructT 构造函数 分开");
-         
+
 
             DU.RunWithTimer(() =>
             {
                 for (int i = 0; i < 10000000; i++)  //29ms
                 {
-                    b = i;                         
+                    b = i;
                 }
             }, "赋值栈变量-int");
         }
@@ -202,6 +202,21 @@ namespace Script.Test
             //     }, "赋空-Struct");
         }
 
+        public void Test3()
+        {
+            Vector2Int a1 = new Vector2Int(100, 190);
+            int b = 0;
+            DU.LogWarning($"{new Vector2Int(100, 190).GetHashCode()}");
+            DU.LogWarning($"{new Vector2Int(100, 110).GetHashCode()}");
+
+            DU.RunWithTimer(() =>
+           {
+               for (int i = 0; i < 10000000; i++)   //29ms 
+               {
+                   b = a1.GetHashCode();
+               }
+           }, $"哈希 {b}");
+        }
     }
 
     public struct StructT

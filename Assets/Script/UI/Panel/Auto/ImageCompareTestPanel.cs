@@ -108,7 +108,7 @@ namespace Script.UI.Panel.Auto
 
         bool _clickLeft;
         int[] _optionSelectStatus = new int[] { -1, -1 };
-
+        Action<Vector2Int> _onSelectPixel;
         void RefreshMapPanel()
         {
             Utils.SetActive(LeftMemoryBtn, true);
@@ -128,12 +128,11 @@ namespace Script.UI.Panel.Auto
             List<string> options = new List<string>()
             {
                 "_map",         // 像素粒度
-                "_map1",        // 像素粒度
                 "_grid",        // 5X5大格子粒度
                 "A*寻路",       // 5X5大格子粒度
-                "保存全部地图",       // 保存至本地
                 "_small_map",        // 像素粒度
                 "_judge_map",        // 像素粒度
+                "保存全部地图",       // 保存至本地
             };
             TipsComp.SetData(options, OnSelectMapOption, 140, 7);
             TipsComp.SetCurIndex(_optionSelectStatus[_clickLeft ? 0 : 1]);
@@ -151,13 +150,15 @@ namespace Script.UI.Panel.Auto
         /// </summary>
         void OnSelectMapOption(int option)
         {
+            _onSelectPixel = null;
+
             if (option < 0)
                 return;
             MapData mapData = MapDataManager.Inst.Get(_mapId);
             if (mapData == null)
                 return;
 
-            if (option == 4)
+            if (option == 5)
             {
                 //保存
                 var script = AutoScriptManager.Inst.GetScriptData(_scriptId);
@@ -185,13 +186,9 @@ namespace Script.UI.Panel.Auto
             }
             else if (option == 1)
             {
-                pixels = mapData.GetImageMap1();
-            }
-            else if (option == 2)
-            {
                 pixels = mapData.GetImageGrid();
             }
-            else if (option == 3)
+            else if (option == 2)
             {
                 var str = InputText.text;
                 str.Replace(" ", "");
@@ -201,8 +198,8 @@ namespace Script.UI.Panel.Auto
                 {
                     var start = new Vector2Int(int.Parse(arr[0]), int.Parse(arr[1]));
                     var target = new Vector2Int(int.Parse(arr[2]), int.Parse(arr[3]));
-
-                    _mapData.StartAStarBigGrid(start, target);
+                    DU.RunWithTimer(() => _mapData.StartAStarBigGrid(start, target)
+                    , "StartAStarBigGrid");
                     pixels = mapData.GetImageGridAStart();
                 }
                 catch
@@ -212,12 +209,12 @@ namespace Script.UI.Panel.Auto
                 }
 
             }
-            else if (option == 5)
+            else if (option == 3)
             {
                 size = new Vector2Int(200, 200);
                 pixels = mapData.GetImageSmallMap();
             }
-            else if (option == 6)
+            else if (option == 4)
             {
                 pixels = mapData.GetImageJudgeMap();
             }
@@ -242,15 +239,20 @@ namespace Script.UI.Panel.Auto
 
 
             // 加个选择像素回调，为了方便查看内存
-            comp.SyncOnSelectPixel(v2 =>
+            _onSelectPixel = v2 =>
             {
-                var grid_px = (v2.x + xRange.x) / 5;
-                var grid_py = (v2.y + yRange.x) / 5;
+                if (v2.x < 0 || v2.x >= w || v2.y < 0 || v2.y >= h)
+                    return;
+
+                var px = v2.x + xRange.x;
+                var py = v2.y + yRange.x;
+                var grid_px = px / 5;
+                var grid_py = py / 5;
 
                 BigCell cell = mapData._gridData._grid[grid_px, grid_py];
                 if (cell == null)
                     return;
-                CellType[,] map1 = _mapData._map1;
+                CellType[,] map = _mapData._map;
 
                 int x_start = cell.x * 5;
                 int y_start = cell.y * 5;
@@ -258,11 +260,17 @@ namespace Script.UI.Panel.Auto
                 for (int m = y_start; m < y_start + 5; m++)
                     for (int n = x_start; n < x_start + 5; n++)
                     {
-                        s_map[n - x_start, m - y_start] = map1[n, m];
+                        s_map[n - x_start, m - y_start] = map[n, m];
                     }
 
+                var judge_pos = _mapData._judgePos;
+                JudgeCell j = default;
+                if (px - judge_pos.x >= 0 && px - judge_pos.x < 300
+                    && py - judge_pos.y >= 0 && py - judge_pos.y < 300)
+                    j = _mapData._judge_map[px - judge_pos.x, py - judge_pos.y];
 
-            });
+            };
+
         }
 
         void SaveMapImage(bool isLeft, Texture2D texture, Sprite sprite)
@@ -363,7 +371,11 @@ namespace Script.UI.Panel.Auto
             {
                 LeftImage.SyncOnScaleChange(f => RightImage.ScaleTo(f));
                 LeftImage.SyncOnScroll(v2 => RightImage.ScrollTo(v2));
-                LeftImage.SyncOnSelectPixel(v2 => RightImage.SelectPixel(v2));
+                LeftImage.SyncOnSelectPixel(v2 =>
+                {
+                    RightImage.SelectPixel(v2);
+                    if (_onSelectPixel != null) _onSelectPixel(v2);
+                });
 
                 RightImage.SyncOnScaleChange(f => LeftImage.ScaleTo(f));
                 RightImage.SyncOnScroll(v2 => LeftImage.ScrollTo(v2));
@@ -833,8 +845,9 @@ namespace Script.UI.Panel.Auto
             // FilterPixel();
 
             //  比较下谁执快
-            TestExecutionTime.Inst.Test1();
+            // TestExecutionTime.Inst.Test1();
             // TestExecutionTime.Inst.Test2();
+            TestExecutionTime.Inst.Test3();
         }
 
         int _index;
@@ -845,6 +858,7 @@ namespace Script.UI.Panel.Auto
         {
             // if (_mapData == null)
             // {
+            MapDataManager.Inst.Remove("Map-22");
             MapDataManager.Inst.Create("Map-22", new CVRect(0, 0, 200, 200));
             _mapData = MapDataManager.Inst.Get("Map-22");
             // }
