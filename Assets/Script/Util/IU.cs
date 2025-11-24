@@ -5,6 +5,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using OpenCvSharp;
+using Unity.VisualScripting;
 using UnityEngine;
 
 
@@ -102,6 +103,8 @@ namespace Script.Util
     public static class IU
     {
 
+        public static string PicPath = @"D:\unityProject\MyProject\TestResource\图";
+
         // 等优化，用缓存
         public static Mat GetMat(string path, bool use_alpha = false)
         {
@@ -141,18 +144,14 @@ namespace Script.Util
 
         #region MatchTemplate
         /// <summary>
-        /// 抠图匹配,使用掩码匹配  
+        /// 规定：use_mask && （matT有alpha通道)，才能使用模版匹配的掩码模式
+        /// 
         /// 耗时
         /// CCorrNormed--33ms--无mask是14ms    
         /// CCoeffNormed--80ms--无mask是16ms     
         /// 所以建议使用CCorrNormed,从耗时上讲, 阈值应该在0.95以上
-        ///  
-        /// OpenCvSharp 4.x 及以上版本,已经支持在CCoeffNormed下传入mask
         /// </summary>
-        /// <param name="inputPath"></param>
-        /// <param name="templatePath"></param>
-        /// <returns></returns>
-        public static Mat MatchTemplate1(Mat matI, Mat matT)
+        public static Mat MatchTemplate1(Mat matI, Mat matT, bool use_mask = true)
         {
             // 可以做缓存图片来优化
             //
@@ -164,22 +163,44 @@ namespace Script.Util
             }
 
             Mat result = new Mat();
-            Mat mask = new Mat(); // 掩码，能剪裁模版区域
-            if (matT.Channels() == 4)
+            if (use_mask && matT.Channels() == 4)
             {
                 var channels = Cv2.Split(matT);
-                mask = channels[3]; // alpha通道作为mask
-                Cv2.Merge(new[] { channels[0], channels[1], channels[2] }, matT); // 只保留BGR
+                using (Mat mask = channels[3]) // alpha通道作为mask。掩码，能剪裁模版区域
+                {
+                    using (Mat matTemplate = new Mat())
+                    {
+                        Cv2.Merge(new[] { channels[0], channels[1], channels[2] }, matTemplate); // 只保留BGR
+                                                                                                 //用mask比不用的耗时要大。 12ms 变 55ms
+                        Cv2.MatchTemplate(matI, matTemplate, result, TemplateMatchModes.CCorrNormed, mask);
+                    }
+                }
             }
-
-            //用mask比不用的耗时要大。 12ms 变 55ms
-            Cv2.MatchTemplate(matI, matT, result, TemplateMatchModes.CCorrNormed, mask);
+            else
+            {
+                // 通道数要是对不上。一般模版图存在本地，有些有alpha通道。
+                if (matT.Channels() == 4)
+                {
+                    var channels = Cv2.Split(matT);
+                    using (Mat matTemplate = new Mat())
+                    {
+                        Cv2.Merge(new[] { channels[0], channels[1], channels[2] }, matTemplate); // 只保留BGR
+                        Cv2.MatchTemplate(matI, matTemplate, result, TemplateMatchModes.CCorrNormed);
+                    }
+                }
+                else
+                {
+                    Cv2.MatchTemplate(matI, matT, result, TemplateMatchModes.CCorrNormed);
+                }
+            }
 
             return result;
         }
 
-
-        public static Mat MatchTemplate2(Mat matI, Mat matT)
+        /// <summary>
+        /// mask为单通道Mat，接口会屏蔽值为0的像素，而录取非0的像素
+        /// </summary>
+        public static Mat MatchTemplateCustomMask(Mat matI, Mat matT, Mat mask)
         {
             if (matI.Width < matT.Width || matI.Height < matT.Height)
             {
@@ -188,13 +209,8 @@ namespace Script.Util
             }
 
             Mat result = new Mat();
-            Mat mask = new Mat(); // 掩码，能剪裁模版区域
-
-            var channels = Cv2.Split(matT);
-            mask = channels[0]; // alpha通道作为mask
-
             //用mask比不用的耗时要大。 12ms 变 55ms
-            Cv2.MatchTemplate(matI, matT, result, TemplateMatchModes.CCorrNormed, mask);
+            Cv2.MatchTemplate(matI, matT, result, TemplateMatchModes.SqDiffNormed, mask);
 
             return result;
         }
@@ -277,6 +293,70 @@ namespace Script.Util
                 Rect = rect1,
                 Score = max_score
             };
+
+            return matchResults;
+        }
+
+        // 越小越好
+        public static List<CVMatchResult> FindResultMin(Mat result, int wT, int hT, float threshold)
+        {
+            List<CVMatchResult> matchResults = new List<CVMatchResult>();
+            int hR, wR;
+            hR = result.Rows; //继续优化了10ms 
+            wR = result.Cols;
+
+            byte[,] cull = new byte[hR, wR];    //优化了10ms. 从Mat(拆装箱)转[,]
+            result.GetArray(out float[] scores);
+
+
+            // 筛选所有结果，找出所有大于阈值的位置
+            for (int y = 0; y < hR; y++)
+            {
+                for (int x = 0; x < wR; x++)
+                {
+                    if (cull[y, x] > 0)
+                        continue; // 如果这个位置已经被标记过，跳过
+
+                    float score = scores[y * wR + x];
+
+                    var tx = x;
+                    var ty = y;
+
+
+                    if (score <= threshold)
+                    {
+                        // 提前遍历： 下方的宽[-wT,wT]高[0,hT]矩形，并找出最大的
+                        int i_max = Math.Min(hT, hR - y);
+                        for (int i = 0; i < i_max; i++)  //行增
+                        {
+                            int j_min = Math.Max(-wT, -x);
+                            int j_max = Math.Min(wT, wR - x);
+                            for (int j = j_min; j < j_max; j++) //列增
+                            {
+                                cull[y + i, x + j] = 1;
+                                float tscore = scores[(y + i) * wR + x + j];
+                                if (tscore < score)
+                                {
+                                    tx = x + j;
+                                    ty = y + i;
+                                    score = tscore;
+                                }
+
+                            }
+                        }
+
+                        // 得到匹配结果
+                        var rect = new CVRect(tx, ty, wT, hT);
+                        var r = new CVMatchResult
+                        {
+                            Rect = rect,
+                            Score = score
+                        };
+                        matchResults.Add(r);
+                    }
+                }
+            }
+
 
             return matchResults;
         }
@@ -399,6 +479,11 @@ namespace Script.Util
                 for (int j = 0; j < w; j++)
                     result[(h - 1 - i) * w + j] = pixels[i * w + j];
             return result;
+        }
+
+        public static bool Equal(Color32 c0, Color32 c1)
+        {
+            return c0.a == c1.a && c0.r == c1.r && c0.g == c1.g && c0.b == c1.b;
         }
 
 

@@ -20,7 +20,7 @@ namespace Script.Util
                                 new Vector2Int(1, 0),
                                 new Vector2Int(0, -1),
                             };
-        public static readonly Vector2Int[] SurroundList = new Vector2Int[]{
+        public static readonly Vector2Int[] EightDirList = new Vector2Int[]{
                                 new Vector2Int(-1, -1),
                                 new Vector2Int(-1, 0),
                                 new Vector2Int(-1, 1),
@@ -30,8 +30,15 @@ namespace Script.Util
                                 new Vector2Int(1, -1),
                                 new Vector2Int(0, -1),
                             };
+        public static readonly Vector2Int[] TwoDistanceArea = new Vector2Int[]{
+                new Vector2Int(0,2),
+                new Vector2Int(-1,1),new Vector2Int(0,1),new Vector2Int(1,1),
+                new Vector2Int(-2,0),new Vector2Int(-1,0),new Vector2Int(1,0),new Vector2Int(2,0),
+                new Vector2Int(-1,-1),new Vector2Int(0,-1),new Vector2Int(1,-1),
+                new Vector2Int(0,-2),
+        };
 
-
+        public static readonly Vector2Int DefaultV2I = new Vector2Int(-1, -1);
         /// <summary>
         /// 如果没有什么特别组件而想存成List[GameObject]，就改用存List[Transform]或者List[RectTransform]
         /// 以达到相同的效果

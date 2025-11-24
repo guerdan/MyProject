@@ -1039,6 +1039,11 @@ namespace Script.Util
 
             #endregion
 
+
+
+
+
+
             #region 筛-分类亮地
             // 全部连线
             Dictionary<int, List<Vector2Int>> all_line = new Dictionary<int, List<Vector2Int>>();
@@ -1081,6 +1086,10 @@ namespace Script.Util
             #endregion
 
 
+
+
+
+
             #region 筛-
 
             for (int ry = 1; ry < region_map_len - 1; ry++)
@@ -1095,6 +1104,9 @@ namespace Script.Util
 
 
             #endregion
+
+
+
 
 
 
@@ -1153,7 +1165,7 @@ namespace Script.Util
                 }
             }
 
-              
+
 
             return result;
         }
@@ -1299,6 +1311,82 @@ namespace Script.Util
         }
 
         ////////////////////   End     //////////////////// 
+
+        #region ApplyEdgeFog
+
+        // 补充边缘迷雾
+        // 补充迷雾：[160X160]的最外层厚度1px像素。若(与空地相连)&& ，则标为迷雾
+        // _light_map ：视野刷子区域可能比 _map区域外扩1px
+        // void ApplyEdgeFog(CellType[,] small_map)
+        // {
+        //     Vector2Int offset = _templatePos - _judgePos;
+        //     int xs = 21, xe = 179, ys = 21, ye = 179;
+
+        //     // 补充边缘迷雾
+        //     for (int y = ys; y < ye; y++)
+        //     {
+        //         // 原来算法, 走到主循环中会污染一下Undefined，所以放弃走主循环，一步到位
+
+        //         var mx = 20 + _templatePos.x;
+        //         var my = y + _templatePos.y;
+        //         var jx = 20 + offset.x;
+        //         var jy = y + offset.y;
+        //         var jData = _judge_map[jx, jy];
+        //         // 本像素没访问过，small_map邻近像素是空地
+        //         if (small_map[21, y] == CellType.Empty && !jData.Access)
+        //         {
+        //             _map[mx, my] = CellType.Fog;
+        //             jData.Access = true;
+        //             _judge_map[jx, jy] = jData;
+        //         }
+
+
+        //         mx = 179 + _templatePos.x;
+        //         my = y + _templatePos.y;
+        //         jx = 179 + offset.x;
+        //         jy = y + offset.y;
+        //         jData = _judge_map[jx, jy];
+        //         if (small_map[178, y] == CellType.Empty && !jData.Access)
+        //         {
+        //             _map[mx, my] = CellType.Fog;
+        //             jData.Access = true;
+        //             _judge_map[jx, jy] = jData;
+        //         }
+
+        //     }
+        //     // 补充边缘迷雾
+        //     for (int x = xs; x < xe; x++)
+        //     {
+
+        //         var mx = x + _templatePos.x;
+        //         var my = 20 + _templatePos.y;
+        //         var jx = x + offset.x;
+        //         var jy = 20 + offset.y;
+        //         var jData = _judge_map[jx, jy];
+        //         if (small_map[x, 21] == CellType.Empty && !jData.Access)
+        //         {
+        //             _map[mx, my] = CellType.Fog;
+        //             jData.Access = true;
+        //             _judge_map[jx, jy] = jData;
+        //         }
+
+
+        //         mx = x + _templatePos.x;
+        //         my = 179 + _templatePos.y;
+        //         jx = x + offset.x;
+        //         jy = 179 + offset.y;
+        //         jData = _judge_map[jx, jy];
+        //         if (small_map[x, 178] == CellType.Empty && !jData.Access)
+        //         {
+        //             _map[mx, my] = CellType.Fog;
+        //             jData.Access = true;
+        //             _judge_map[jx, jy] = jData;
+        //         }
+        //     }
+
+        // }
+
+        #endregion
     }
 
 }

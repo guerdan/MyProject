@@ -38,12 +38,9 @@ namespace Script.Model.Auto
         Vector2Int[] _mList = new Vector2Int[25];           // 用于构造大格子，复用动态列表
         int _mList_count = 0;                               // 用于构造大格子，复用动态列表
 
-
         public Vector2Int _target_c = new Vector2Int(-1, -1);       //寻路目标，大格子粒度
-        public Vector2Int _target_p = new Vector2Int(-1, -1);       //寻路目标，像素粒度
-        public Vector2Int _start_p = new Vector2Int(-1, -1);        //寻路起点，像素粒度
-        List<BigCell> accessList;
-
+        public bool success;                                        //寻路，本次是否成功
+        List<BigCell> accessList = new List<BigCell>(400);
 
 
         #region 初始化
@@ -141,6 +138,7 @@ namespace Script.Model.Auto
             // }
 
 
+            bool have_fog = false;
             int have_obstacle_count = 0;
 
             for (int y = 0; y < _s; y++)
@@ -163,8 +161,16 @@ namespace Script.Model.Auto
                         have_obstacle_count++;
                         _cMap[n - x_start, m - y_start] = 1;
                     }
+
+                    // if (data == CellType.Fog)
+                    //     have_fog = true;
                 }
 
+            // if (have_fog)
+            // {
+            //     cell.Type = BigCellType.AllObstacle;
+            //     cell.Direction = 0;
+            // }
 
             if (have_obstacle_count > 0)
             {
@@ -458,10 +464,7 @@ namespace Script.Model.Auto
 
         public void StartAStar(Vector2Int start_p, Vector2Int target_p)
         {
-
-            ClearAccessStatus();
-            _start_p = start_p;
-            _target_p = target_p;
+            ClearStatus();  // 清理状态
 
             var start = start_p / 5;
             var target = target_p / 5;
@@ -469,18 +472,19 @@ namespace Script.Model.Auto
 
             var times = 0;
             var openList = new BinarySearchTree<BigCell>();
-            accessList = new List<BigCell>(200);
             var startNode = _grid[start.x, start.y];
+            // 角色沿墙壁走，就可能发生。角色被识别跑到障碍里了，就不寻了
+            //
+            if (startNode == null)
+                return;
             startNode.G = 0;
             startNode.F = Estimate(start.x, start.y, target.x, target.y); // 使用启发式函数计算H值
 
             openList.Insert(startNode);
+            accessList.Add(startNode);
 
             var method_list = new Vector2Int[8];
             var method_count = 0;
-            int x_end = _grid.GetLength(0) - 1;
-            int y_end = _grid.GetLength(1) - 1;
-
 
             // openList 要排序，也要查找
             while (!openList.Empty())
@@ -492,13 +496,12 @@ namespace Script.Model.Auto
                 openList.Delete(current);
 
                 current.Access = true;
-                accessList.Add(current);
 
                 if (current.x == target.x && current.y == target.y)
                 {
+                    success = true;
                     break;
                 }
-
 
                 method_count = 0;
                 int x = current.x;
@@ -535,14 +538,18 @@ namespace Script.Model.Auto
                     var neighbor_pos = method_list[i];
                     var neighbor = _grid[neighbor_pos.x, neighbor_pos.y];
 
-                    //debug
+                    // debug
                     //
                     // if (neighbor_pos.x == 75 && neighbor_pos.y == 72)
                     // {
                     //     var a = 1;
                     // }
 
-                    int new_G = current.G + GetDistance(current_pos, neighbor_pos);
+                    // 加点激励机制
+                    //
+                    int num1 = current.Type == BigCellType.HasObstacle ? 2 : 1;
+                    int num2 = neighbor.Type == BigCellType.HasObstacle ? 2 : 1;
+                    int new_G = current.G + GetDistance(current_pos, neighbor_pos) * num1 * num2;
 
                     //新的邻节点或者要更新G值的邻节点
                     bool is_new = neighbor.G == 0;
@@ -553,6 +560,7 @@ namespace Script.Model.Auto
                         neighbor.F = new_G + Estimate(neighbor_pos.x, neighbor_pos.y, target.x, target.y);
                         neighbor.ParentPos = current_pos;
                         openList.Insert(neighbor);
+                        accessList.Add(neighbor);
                     }
                     else if (new_G < neighbor.G)
                     {
@@ -570,21 +578,22 @@ namespace Script.Model.Auto
                 }
             }
 
-
-
-            DU.LogWarning("AStar times:" + times);
+            var success_str = success ? "成功" : "失败";
+            DU.LogWarning($"AStar {success_str}  times:" + times);
         }
 
-        public void ClearAccessStatus()
+        public void ClearStatus()
         {
-            if (accessList == null)
-                return;
+            var defaultV = Utils.DefaultV2I;
             foreach (var pos in accessList)
             {
                 pos.Access = false;
                 pos.G = 0;
                 pos.F = 0;
+                pos.ParentPos = defaultV;
             }
+            accessList.Clear();
+            success = false;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -614,47 +623,48 @@ namespace Script.Model.Auto
         public static Vector2Int[] list = new Vector2Int[5];
 
         /// <summary>
-        /// 喂A大格子，B大格子。返回连通两者的像素，此像素在B中
-        /// 参0:true为空地，false为障碍 
+        /// 喂 大格子A，B 。返回连通两者的像素，在A坐标系中，一个位于A中，一个在B中
+        /// mapA: true为空地，false为障碍 
         /// </summary>
-        public static Vector2Int GetConnectPixel(bool[,] mapA, bool[,] mapB, Vector2Int pA, Vector2Int pB)
+        public static void GetConnectPixel(bool[,] mapA, bool[,] mapB
+            , Vector2Int pA, Vector2Int pB, out Vector2Int rA, out Vector2Int rB)
         {
             int x_delta = pB.x - pA.x;
             int y_delta = pB.y - pA.y;
-            Vector2Int result = Vector2Int.zero;
+            rA = default;
 
             int list_count = 0;
             if (x_delta != 0 && y_delta != 0)
             {
                 // B的四个顶点其中一个 为交界
-                result.x = x_delta == 1 ? 0 : 4;
-                result.y = y_delta == 1 ? 0 : 4;
+                rA.x = x_delta == 1 ? 4 : 0;
+                rA.y = y_delta == 1 ? 4 : 0;
             }
             else
             {
                 // x_delta、y_delta有一个为0
-                if (x_delta == -1)          //B的右边线 为交界
+                if (x_delta == 1)          //A的右边线 为交界
                 {
                     for (int y = 0; y < 5; y++)
-                        if (mapB[4, y] && mapA[0, y])
+                        if (mapA[4, y] && mapB[0, y])
                             list[list_count++] = new Vector2Int(4, y);
                 }
-                else if (x_delta == 1)      //B的左边线 为交界
+                else if (x_delta == -1)      //A的左边线 为交界
                 {
                     for (int y = 0; y < 5; y++)
-                        if (mapB[0, y] && mapA[4, y])
+                        if (mapA[0, y] && mapB[4, y])
                             list[list_count++] = new Vector2Int(0, y);
                 }
-                else if (y_delta == -1)     //B的上边线 为交界
+                else if (y_delta == 1)     //A的上边线 为交界
                 {
                     for (int x = 0; x < 5; x++)
-                        if (mapB[x, 4] && mapA[x, 0])
+                        if (mapA[x, 4] && mapB[x, 0])
                             list[list_count++] = new Vector2Int(x, 4);
                 }
-                else if (y_delta == 1)      //B的下边线 为交界
+                else if (y_delta == -1)      //A的下边线 为交界
                 {
                     for (int x = 0; x < 5; x++)
-                        if (mapB[x, 0] && mapA[x, 4])
+                        if (mapA[x, 0] && mapB[x, 4])
                             list[list_count++] = new Vector2Int(x, 0);
                 }
 
@@ -662,12 +672,13 @@ namespace Script.Model.Auto
                 {
                     // 取中间的一个，偶数则偏右
                     int index = list_count / 2;
-                    result = list[index];
+                    rA = list[index];
                 }
+
             }
 
+            rB = rA + new Vector2Int(x_delta, y_delta);
 
-            return result;
         }
 
 

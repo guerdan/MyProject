@@ -1,4 +1,5 @@
 
+using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using Script.Model.Auto;
@@ -216,6 +217,75 @@ namespace Script.Test
                    b = a1.GetHashCode();
                }
            }, $"哈希 {b}");
+        }
+
+        CellType[,] map0 = new CellType[1000, 1000];
+        CellType[] map1 = new CellType[1000];
+        HashSet<Vector2Int> set = new HashSet<Vector2Int>();
+            List<Vector2Int> list = new List<Vector2Int>(100000000);
+        public void Test4()
+        {
+            for (int i = 0; i < 1000; i++)
+            {
+                set.Add(new Vector2Int(i+100000, i+100000));
+            }
+
+            var b = new Vector2Int(2, 3);
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)   // 30ms
+                {
+                    var a = map1[500];
+                }
+            }, $"一维数组取");
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)   // 24ms
+                {
+                    map1[500] = CellType.Empty;
+                }
+            }, $"一维数组存");
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)   // 40ms
+                {
+                    var a = map0[500, 500];
+                }
+            }, $"二维数组取");
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)   // 34ms
+                {
+                    map0[500, 500] = CellType.Empty;
+
+                }
+            }, $"二维数组存");
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 1000000; i++)   // 900ms <= 补零后
+                {
+                    bool a = set.Contains(b);
+                }
+            }, $"哈希表判断");
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 100000; i++)    // 2000ms <= 补零后
+                {
+                    set.Add(new Vector2Int(i, i));
+                }
+            }, $"哈希表存");
+
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)    // 170ms 
+                {
+                    list.Add(b);
+                }
+            }, $"列表存");
         }
     }
 

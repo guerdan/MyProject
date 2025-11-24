@@ -9,6 +9,7 @@ using Script.UI.Component;
 using Script.Util;
 using UnityEngine;
 using UnityEngine.UI;
+using static Script.Model.Auto.MapData;
 
 namespace Script.UI.Panel.Auto
 {
@@ -31,8 +32,8 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private Button UnfoldBtn;
         [SerializeField] private Button FoldBtn;
         [SerializeField] private GameObject RightPanel;
-        [SerializeField] private Button LookDebugBtn;            //debug按钮
-
+        [SerializeField] private Button GreenBtn;            //debug按钮
+        [SerializeField] private Button YellowBtn;            //debug按钮
 
 
         [Header("模版匹配")]
@@ -89,7 +90,8 @@ namespace Script.UI.Panel.Auto
             UnfoldBtn.onClick.AddListener(OnFoldChangeBtnClick);
             FoldBtn.onClick.AddListener(OnFoldChangeBtnClick);
             TemplateImageBtn.onClick.AddListener(OnTemplateImageBtnClick);
-            LookDebugBtn.onClick.AddListener(OnClickLookDebugBtn);
+            GreenBtn.onClick.AddListener(OnClickGreenBtn);
+            YellowBtn.onClick.AddListener(OnClickYellowBtn);
         }
 
 
@@ -155,6 +157,7 @@ namespace Script.UI.Panel.Auto
             IsFirstCheck.SetData(_scriptData.Config.FirstNode == _data.Id, OnIsFirstCheck);
             RefreshFoldStatus();
 
+
             TemplateMatchGO.SetActive(_nodeType == NodeType.TemplateMatchOper);
             SaveCaptureCheck.transform.parent.gameObject.SetActive(_nodeType == NodeType.TemplateMatchOper);
             MouseOperGO.SetActive(_nodeType == NodeType.MouseOper);
@@ -163,6 +166,7 @@ namespace Script.UI.Panel.Auto
             ConditionOperGO.SetActive(_nodeType == NodeType.ConditionOper);
             EventOperGO.SetActive(_nodeType == NodeType.TriggerEvent || _nodeType == NodeType.ListenEvent);
             MapCaptureGO.SetActive(_nodeType == NodeType.MapCapture);
+            YellowBtn.gameObject.SetActive(_nodeType == NodeType.MapCapture);
 
 
             if (_nodeType == NodeType.TemplateMatchOper)
@@ -307,7 +311,7 @@ namespace Script.UI.Panel.Auto
 
             SetRegionInput();
             SetTemplateImage();
-
+            GreenBtn.GetComponentInChildren<Text>().text = "debug";
         }
 
         void SetRegionInput()
@@ -653,15 +657,21 @@ namespace Script.UI.Panel.Auto
                 data.MapId = str;
                 EventNameInput.SetText(data.MapId); // 可能会格式化
             });
+
+
+            YellowBtn.GetComponentInChildren<Text>().text = "准确率";
+            GreenBtn.GetComponentInChildren<Text>().text = "debug";
         }
 
-        void OnClickLookDebugBtn()
+        void OnClickGreenBtn()
         {
             if (_nodeType == NodeType.TemplateMatchOper)
                 OnClickTemplateMatchDebug();
             if (_nodeType == NodeType.MapCapture)
                 OnClickMapCaptureDebug();
         }
+
+
         void OnClickTemplateMatchDebug()
         {
             var data = _data as TemplateMatchOperNode;
@@ -680,7 +690,7 @@ namespace Script.UI.Panel.Auto
             TipsComp.SetData(options, null, 400);
 
             var tipsCompRectT = TipsComp.GetComponent<RectTransform>();
-            var targetR = LookDebugBtn.GetComponent<RectTransform>();
+            var targetR = GreenBtn.GetComponent<RectTransform>();
             var offset = new Vector2(targetR.rect.width / 2, targetR.rect.height / 2) + new Vector2(5, -5);
             var pos = Utils.GetPos(tipsCompRectT, targetR, offset, true);
             tipsCompRectT.anchoredPosition = pos;
@@ -689,6 +699,59 @@ namespace Script.UI.Panel.Auto
         {
             var data = _data as MapCaptureNode;
             UIManager.Inst.ShowPanel(PanelEnum.ImageCompareTestPanel, new string[] { data.MapId, _drawPanel._id });
+        }
+
+        void OnClickYellowBtn()
+        {
+            if (_nodeType == NodeType.MapCapture)
+            {
+                var data = _data as MapCaptureNode;
+                var mapData = MapDataManager.Inst.Get(data.MapId);
+                if (mapData == null)
+                    return;
+
+                var list = mapData.AccuracyRecord;
+                List<string> options = new List<string>();
+                float sum = 0;
+                // 5个一行 ,倒着 遍历
+                if (list.Count > 0)
+                {
+                    var l = new List<float>();
+                    for (int i = list.Count - 1; i >= 0; i--)
+                    {
+                        var tuple = list[i];
+                        sum += tuple.Item2;
+                        l.Add(tuple.Item2);
+
+                        int index = tuple.Item1;
+                        int delta = index % 5 - 1;
+                        if (delta == 0)
+                        {
+                            var str = $"{tuple.Item1}帧 — ";
+
+                            for (int j = l.Count - 1; j >= 0; j--)
+                                str += $"{l[j].ToString("F2")}  ";       // 注意：两位小数不能省略哦
+
+                            options.Add(str);
+                            l.Clear();
+                        }
+                    }
+
+                }
+
+                var average = sum / list.Count;
+                options.Insert(0, $"平均准确率 — {average.ToString("F3")}");
+                options.InsertRange(0, mapData.GetPrintResult());
+
+                Utils.SetActive(TipsComp, true);
+                TipsComp.SetData(options, null, 400, 10);
+
+                var tipsCompRectT = TipsComp.GetComponent<RectTransform>();
+                var targetR = YellowBtn.GetComponent<RectTransform>();
+                var offset = new Vector2(targetR.rect.width / 2, targetR.rect.height / 2) + new Vector2(5, -5);
+                var pos = Utils.GetPos(tipsCompRectT, targetR, offset, true);
+                tipsCompRectT.anchoredPosition = pos;
+            }
         }
 
 

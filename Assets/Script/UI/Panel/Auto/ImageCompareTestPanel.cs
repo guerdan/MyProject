@@ -118,6 +118,18 @@ namespace Script.UI.Panel.Auto
             OnSelectMapOption(0);
         }
 
+        List<string> options = new List<string>()
+            {
+                "_map",             // 像素粒度
+                "_grid",            // 5X5大格子粒度
+                "A*寻路",           // 5X5大格子粒度
+                "指定目标寻路",      // 5X5大格子粒度
+                "_light_map",       // 像素粒度
+                "_small_map",        // 像素粒度
+                "_judge_map",        // 像素粒度
+                "保存全部地图",       // 保存至本地
+            };
+
         void OnClickMemoryBtn(bool isLeft)
         {
             _clickLeft = isLeft;
@@ -125,15 +137,7 @@ namespace Script.UI.Panel.Auto
 
             var comp = _clickLeft ? LeftMemoryBtn : RightMemoryBtn;
 
-            List<string> options = new List<string>()
-            {
-                "_map",         // 像素粒度
-                "_grid",        // 5X5大格子粒度
-                "A*寻路",       // 5X5大格子粒度
-                "_small_map",        // 像素粒度
-                "_judge_map",        // 像素粒度
-                "保存全部地图",       // 保存至本地
-            };
+
             TipsComp.SetData(options, OnSelectMapOption, 140, 7);
             TipsComp.SetCurIndex(_optionSelectStatus[_clickLeft ? 0 : 1]);
 
@@ -158,7 +162,7 @@ namespace Script.UI.Panel.Auto
             if (mapData == null)
                 return;
 
-            if (option == 5)
+            if (options[option] == "保存全部地图")
             {
                 //保存
                 var script = AutoScriptManager.Inst.GetScriptData(_scriptId);
@@ -194,13 +198,12 @@ namespace Script.UI.Panel.Auto
                 str.Replace(" ", "");
                 str = str.Substring(1, str.Length - 2);
                 var arr = str.Split(',');
+                Vector2Int start;
+                Vector2Int target;
                 try
                 {
-                    var start = new Vector2Int(int.Parse(arr[0]), int.Parse(arr[1]));
-                    var target = new Vector2Int(int.Parse(arr[2]), int.Parse(arr[3]));
-                    DU.RunWithTimer(() => _mapData.StartAStarBigGrid(start, target)
-                    , "StartAStarBigGrid");
-                    pixels = mapData.GetImageGridAStart();
+                    start = new Vector2Int(int.Parse(arr[0]), int.Parse(arr[1]));
+                    target = new Vector2Int(int.Parse(arr[2]), int.Parse(arr[3]));
                 }
                 catch
                 {
@@ -208,13 +211,47 @@ namespace Script.UI.Panel.Auto
                     return;
                 }
 
+                DU.RunWithTimer(() =>
+                    mapData.StartAStarBigGrid(start, target)
+                    , "StartAStarBigGrid");
+                pixels = mapData.GetImageGridAStar();
+
             }
             else if (option == 3)
+            {
+                var str = InputText.text;
+                int target_index = 0;
+                try
+                {
+                    target_index = int.Parse(str);
+                }
+                catch
+                {
+                    DU.LogError("[指定目标寻路 打印图像] 输入文本格式不对");
+                    return;
+                }
+                DU.RunWithTimer(() =>
+                    mapData.StartAStarByIndex(target_index)
+                , "StartAStarBigGrid");
+
+                // 可能会变
+                //
+                mapData.GetContentAttr(out xRange, out yRange
+               , out w, out h);
+                size = new Vector2Int(w, h);
+
+                pixels = mapData.GetImageGridAStar();
+            }
+            else if (option == 4)
+            {
+                pixels = mapData.GetImageLightMap();
+            }
+            else if (option == 5)
             {
                 size = new Vector2Int(200, 200);
                 pixels = mapData.GetImageSmallMap();
             }
-            else if (option == 4)
+            else if (option == 6)
             {
                 pixels = mapData.GetImageJudgeMap();
             }
@@ -252,7 +289,7 @@ namespace Script.UI.Panel.Auto
                 BigCell cell = mapData._gridData._grid[grid_px, grid_py];
                 if (cell == null)
                     return;
-                CellType[,] map = _mapData._map;
+                CellType[,] map = mapData._map;
 
                 int x_start = cell.x * 5;
                 int y_start = cell.y * 5;
@@ -263,11 +300,11 @@ namespace Script.UI.Panel.Auto
                         s_map[n - x_start, m - y_start] = map[n, m];
                     }
 
-                var judge_pos = _mapData._judgePos;
+                var judge_pos = mapData._judgePos;
                 JudgeCell j = default;
                 if (px - judge_pos.x >= 0 && px - judge_pos.x < 300
                     && py - judge_pos.y >= 0 && py - judge_pos.y < 300)
-                    j = _mapData._judge_map[px - judge_pos.x, py - judge_pos.y];
+                    j = mapData._judge_map[px - judge_pos.x, py - judge_pos.y];
 
             };
 
@@ -360,6 +397,7 @@ namespace Script.UI.Panel.Auto
                 OnSelectMapOption(_optionSelectStatus[_clickLeft ? 0 : 1]);
                 _clickLeft = true;
                 OnSelectMapOption(_optionSelectStatus[_clickLeft ? 0 : 1]);
+
                 _mapData.PrintResult();
             }
         }
@@ -671,7 +709,7 @@ namespace Script.UI.Panel.Auto
                 int y = pop.y;
 
 
-                foreach (var offset in Utils.SurroundList)
+                foreach (var offset in Utils.EightDirList)
                 {
                     int px = offset.x + x;
                     int py = offset.y + y;
@@ -847,7 +885,8 @@ namespace Script.UI.Panel.Auto
             //  比较下谁执快
             // TestExecutionTime.Inst.Test1();
             // TestExecutionTime.Inst.Test2();
-            TestExecutionTime.Inst.Test3();
+            // TestExecutionTime.Inst.Test3();
+            TestExecutionTime.Inst.Test4();
         }
 
         int _index;
@@ -874,10 +913,9 @@ namespace Script.UI.Panel.Auto
             _max_index = 111;
             _debug_dir = @"D:\unityProject\MyProject\TestResource\图\0.2间隔";
 
-            // count++;
-            // for (int i = 31; i <= 111; i++)
+            // for (_index = 31; _index <= 111; _index++)
             // {
-            //     var file_path = dir + $"/{i}.png";
+            //     var file_path = _debug_dir + $"/{_index}.png";
             //     _mapData.Capture(new Bitmap(file_path));
             // }
 

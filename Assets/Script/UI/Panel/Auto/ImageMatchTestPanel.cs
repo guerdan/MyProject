@@ -39,8 +39,8 @@ namespace Script.UI.Panel.Auto
         void Refresh()
         {
 
-            SourceImage.SetData(source_path,default,false);
-            TemplateImage.SetData(template_path,default,false);
+            SourceImage.SetData(source_path, default, false);
+            TemplateImage.SetData(template_path, default, false);
             var s_size = SourceImage.GetSize();
             var t_size = TemplateImage.GetSize();
             var max_h = Mathf.Max(s_size.y, t_size.y);
@@ -60,16 +60,37 @@ namespace Script.UI.Panel.Auto
             }
             Mat s_mat = IU.GetMat(source_path, true);
             Mat t_mat = IU.GetMat(template_path, true);
-            Mat r_mat = IU.MatchTemplate1(s_mat, t_mat);
-            // 先以0为阈值
-            var results = IU.FindResult(r_mat, t_mat.Width, t_mat.Height, 0f, out var _);
-            DU.Log($"匹配到{results.Count}个结果");
-            results.Sort((a, b) =>
+            Mat r_mat;
+            List<CVMatchResult> results;
+
+            bool positive = false;
+            if (positive)
             {
-                if (a.Score != b.Score)
-                    return b.Score - a.Score > 0 ? 1 : -1;
-                return 0;
-            });
+                r_mat = IU.MatchTemplate1(s_mat, t_mat);
+                // 先以0为阈值
+                results = IU.FindResult(r_mat, t_mat.Width, t_mat.Height, 0f, out var _);
+                results.Sort((a, b) =>
+                {
+                    if (a.Score != b.Score)
+                        return b.Score - a.Score > 0 ? 1 : -1;
+                    return 0;
+                });
+            }
+            else
+            {
+                r_mat = IU.MatchTemplateCustomMask(s_mat, t_mat, t_mat);
+                results = IU.FindResultMin(r_mat, t_mat.Width, t_mat.Height, 0.6f);
+                results.Sort((a, b) =>
+                {
+                    if (a.Score != b.Score)
+                        return b.Score - a.Score < 0 ? 1 : -1;
+                    return 0;
+                });
+            }
+
+
+            DU.Log($"匹配到{results.Count}个结果");
+
             if (results.Count >= 3)
             {
                 results = results.GetRange(0, 3);
