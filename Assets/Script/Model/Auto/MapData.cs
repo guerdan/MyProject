@@ -1667,6 +1667,7 @@ namespace Script.Model.Auto
                     if (pix == CellType.Empty) color = color_dark;
                     if (pix == CellType.ObstacleEdge) color = color_white;
                     if (pix == CellType.ObstacleByBig) color = color_orange;
+                    if (pix == CellType.Fog) color = color_blue;
 
                     int index = (_h - 1 - y) * _w + x;                // 反转y轴，因为之前翻转过一次    
                     colors[index] = color;
@@ -1716,31 +1717,47 @@ namespace Script.Model.Auto
                         // 咱们不涂黄了, 改为把"方向通路"地块涂绿。
                         byte direction = cell.Direction;
                         if ((direction & (1 << 7)) != 0)
-                            colors[GetColorsIndex(cx * 5 + 2, cy * 5)] = _map[cx * 5 + 2, cy * 5] == CellType.Empty ? green0 : green1;
+                            colors[GetColorsIndex(cx * 5 + 2, cy * 5)] = _map[cx * 5 + 2, cy * 5] == CellType.ObstacleEdge ? green1 : green0;
 
                         if ((direction & (1 << 1)) != 0)
-                            colors[GetColorsIndex(cx * 5, cy * 5 + 2)] = _map[cx * 5, cy * 5 + 2] == CellType.Empty ? green0 : green1;
+                            colors[GetColorsIndex(cx * 5, cy * 5 + 2)] = _map[cx * 5, cy * 5 + 2] == CellType.ObstacleEdge ? green1 : green0;
 
                         if ((direction & (1 << 3)) != 0)
-                            colors[GetColorsIndex(cx * 5 + 2, cy * 5 + 4)] = _map[cx * 5 + 2, cy * 5 + 4] == CellType.Empty ? green0 : green1;
+                            colors[GetColorsIndex(cx * 5 + 2, cy * 5 + 4)] = _map[cx * 5 + 2, cy * 5 + 4] == CellType.ObstacleEdge ? green1 : green0;
 
                         if ((direction & (1 << 5)) != 0)
-                            colors[GetColorsIndex(cx * 5 + 4, cy * 5 + 2)] = _map[cx * 5 + 4, cy * 5 + 2] == CellType.Empty ? green0 : green1;
+                            colors[GetColorsIndex(cx * 5 + 4, cy * 5 + 2)] = _map[cx * 5 + 4, cy * 5 + 2] == CellType.ObstacleEdge ? green1 : green0;
 
                         if ((direction & (1 << 0)) != 0)
-                            colors[GetColorsIndex(cx * 5, cy * 5)] = _map[cx * 5, cy * 5] == CellType.Empty ? green0 : green1;
+                            colors[GetColorsIndex(cx * 5, cy * 5)] = _map[cx * 5, cy * 5] == CellType.ObstacleEdge ? green1 : green0;
 
                         if ((direction & (1 << 2)) != 0)
-                            colors[GetColorsIndex(cx * 5, cy * 5 + 4)] = _map[cx * 5, cy * 5 + 4] == CellType.Empty ? green0 : green1;
+                            colors[GetColorsIndex(cx * 5, cy * 5 + 4)] = _map[cx * 5, cy * 5 + 4] == CellType.ObstacleEdge ? green1 : green0;
 
                         if ((direction & (1 << 4)) != 0)
-                            colors[GetColorsIndex(cx * 5 + 4, cy * 5 + 4)] = _map[cx * 5 + 4, cy * 5 + 4] == CellType.Empty ? green0 : green1;
+                            colors[GetColorsIndex(cx * 5 + 4, cy * 5 + 4)] = _map[cx * 5 + 4, cy * 5 + 4] == CellType.ObstacleEdge ? green1 : green0;
 
                         if ((direction & (1 << 6)) != 0)
-                            colors[GetColorsIndex(cx * 5 + 4, cy * 5)] = _map[cx * 5 + 4, cy * 5] == CellType.Empty ? green0 : green1;
+                            colors[GetColorsIndex(cx * 5 + 4, cy * 5)] = _map[cx * 5 + 4, cy * 5] == CellType.ObstacleEdge ? green1 : green0;
 
                     }
                 }
+
+            // 迷雾优先级高
+            for (int y = 0; y < _h; y++)
+                for (int x = 0; x < _w; x++)
+                {
+                    var p_x = x + _xRange.x;
+                    var p_y = y + _yRange.x;
+                    var pix = _map[p_x, p_y];
+
+                    if (pix == CellType.Fog)
+                    {
+                        int index = (_h - 1 - y) * _w + x;
+                        colors[index] = color_blue;
+                    }
+                }
+
 
 
             return colors;
