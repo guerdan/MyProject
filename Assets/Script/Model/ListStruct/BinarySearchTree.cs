@@ -23,7 +23,7 @@ namespace Script.Model.ListStruct
         }
     }
 
-    public class BSTNode<T> where T : IComparable<T>
+    public class BSTNode<T> 
     {
         public T Value;
         public BSTNode<T> Left;
@@ -37,10 +37,18 @@ namespace Script.Model.ListStruct
         }
     }
 
-    public class BinarySearchTree<T> where T : IComparable<T>
+    public class BinarySearchTree<T> 
     {
         private BSTNode<T> _root;
+        private Func<T, T, int> _comparer;
         private bool _delete_success;
+
+        // 可以自定义比较器
+        public BinarySearchTree(Func<T, T, int> comparer)
+        {
+            _root = null;
+            _comparer = comparer;
+        }
 
         // 查找
         public bool Search(T value)
@@ -50,10 +58,10 @@ namespace Script.Model.ListStruct
 
         private BSTNode<T> Search(BSTNode<T> node, T value)
         {
-            if (node == null || node.Value.CompareTo(value) == 0)
+            if (node == null || _comparer(node.Value, value) == 0)
                 return node;
 
-            if (value.CompareTo(node.Value) < 0)
+            if (_comparer(node.Value, value) < 0)
                 return Search(node.Left, value);
             else
                 return Search(node.Right, value);
@@ -78,7 +86,8 @@ namespace Script.Model.ListStruct
             if (node == null)
                 return new BSTNode<T>(value);
 
-            int compare = value.CompareTo(node.Value);
+
+            int compare = _comparer(value, node.Value);
 
             if (compare < 0)
                 node.Left = Insert(node.Left, value);
@@ -101,7 +110,7 @@ namespace Script.Model.ListStruct
             if (node == null)
                 return null;
 
-            int compare = value.CompareTo(node.Value);
+            int compare = _comparer(value, node.Value);
 
             if (compare < 0)
             {

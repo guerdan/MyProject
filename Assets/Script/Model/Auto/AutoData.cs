@@ -10,7 +10,6 @@ using Script.Framework.AssetLoader;
 using Script.Framework.UI;
 using Script.Util;
 using UnityEngine;
-using static Script.Model.Auto.MapData;
 using Random = UnityEngine.Random;
 using Rect = OpenCvSharp.Rect;
 
@@ -27,7 +26,6 @@ namespace Script.Model.Auto
 
     public enum NodeType
     {
-        Base,               //基类，相当于none
         TemplateMatchOper,  //模版匹配
         MouseOper,          //鼠标操作
         KeyBoardOper,       //键盘操作
@@ -35,10 +33,11 @@ namespace Script.Model.Auto
         ConditionOper,      //条件判断操作
         TriggerEvent,       //触发事件
         ListenEvent,        //监听事件
-        MapCapture,        //监听事件
+        MapCapture,         //小地图拍摄
+        StopScript,         //暂停
     }
 
-    #region AutoScriptSettings
+    #region Settings
 
     /// <summary>
     /// 脚本配置
@@ -52,6 +51,8 @@ namespace Script.Model.Auto
         public Dictionary<string, string> _idDic = new Dictionary<string, string>();
         [JsonProperty("collections")]
         public List<string> Collections = new List<string>();
+        [JsonProperty("open_recent")]       //按从旧到新
+        public List<string> OpenRecent = new List<string>();
 
         [JsonIgnore]  // <id, 完整路径>
         public Dictionary<string, string> IdDic = new Dictionary<string, string>();
@@ -84,6 +85,22 @@ namespace Script.Model.Auto
                 result[kv.Value] = kv.Key;
             }
             return result;
+        }
+
+        public void AddOpenRecent(string id)
+        {
+            int old = OpenRecent.IndexOf(id);
+            if (old > -1)
+            {
+                OpenRecent.RemoveAt(old);
+            }
+
+            if (OpenRecent.Count >= 5)
+            {
+                OpenRecent = OpenRecent.GetRange(1, 4);
+            }
+
+            OpenRecent.Add(id);
         }
     }
 
@@ -160,38 +177,28 @@ namespace Script.Model.Auto
         #endregion
 
         #region 变量
-
-        protected NodeType _nodeType;                     // 节点类型
-        [JsonIgnore]
-        public NodeType NodeType => _nodeType;
-        [JsonIgnore]
-        public List<string> LastNode = new List<string>();      // 上个节点
-        [JsonIgnore]
-        public HashSet<string> LineIds = new HashSet<string>();       // 线段列表
-        [JsonIgnore]
-        public Vector2 Pos;                             // 画布坐标
-        [JsonIgnore]
-        public int Index = 0;                           // 节点创建顺序
-        [JsonIgnore]
-        protected AutoScriptData _scriptData;           // 脚本数据，管理者引用
+        protected AutoScriptData _scriptData;               // 脚本数据，属于哪个脚本
+        protected NodeType _nodeType;                       // 节点类型
+        [JsonIgnore] public NodeType NodeType => _nodeType;
+        [JsonIgnore] public List<string> LastNode = new List<string>();             // 可能的前置节点
+        [JsonIgnore] public HashSet<string> LineIds = new HashSet<string>();        // 线段列表
+        [JsonIgnore] public Vector2 Pos;                             // 画布坐标
+        [JsonIgnore] public int Index = 0;                           // 节点创建顺序
 
         // 运行时数据
-        [JsonIgnore]
-        public NodeStatus Status = NodeStatus.Off;      // 节点状态。In表示流程处在此节点，否则就是Off
-        [JsonIgnore]
-        public float Timer = 0;                         // 内部计时器.In时开始累加，直到 Delay执行一次内容
-        [JsonIgnore]
-        public float ExcuteTimes = 0;                   // 执行过多少次
-        [JsonIgnore]
-        public object InData;                           // 输入数据。由上个节点传入 
-        [JsonIgnore]
-        public object OutData;                          // 输出数据。传出给下个节点  
-
-        [JsonIgnore]
-        public bool CanAction => Timer >= Delay;        // 是否可以执行内容了 
+        [JsonIgnore] public NodeStatus Status = NodeStatus.Off;      // 节点状态。In表示流程处在此节点，否则就是Off
+        [JsonIgnore] public float Timer = 0;                         // 内部计时器.In时开始累加，直到 Delay执行一次内容
+        [JsonIgnore] public float ExcuteTimes = 0;                   // 执行过多少次
+        [JsonIgnore] public string ExcuteLastNodId;                  // 运行时，上个节点id
+        [JsonIgnore] public object InData;                           // 输入数据。由上个节点传入 
+        [JsonIgnore] public object OutData;                          // 输出数据。传出给下个节点  
+        [JsonIgnore] public bool CanAction => Timer >= Delay;        // 是否可以执行内容了 
 
         #endregion
 
+        /// <summary>
+        /// 子类必须重载
+        /// </summary>
         public virtual void Init(AutoScriptData scriptData)
         {
             _scriptData = scriptData;
@@ -206,23 +213,31 @@ namespace Script.Model.Auto
         public virtual void BeforeAction() { }
         // 执行内容
         public virtual void Action() { }
+        // 执行内容
+        public virtual void Update() { }
         // 执行结果判断方法
         public virtual bool GetResult()
         {
             return true;
         }
 
+        /// <summary>
+        /// 大清理
+        /// </summary>
         public virtual void Clear()
         {
             Status = NodeStatus.Off;
             Timer = 0;
             ExcuteTimes = 0;
+            ExcuteLastNodId = null;
             InData = null;
             OutData = null;
         }
 
 
-        // 流入行为
+        /// <summary>
+        /// 流入行为，可以做小清理
+        /// </summary>
         public virtual void Inflow()
         {
             Status = NodeStatus.In;
@@ -316,10 +331,8 @@ namespace Script.Model.Auto
         public static string RegionExpressionDefault = "Screen{}";
 
         ////////// debug
-        [JsonIgnore]
-        public float Meet_min_score = 2;
-        [JsonIgnore]
-        public float Unmeet_max_score = -1;
+        [JsonIgnore] public float Meet_min_score = 2;
+        [JsonIgnore] public float Unmeet_max_score = -1;
         //////////
 
         [JsonProperty("template_path")]
@@ -511,15 +524,33 @@ namespace Script.Model.Auto
     {
 
         [JsonProperty("click_type")]
-        public int ClickType = 0;             // 0左键，1右键
+        public int ClickType = 0;             // 0 左键,1 右键,2 仅移动
         [JsonProperty("click_pos")]
         public string ClickPos = "";          // 点击坐标
+        [JsonProperty("hold_time")]
+        public float _holdTime;             // 0左键，1右键
+        public float HoldTime
+        {
+            get { return _holdTime; }
+            set
+            {
+                // 必须比 Delay 小
+                if (value - Delay <= epsilon)
+                {
+                    _holdTime = value;
+                }
+            }
+        }
+
+        float epsilon = 1e-6f;
+        bool _down = false;
 
         public static MouseOperNode CreateNew()
         {
             var node = new MouseOperNode();
             node.Name = "鼠标";
             node.ClickType = 0;
+            node._holdTime = 0.01f;
             return node;
         }
 
@@ -530,27 +561,29 @@ namespace Script.Model.Auto
 
         }
 
-        public override void Action()
+        public override void Inflow()
         {
-            base.Action();
+            base.Inflow();
+            _down = false;
 
-            Vector2 pos = _scriptData.FormulaGetResultV2(ClickPos);
-            int x = (int)pos.x;
-            int y = (int)pos.y;
-            WU.SetCursorPos(x, y);
+            CheckMouseDown();
+        }
 
-            // 移动鼠标
-            //
-            // WU.mouse_event(WU.MOUSEEVENTF_MOVE | WU.MOUSEEVENTF_ABSOLUTE
-            //     , x * 65535 / 1920, y * 65535 / 1080, 0, UIntPtr.Zero);
 
-            if (ClickType == 0)
+        public override void Update()
+        {
+            base.Update();
+
+
+            CheckMouseDown();
+
+            // 检查时机，执行鼠标抬手
+            if (Timer >= Delay && ClickType < 2)
             {
-                WU.mouse_event(WU.MOUSEEVENTF_LEFTDOWN | WU.MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
-            }
-            else if (ClickType == 1)
-            {
-                WU.mouse_event(WU.MOUSEEVENTF_RIGHTDOWN | WU.MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
+                uint oper = ClickType == 0 ? WU.MOUSEEVENTF_LEFTUP : WU.MOUSEEVENTF_RIGHTUP;
+                WU.mouse_event(oper, 0, 0, 0, UIntPtr.Zero);
+
+                // DU.LogWarning($"Up {Time.frameCount}");
             }
         }
 
@@ -561,7 +594,44 @@ namespace Script.Model.Auto
             var sourceObj = source as MouseOperNode;
             ClickType = sourceObj.ClickType;
             ClickPos = sourceObj.ClickPos;
+            _holdTime = sourceObj._holdTime;
         }
+
+        // 检查时机，执行鼠标按压
+        void CheckMouseDown()
+        {
+            if (!_down && Timer + epsilon >= Delay - HoldTime)
+            {
+                _down = true;
+                Vector2 pos = _scriptData.FormulaGetResultV2(ClickPos);
+                int x = (int)pos.x;
+                int y = (int)pos.y;
+                WU.SetCursorPos(x, y);
+
+                if (ClickType < 2)
+                {
+                    uint oper = ClickType == 0 ? WU.MOUSEEVENTF_LEFTDOWN : WU.MOUSEEVENTF_RIGHTDOWN;
+                    WU.mouse_event(oper, 0, 0, 0, UIntPtr.Zero);
+                    // DU.LogWarning($"Down {Time.frameCount} ");
+                }
+
+
+                // 为了防止Down与Up在同一帧，咱们手动给他延后一点
+                if (Timer >= Delay)
+                {
+                    Timer = Delay - 0.01f;
+                }
+            }
+
+
+            // 移动鼠标
+            //
+            // WU.mouse_event(WU.MOUSEEVENTF_MOVE | WU.MOUSEEVENTF_ABSOLUTE
+            //     , x * 65535 / 1920, y * 65535 / 1080, 0, UIntPtr.Zero);
+        }
+
+
+
     }
 
     #endregion
@@ -632,6 +702,7 @@ namespace Script.Model.Auto
 
         private FormulaVarType _varTypeEnum;
 
+
         [JsonIgnore]
         public FormulaVarType VarType
         {
@@ -645,14 +716,10 @@ namespace Script.Model.Auto
             }
         }
 
-        [JsonIgnore]
-        public bool IsLegal = false;
-        [JsonIgnore]
-        public string VarName = "";
-        [JsonIgnore]
-        public string VarNameLower = "";
-        [JsonIgnore]
-        public string Expression = "";
+        [JsonIgnore] public bool IsLegal = false;
+        [JsonIgnore] public string VarName = "";
+        [JsonIgnore] public string VarNameLower = "";
+        [JsonIgnore] public string Expression = "";
 
         public static AssignOperNode CreateNew()
         {
@@ -722,6 +789,7 @@ namespace Script.Model.Auto
         public override void Action()
         {
             base.Action();
+
             if (VarName == "") return;
 
             // 赋值操作
@@ -776,10 +844,8 @@ namespace Script.Model.Auto
             }
         }
 
-        [JsonIgnore]
-        public bool IsLegal = false;
-        [JsonIgnore]
-        public string Oper = "";
+        [JsonIgnore] public bool IsLegal = false;
+        [JsonIgnore] public string Oper = "";
 
         private bool _result = false;
 
@@ -946,6 +1012,8 @@ namespace Script.Model.Auto
         public string RegionExpression = "";
         [JsonProperty("map_id")]
         public string MapId = "";
+        [JsonProperty("color_set")]
+        public int ColorSet = 0;
 
 
         Vector4 _region;
@@ -956,7 +1024,7 @@ namespace Script.Model.Auto
             var node = new MapCaptureNode();
             node.Name = "默认名";
             node.RegionExpression = TemplateMatchOperNode.RegionExpressionDefault;
-
+            node.ColorSet = 0;
             return node;
         }
 
@@ -966,11 +1034,6 @@ namespace Script.Model.Auto
             _nodeType = NodeType.MapCapture;
 
             MapId = $"Map-{scriptData.Config.Id.Substring(7)}";
-        }
-
-        public Vector4 GetRegion()
-        {
-            return _region;
         }
 
         public override void BeforeAction()
@@ -987,7 +1050,7 @@ namespace Script.Model.Auto
 
             if (_mapData == null)
             {
-                MapDataManager.Inst.Create(MapId, CVRect.GetByRegion(_region));
+                MapDataManager.Inst.Create(MapId, CVRect.GetByRegion(_region), ColorSet);
                 _mapData = MapDataManager.Inst.Get(MapId);
             }
 
@@ -998,6 +1061,20 @@ namespace Script.Model.Auto
                     DU.LogWarning("找不到小地图");
                     return;
                 }
+
+                if (_scriptData.Manager.SaveMapCaptureStatus)
+                {
+                    var frame = _mapData.FrameCount + 1; //先拍照，防Capture报错
+
+                    var folder_path = $"{Application.streamingAssetsPath}/SmallMap/{MapId}";
+                    if (frame == 1)
+                    {
+                        PathUtil.DeleteDirectory(folder_path);
+                    }
+                    IU.SaveBitmap(bitmap, folder_path, $"{frame}");
+                }
+
+
                 _mapData.Capture(bitmap);
             }
         }
@@ -1008,6 +1085,7 @@ namespace Script.Model.Auto
             base.Copy(source);
             var sourceObj = source as MapCaptureNode;
             RegionExpression = sourceObj.RegionExpression;
+            ColorSet = sourceObj.ColorSet;
         }
 
         public override void Clear()
@@ -1022,10 +1100,38 @@ namespace Script.Model.Auto
 
         }
 
+
     }
 
     #endregion
 
+    #region StopScriptN
+    /// <summary>
+    /// 暂停整个脚本
+    /// </summary>
+    public class StopScriptNode : BaseNodeData
+    {
+        public static StopScriptNode CreateNew()
+        {
+            var node = new StopScriptNode();
+            node.Name = "暂停脚本";
+            node.Delay = 0;
+            return node;
+        }
+        public override void Init(AutoScriptData scriptData)
+        {
+            base.Init(scriptData);
+            _nodeType = NodeType.StopScript;
+        }
+
+        public override void Action()
+        {
+            base.Action();
+            _scriptData.StopScript();
+        }
+    }
+
+    #endregion
 
 
     #endregion
@@ -1039,6 +1145,7 @@ namespace Script.Model.Auto
 
         public bool Running => _running;
         public bool IsEnd => _isEnd;
+        public bool IsError => _isError;
         // 仅编辑模式下展示
         public Dictionary<string, List<TriggerEventNode>> Edit_TriggerNodes = new Dictionary<string, List<TriggerEventNode>>();
         public AutoScriptConfig Config;
@@ -1046,8 +1153,16 @@ namespace Script.Model.Auto
         public Dictionary<string, BaseNodeData> NodeDatas = new Dictionary<string, BaseNodeData>();
         public Dictionary<string, BaseNodeData> ActiveNodes = new Dictionary<string, BaseNodeData>();
         private Dictionary<string, List<ListenEventNode>> _listenNodes = new Dictionary<string, List<ListenEventNode>>();
-        private bool _running = false;
-        private bool _isEnd = true;
+
+        // 跟踪性，热点执行流。目前不智能，除非每个节点设置热点。
+        public string HotSpotNodeId;
+
+        // (_running = true && _isEnd = false)表示运行中
+        // (_running = false && _isEnd = false)表示暂停
+        // (_running = false && _isEnd = true)表示结束
+        private bool _running = false;      // 是否暂停   
+        private bool _isEnd = true;         // 是否结束   
+        private bool _isError = false;         // 是否有报错   
 
         public AutoScriptData(AutoScriptConfig config, AutoScriptManager manager)
         {
@@ -1116,6 +1231,9 @@ namespace Script.Model.Auto
                 case NodeType.MapCapture:
                     node = MapCaptureNode.CreateNew();
                     break;
+                case NodeType.StopScript:
+                    node = StopScriptNode.CreateNew();
+                    break;
             }
 
 
@@ -1181,38 +1299,67 @@ namespace Script.Model.Auto
         }
 
         /// <summary>
-        /// 按需给update切分成两个部分，因为中间要统计截图的范围
+        /// 找type类型的节点，返回第一个找到的结果
         /// </summary>
-        public void BeforeUpdate(float deltaTime)
+        public BaseNodeData GetNodeByType(NodeType type)
+        {
+
+            foreach (var node in NodeDatas.Values)
+            {
+                if (node.NodeType == type)
+                {
+                    return node;
+                }
+            }
+            return null;
+        }
+
+
+        #region Update
+
+        public void DoUpdate(float deltaTime)
         {
             if (!_running) return;
-
-            var list = ActiveNodes.Values.ToList();
-
-            foreach (var n in list)
+            foreach (var n in ActiveNodes.Values)
             {
-                // 排除的情况，以后写
                 n.Timer += deltaTime;
-                if (n.CanAction)
+                try { n.Update(); }
+                catch (Exception)
                 {
-                    n.BeforeAction();
+                    _isError = true;
+                    StopScript();
                 }
             }
         }
 
-        public void Update(float deltaTime)
+
+        /// <summary>
+        /// 按需给update切分成两个部分，因为中间要统计截图的范围
+        /// </summary>
+        public void BeforeAction(float deltaTime)
+        {
+            if (!_running) return;
+            foreach (var n in ActiveNodes.Values)
+            {
+                if (n.CanAction)
+                    n.BeforeAction();
+            }
+        }
+
+        // 执行时机：全部 Update => 全部 Action && TransferNode
+        // 参考Unity，节点创建帧执行Awake和Start，再后一帧才执行Update
+        public void DoAction(float deltaTime)
         {
             if (!_running) return;
 
             var list = ActiveNodes.Values.ToList();
 
+
             foreach (var n in list)
             {
                 if (n.CanAction)
                 {
-                    var ms = DU.RunWithTimer(() => n.Action());
-                    Record($"节点 {n.Id} 执行", ms);
-                    // n.Action();
+                    DoActionInternal(n);
                     TransferNode(n);
                 }
             }
@@ -1225,6 +1372,23 @@ namespace Script.Model.Auto
             }
         }
 
+        void DoActionInternal(BaseNodeData n)
+        {
+            var ms = DU.RunWithTimer(() =>
+            {
+                try { n.Action(); }
+                catch (Exception)
+                {
+                    _isError = true;
+                    StopScript();
+                }
+            });
+
+            Record($"节点 {n.Id} 执行", ms);
+        }
+
+        #endregion
+
 
         public void StartScript()
         {
@@ -1236,6 +1400,7 @@ namespace Script.Model.Auto
 
             _running = true;
             _isEnd = false;
+            _isError = false;
 
             //如果起点被删了，修改Config.FirstNode
             if (Config.FirstNode == "" || !NodeDatas.ContainsKey(Config.FirstNode))
@@ -1256,6 +1421,7 @@ namespace Script.Model.Auto
             }
 
             // 设定起点
+            HotSpotNodeId = Config.FirstNode;
             StartNode(NodeDatas[Config.FirstNode]);
         }
 
@@ -1298,21 +1464,25 @@ namespace Script.Model.Auto
         /// </summary>
         public void TransferNode(BaseNodeData node)
         {
+            bool is_hot = HotSpotNodeId == node.Id || HotSpotNodeId == null;
+
             node.Outflow();
             ActiveNodes.Remove(node.Id);
             bool result = node.GetResult();
             List<string> nextList = result ? node.TrueNextNodes : node.FalseNextNodes;
-            foreach (var id in nextList)
+            foreach (var next_id in nextList)
             {
-                var next = NodeDatas[id];
+                if (is_hot)
+                    HotSpotNodeId = next_id;
+
+                var next = NodeDatas[next_id];
+                next.ExcuteLastNodId = node.Id;
                 next.InData = node.OutData;
                 StartNode(next);
                 if (next.CanAction)
                 {
                     next.BeforeAction();
-                    var ms = DU.RunWithTimer(() => next.Action());
-                    Record($"节点 {next.Id} 执行", ms);
-                    // next.Action();
+                    DoActionInternal(next);
                     TransferNode(next);
                 }
             }
@@ -1445,7 +1615,7 @@ namespace Script.Model.Auto
 
             RunTimeDic[message] = tuple;
         }
-        
+
 
         public string GetCapturePath()
         {
@@ -1478,6 +1648,7 @@ namespace Script.Model.Auto
         public Action OnScriptEnd;  //通知ui刷新
         public bool InfoPanelFolded = true;
         public bool ScreenDrawStatus = false;
+        public bool SaveMapCaptureStatus = false;
 
         public AutoScriptSettings Settings;
 
@@ -1496,6 +1667,7 @@ namespace Script.Model.Auto
         private CVRect _frameCaptureRegion = default;   // 当前帧屏幕截屏范围
         private Mat _frameCapture = null;               // 当前帧屏幕截屏
         public bool _saveCaptureToLocal = false;        // 是否保存截屏到本地
+        public string HotSpotScriptId;
 
 
         AutoScriptManager()
@@ -1541,6 +1713,7 @@ namespace Script.Model.Auto
             if (scriptData.IsEnd)
             {
                 scriptData.StartScript();
+                HotSpotScriptId = id;
             }
             else
             {
@@ -1563,18 +1736,19 @@ namespace Script.Model.Auto
             // 让FrameCapture获取最新的帧截屏
             ClearFrameCapture();
 
+            // Node执行Update
+            foreach (var script in _scriptDatas.Values)
+                script.DoUpdate(deltaTime);
             // 预更新
             foreach (var script in _scriptDatas.Values)
-            {
-                script.BeforeUpdate(deltaTime);
-            }
+                script.BeforeAction(deltaTime);
             // 按需把AutoScriptData.Update切分成两个部分，因为中间要统计截图的范围
             _frameCaptureRegion = CalculateFrameCaptureRegion();
 
-            // 更新
+            // 更新, 主要执行Action
             foreach (var script in _scriptDatas.Values)
             {
-                script.Update(deltaTime);
+                script.DoAction(deltaTime);
             }
 
             // 通知UI刷新
@@ -1835,6 +2009,7 @@ namespace Script.Model.Auto
                 {
                     Settings.IdDic.Remove(kv.Value);
                     Settings.Collections.Remove(kv.Value);
+                    Settings.OpenRecent.Remove(kv.Value);
                 }
             }
 
@@ -1974,12 +2149,12 @@ namespace Script.Model.Auto
             scriptData.DeleteNode(id);
         }
 
+        // 有些操作至少要一帧
         public float GetNodeMinDalay(NodeType type)
         {
             switch (type)
             {
                 case NodeType.TemplateMatchOper:
-                case NodeType.MouseOper:
                 case NodeType.KeyBoardOper:
                     return 0.01f;
                 case NodeType.AssignOper:
@@ -1988,6 +2163,8 @@ namespace Script.Model.Auto
                 case NodeType.ListenEvent:
                 case NodeType.MapCapture:
                     return 0;
+                case NodeType.MouseOper:
+                    return 0.1f;
                 default:
                     return 0.01f;
             }

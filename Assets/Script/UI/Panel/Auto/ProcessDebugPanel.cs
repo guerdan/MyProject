@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Script.Framework.UI;
 using Script.Model.Auto;
-using Script.UI.Component;
+using Script.UI.Components;
 using Script.Util;
 using UnityEngine;
 using UnityEngine.UI;
@@ -15,6 +15,7 @@ namespace Script.UI.Panel.Auto
         public AutoScriptManager manager => AutoScriptManager.Inst;
 
         [SerializeField] private CheckBox ScreenDrawBtn;        //开启屏幕绘制
+        [SerializeField] private CheckBox SaveMapCaptureBtn;    //保存地图拍摄快照
         [SerializeField] private Button LookRunTimeBtn;         //查看执行耗时按钮
         [SerializeField] private KeywordTipsComp TipsComp;
 
@@ -35,11 +36,16 @@ namespace Script.UI.Panel.Auto
         }
         void Refresh()
         {
-            ScreenDrawBtn.SetData(manager.ScreenDrawStatus, OnScreenDrawChange);
+            ScreenDrawBtn.SetData(manager.ScreenDrawStatus, OnChangeScreenDraw);
+            SaveMapCaptureBtn.SetData(manager.SaveMapCaptureStatus, OnChangeSaveMapCapture);
         }
-        void OnScreenDrawChange(bool value)
+        void OnChangeScreenDraw(bool value)
         {
             manager.ScreenDrawStatus = value;
+        }
+        void OnChangeSaveMapCapture(bool value)
+        {
+            manager.SaveMapCaptureStatus = value;
         }
 
         void OnClickLookRunTimeBtn()

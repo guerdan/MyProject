@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using Script.Framework.AssetLoader;
 using Script.Framework.UI;
-using Script.UI.Component;
+using Script.UI.Components;
 using Script.Util;
 using UnityEditor;
 using UnityEngine;

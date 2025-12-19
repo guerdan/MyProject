@@ -7,7 +7,7 @@ using Script.Util;
 using Script.Framework.UI;
 using System;
 using System.Collections.Generic;
-using Script.UI.Component;
+using Script.UI.Components;
 
 namespace Script.UI.Panel.Auto.Node
 {
@@ -57,7 +57,7 @@ namespace Script.UI.Panel.Auto.Node
         protected DrawProcessPanel _panel;
         AutoScriptData _scriptData;
 
-       protected void Awake()
+       protected virtual void Awake()
         {
             selfR.anchorMin = new Vector2(0, 0);
             selfR.anchorMax = new Vector2(0, 0);

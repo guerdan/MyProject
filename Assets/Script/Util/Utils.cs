@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+using Script.Framework.UI;
+using Script.Model.Auto;
+using Script.UI.Panel.Auto;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -39,6 +41,7 @@ namespace Script.Util
         };
 
         public static readonly Vector2Int DefaultV2I = new Vector2Int(-1, -1);
+
         /// <summary>
         /// 如果没有什么特别组件而想存成List[GameObject]，就改用存List[Transform]或者List[RectTransform]
         /// 以达到相同的效果
@@ -134,6 +137,16 @@ namespace Script.Util
                 return localPoint + pivot_offset + offset;
         }
 
+        public static Vector2 GetPos(RectTransform actor, Vector2 screenPos, Vector2 offset)
+        {
+            Vector2 localPoint;
+            RectTransform parentRect = actor.parent.GetComponent<RectTransform>();
+            Canvas canvas = actor.GetComponentInParent<Canvas>();
+            Camera cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRect, screenPos, cam, out localPoint);
+            return localPoint + offset;
+        }
+
         /// <summary>
         /// UI下，获取child相对于父节点的本地位置
         /// 先只实现锚点重合的情况
@@ -163,13 +176,18 @@ namespace Script.Util
         /// </summary>
         public static bool IsPointerOverUIObject(GameObject target, Canvas canvas)
         {
+            if (target == null) return false;
+            RectTransform rectTransform = target.GetComponent<RectTransform>();
+            return IsPointerOverUIObject(rectTransform, canvas);
+        }
+        public static bool IsPointerOverUIObject(RectTransform target, Canvas canvas)
+        {
             PointerEventData eventData = new PointerEventData(EventSystem.current);
             eventData.position = Input.mousePosition;
             if (target == null || canvas == null || eventData == null) return false;
-            RectTransform rectTransform = target.GetComponent<RectTransform>();
-            if (rectTransform == null) return false;
+
             Camera cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
-            return RectTransformUtility.RectangleContainsScreenPoint(rectTransform, eventData.position, cam);
+            return RectTransformUtility.RectangleContainsScreenPoint(target, eventData.position, cam);
         }
 
 
@@ -196,7 +214,61 @@ namespace Script.Util
             canvasGroup.blocksRaycasts = canClick;
         }
 
+        #region AutoScript
+        public static void AutoScriptSwitchRunStatus(string id)
+        {
+            bool current = AutoScriptManager.Inst.IsRuning(id);
+            if (current)
+            {
+                AutoScriptManager.Inst.StopScript(id);
+            }
+            else
+            {
+                AutoScriptManager.Inst.StartScript(id);
+                AutoScriptCloseElsePanel();
+            }
 
+            ScriptManagerPanel.OnRefresh?.Invoke(id);
+        }
+
+        public static void AutoScriptCloseElsePanel()
+        {
+            UIManager.Inst.PopPanel(PanelEnum.ScriptManagerPanel);
+            UIManager.Inst.PopPanel(PanelEnum.DrawProcessPanel);
+            UIManager.Inst.PopPanel(PanelEnum.ProcessNodeInfoPanel);
+            UIManager.Inst.PopPanel(PanelEnum.ProcessDebugPanel);
+            OpenDeskPet();
+        }
+
+        public static void OpenDrawProcessPanel(string id)
+        {
+            // 打开后占全屏，一定会影响脚本执行，故暂停
+            AutoScriptManager.Inst.StopScript(id);
+            AutoScriptManager.Inst.Settings.AddOpenRecent(id);
+            UIManager.Inst.PopPanel(PanelEnum.DeskPetMain);
+            UIManager.Inst.ShowPanel(PanelEnum.DrawProcessPanel, id);
+        }
+        public static void OpenDeskPet()
+        {
+            UIManager.Inst.ShowPanel(PanelEnum.DeskPetMain, null);
+        }
+
+
+        public static readonly Vector2Int[] Order5X5 = new Vector2Int[]{
+                new Vector2Int(0,0),
+                new Vector2Int(0,-1),new Vector2Int(-1,0),new Vector2Int(0,1),new Vector2Int(1,0),
+                new Vector2Int(-1,-1),new Vector2Int(-1,1),new Vector2Int(1,1),new Vector2Int(1,-1),
+
+                new Vector2Int(0,-2),new Vector2Int(-2,0),new Vector2Int(0,2),new Vector2Int(2,0),
+
+                new Vector2Int(-1,-2),new Vector2Int(1,-2),new Vector2Int(-2,-1),new Vector2Int(-2,1),
+                new Vector2Int(-1,2),new Vector2Int(1,2),new Vector2Int(2,-1),new Vector2Int(2,1),
+
+                new Vector2Int(-2,-2),new Vector2Int(-2,2),new Vector2Int(2,2),new Vector2Int(2,-2),
+        };
+
+
+        #endregion
     }
 
 

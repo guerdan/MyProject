@@ -92,15 +92,16 @@ Shader "Custom/UI/OutlineEx"
                 return o;
             }
 
-            // 是否在矩形内
             // step(a, b) = float2(
             //     b.x >= a.x ? 1 : 0,
             //     b.y >= a.y ? 1 : 0
             // )
+            // 是否在矩形内
             fixed IsInRect(float2 pPos, float2 pClipRectXY, float2 pClipRectZW)
             {
                 pPos = step(pClipRectXY, pPos) * step(pPos, pClipRectZW);
                 return pPos.x * pPos.y;
+                // return 1;
             }
 
             // 采样偏移的像素点的Alpha值
@@ -110,13 +111,21 @@ Shader "Custom/UI/OutlineEx"
                 const fixed sinArray[12] = { 0, 0.5, 0.866, 1, 0.866, 0.5, 0, -0.5, -0.866, -1, -0.866, -0.5 };
                 const fixed cosArray[12] = { 1, 0.866, 0.5, 0, -0.5, -0.866, -1, -0.866, -0.5, 0, 0.5, 0.866 };
                 float2 pos = IN.texcoord + _MainTex_TexelSize.xy * float2(cosArray[pIndex], sinArray[pIndex]) * _OutlineWidth;
-                return IsInRect(pos, IN.uvOriginXY, IN.uvOriginZW) * (tex2D(_MainTex, pos) + _TextureSampleAdd).w * _OutlineColor.w* _Color.w;
+                return IsInRect(pos, IN.uvOriginXY, IN.uvOriginZW) * (tex2D(_MainTex, pos) + _TextureSampleAdd).w * _Color.w;
             }
 
             
             fixed4 frag(v2f IN) : SV_Target
             {
-                fixed4 color = (tex2D(_MainTex, IN.texcoord) + _TextureSampleAdd) * IN.color;
+                fixed4 color = fixed4(0,0,0,0);
+                
+                // 修复：图集其他部分也误显示出来了。描边阻止了，但是字未阻止
+                fixed is_show = IsInRect(IN.texcoord, IN.uvOriginXY, IN.uvOriginZW);
+                if (is_show > 0){
+                    // 原图
+                    color = (tex2D(_MainTex, IN.texcoord) + _TextureSampleAdd) * IN.color;
+                }
+
 
                 if (_OutlineWidth > 0)
                 {
@@ -138,10 +147,15 @@ Shader "Custom/UI/OutlineEx"
                     val.w += SampleAlpha(11, IN);
 
                     val.w = clamp(val.w, 0, 1);
+                    val.w *= _OutlineColor.w;
+                    
                     // 这里，中间会有透明空洞。因为color的a乘了两次。(1.0 - color.a) + color.a * color.a < 1
                     // color = (val * (1.0 - color.a)) + (color * color.a);
                     fixed4 scale = fixed4(color.a, color.a, color.a, 1);
-                    color = (val * (1.0 - color.a)) + (color * scale);
+                    color = (val * (1.0 - color.a)) + (color * scale);   // 原图与描边混合
+
+                    // 修复无法改描边透明度，调整混合策略
+
 
                     // todo 
                     // * _Color.a 还不行，奇怪的bug。描边还会100%不透明。

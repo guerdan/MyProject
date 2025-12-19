@@ -19,6 +19,9 @@ namespace Script.UI
             inst = this;
             gameObject.AddComponent<GameTimer>();
             Camera = Camera.main;
+
+            // 提前加载
+            AssetManager.Inst.LoadAssetAsync<Shader>("Shader/OutlineEx", (s) => { }, this);
         }
 
         private float intervalFor1s = 1;   // 1s间隔实例 

@@ -19,6 +19,7 @@ namespace Script.Model.Auto
             NodeType.TriggerEvent,
             NodeType.ListenEvent,
             NodeType.MapCapture,
+            NodeType.StopScript,
         };
 
         public static Dictionary<NodeType, string> NodeTypeNames = new Dictionary<NodeType, string>()
@@ -31,6 +32,7 @@ namespace Script.Model.Auto
             { NodeType.TriggerEvent, "触发事件" },
             { NodeType.ListenEvent, "监听" },
             { NodeType.MapCapture, "地图截图" },
+            { NodeType.StopScript, "暂停脚本" },
         };
 
         public static List<string> GetNodeTypeNameList()
@@ -196,7 +198,8 @@ namespace Script.Model.Auto
         public static List<string> MouseClickTypes = new List<string>()
         {
             "左键",
-            "右键"
+            "右键",
+            "移动",
         };
 
         #endregion

@@ -7,8 +7,6 @@ using OpenCvSharp;
 using Script.Model.Auto;
 using Script.Model.ListStruct;
 using UnityEngine;
-using static Script.Model.Auto.MapData;
-using static Script.Util.IU;
 using Mathf = UnityEngine.Mathf;
 using Rect = OpenCvSharp.Rect;
 
@@ -351,7 +349,7 @@ namespace Script.Util
 
         // A星寻路，几种数据结构
 
-        public CellType[,] _map;            // 只有Capture可写，其他方法可读
+        public PixType[,] _map;            // 只有Capture可写，其他方法可读
 
 
         Vector2Int _xRange;          // 内容x轴范围
@@ -384,7 +382,7 @@ namespace Script.Util
                     var data = _map[x, y];
                     // if (data == CellType.NewObstacleEdge)
                     {
-                        data = CellType.ObstacleEdge;
+                        data = PixType.ObstacleEdge;
                         _map[x, y] = data;
                     }
                 }
@@ -399,21 +397,21 @@ namespace Script.Util
                     var data = _map[x, y];
 
                     // 左上，右上斜对角，检测
-                    if (data == CellType.ObstacleEdge)
+                    if (data == PixType.ObstacleEdge)
                     {
-                        if (j > 0 && i < _h - 1 && _map[x - 1, y + 1] == CellType.ObstacleEdge
-                        && _map[x - 1, y] == CellType.Empty && _map[x, y + 1] == CellType.Empty)
+                        if (j > 0 && i < _h - 1 && _map[x - 1, y + 1] == PixType.ObstacleEdge
+                        && _map[x - 1, y] == PixType.Empty && _map[x, y + 1] == PixType.Empty)
                         {
-                            _map[x - 1, y] = CellType.ObstacleEdgeTemp;
-                            _map[x, y + 1] = CellType.ObstacleEdgeTemp;
+                            _map[x - 1, y] = PixType.ObstacleEdgeTemp;
+                            _map[x, y + 1] = PixType.ObstacleEdgeTemp;
                         }
 
-                        if (j < _w - 1 && i < _h - 1 && _map[x + 1, y + 1] == CellType.ObstacleEdge
-                        && _map[x + 1, y] == CellType.Empty && _map[x, y + 1] == CellType.Empty)
+                        if (j < _w - 1 && i < _h - 1 && _map[x + 1, y + 1] == PixType.ObstacleEdge
+                        && _map[x + 1, y] == PixType.Empty && _map[x, y + 1] == PixType.Empty)
                         {
 
-                            _map[x + 1, y] = CellType.ObstacleEdgeTemp;
-                            _map[x, y + 1] = CellType.ObstacleEdgeTemp;
+                            _map[x + 1, y] = PixType.ObstacleEdgeTemp;
+                            _map[x, y + 1] = PixType.ObstacleEdgeTemp;
                         }
                     }
 
@@ -433,14 +431,14 @@ namespace Script.Util
                         Type = (byte)data == 1 ? (byte)0 : (byte)data, //先不管"迷雾边界"
                         ParentPos = new Vector2Int(-1, -1)
                     };
-                    if (data == CellType.ObstacleEdge || data == CellType.ObstacleEdgeTemp)
+                    if (data == PixType.ObstacleEdge || data == PixType.ObstacleEdgeTemp)
                     {
                         cell.Type = 2;
                     }
                     // 还原
-                    if (data == CellType.ObstacleEdgeTemp)
+                    if (data == PixType.ObstacleEdgeTemp)
                     {
-                        _map[j + _xRange.x, i + _yRange.x] = CellType.Empty;
+                        _map[j + _xRange.x, i + _yRange.x] = PixType.Empty;
                     }
 
                     _grid[j + 1, i + 1] = cell;
@@ -474,7 +472,7 @@ namespace Script.Util
             if (_grid == null) return;
             astar_target = target;
             times = 0;
-            openList = new BinarySearchTree<AStarCell>();
+            openList = new BinarySearchTree<AStarCell>(null);
 
             var startNode = _grid[start.x, start.y];
             startNode.G = 0;
@@ -1253,7 +1251,7 @@ namespace Script.Util
             // if (_mapData == null)
             // {
             MapDataManager.Inst.Remove("Map-22");
-            MapDataManager.Inst.Create("Map-22", new CVRect(0, 0, 200, 200));
+            MapDataManager.Inst.Create("Map-22", new CVRect(0, 0, 200, 200),0);
             _mapData = MapDataManager.Inst.Get("Map-22");
             // var dir = @"D:\unityProject\MyProject\Assets\StreamingAssets\SmallMap\小地图_22";
             var dir = @"D:\unityProject\MyProject\Assets\StreamingAssets\Capture\小地图_22";

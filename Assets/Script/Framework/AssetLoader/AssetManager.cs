@@ -51,7 +51,9 @@ namespace Script.Framework.AssetLoader
 
         /// <summary>
         /// 异步加载资源，代理接口。已加载过的资源，可以同步调用。
-        /// 1.加载期间代理对象若被销毁，则不执行回调。2.代理对象被销毁，将释放对此资源的引用计数
+        /// 1.加载期间代理对象若被销毁，则不执行回调。
+        /// 2.加载期间附加的所有回调，在加载成功后会全部执行。
+        /// 3.当代理对象被销毁时，将释放对此资源的引用计数
         /// </summary>
         /// <typeparam name="T">资源类型</typeparam>
         /// <param name="address">可以是资源名也可以是lable</param>

@@ -2,7 +2,7 @@
 using System;
 using Script.Framework.AssetLoader;
 using Script.Model.Auto;
-using Script.UI.Component;
+using Script.UI.Components;
 using Script.Util;
 using UnityEngine;
 using UnityEngine.EventSystems;

@@ -6,11 +6,11 @@ namespace Script.Framework.UI
 
     public enum UITypeEnum
     {
-        WindowsPopUp, // Windows式的弹窗界面，层级0
-        Full,        // 手游式的全屏界面，层级1
-        PopUp,       // 手游式的弹窗界面，层级1
-        TopPopUp,    // 顶层弹窗，层级2，如：战力提升弹窗
-        TopSystem,   // 顶层系统通知界面，层级3，如：断线重连弹窗、转菊花、轮播通知栏
+        WindowsPopUp,   // Windows式的弹窗界面，层级0；本层级的界面，获得焦点时会置于本层级的顶层
+        Full,           // 手游式的全屏界面，层级1
+        PopUp,          // 手游式的弹窗界面，层级1
+        TopPopUp,       // 顶层弹窗，层级2，如：战力提升弹窗
+        TopSystem,      // 顶层系统通知界面，层级3，如：断线重连弹窗、转菊花、轮播通知栏
     }
 
     //当关闭Layer=0的界面栈的最后个界面时，调用AssetManager.ReleaseUnuseAsset真正回收资源
@@ -18,7 +18,7 @@ namespace Script.Framework.UI
     {
         Once,          //关闭界面后，立即销毁实例。
         Normal,        //关闭界面60秒后，销毁实例。
-        Frequent,      //缓存实例。
+        Frequent,      //一直缓存实例。
     }
 
 
@@ -46,12 +46,14 @@ namespace Script.Framework.UI
         ImageMatchTestPanel,
         ImageCompareTestPanel,
         ProcessDebugPanel,
+        DeskPetMain,
     }
 
 
     /// <summary>
-    /// 初始参数是面向手游UI习惯。
-    /// WindowsPopUp的拖拽功能, 坐标保存在Content节点上面？
+    /// 最开始是面向手游UI习惯。
+    /// 
+    /// 拖拽功能:通过向界面节点加DragPanel组件
     /// </summary>
     public class PanelDefine
     {
@@ -261,6 +263,17 @@ namespace Script.Framework.UI
                 InitPos = new Vector2(0, 0),
                 HideLastPanel = false,
             },
+
+            new PanelDefine{
+                Key = PanelEnum.DeskPetMain,
+                Name = "DeskPetMain",
+                Path = "Auto/Prefabs/DeskPetMain",
+                Type = UITypeEnum.TopSystem,
+                RecycleType = UIRecycleTypeEnum.Frequent,
+                InitPos = new Vector2(0, 0),
+                HideLastPanel = false,
+            },
+            
         };
 
 

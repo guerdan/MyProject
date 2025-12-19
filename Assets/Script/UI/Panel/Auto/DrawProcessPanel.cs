@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Script.Framework.UI;
 using Script.Model.Auto;
-using Script.UI.Component;
+using Script.UI.Components;
 using Script.UI.Panel.Auto.Node;
 using Script.Util;
 using Unity.VisualScripting;
@@ -431,6 +431,7 @@ namespace Script.UI.Panel.Auto
                     break;
 
                 case NodeType.MouseOper:
+                case NodeType.StopScript:
                     pool = _mouseNodeUIPool;
                     prefab = MouseNodePre;
                     break;
@@ -614,6 +615,7 @@ namespace Script.UI.Panel.Auto
             {
                 { NodeType.TemplateMatchOper, new int[]{0,1,2} },
                 { NodeType.MouseOper, new int[]{2,6} },
+                { NodeType.StopScript, new int[]{2,6} },
                 { NodeType.KeyBoardOper, new int[]{2,6} },
                 { NodeType.AssignOper, new int[]{2,6} },
                 { NodeType.ConditionOper, new int[]{2,5,7} },
@@ -772,6 +774,7 @@ namespace Script.UI.Panel.Auto
                 case NodeType.KeyBoardOper:
                 case NodeType.AssignOper:
                 case NodeType.MapCapture:
+                case NodeType.StopScript:
                     in_has = true;
                     out_true_has = true;
                     out_false_has = false;
@@ -814,6 +817,12 @@ namespace Script.UI.Panel.Auto
                 manager.SaveScript(_id);
                 _lastSaveTime = now;
             }
+        }
+
+        public override void Close()
+        {
+            base.Close();
+            Utils.OpenDeskPet();
         }
 
         #endregion

@@ -1,4 +1,5 @@
 
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -219,15 +220,15 @@ namespace Script.Test
            }, $"哈希 {b}");
         }
 
-        CellType[,] map0 = new CellType[1000, 1000];
-        CellType[] map1 = new CellType[1000];
+        PixType[,] map0 = new PixType[1000, 1000];
+        PixType[] map1 = new PixType[1000];
         HashSet<Vector2Int> set = new HashSet<Vector2Int>();
-            List<Vector2Int> list = new List<Vector2Int>(100000000);
+        List<Vector2Int> list = new List<Vector2Int>(100000000);
         public void Test4()
         {
             for (int i = 0; i < 1000; i++)
             {
-                set.Add(new Vector2Int(i+100000, i+100000));
+                set.Add(new Vector2Int(i + 100000, i + 100000));
             }
 
             var b = new Vector2Int(2, 3);
@@ -243,7 +244,7 @@ namespace Script.Test
             {
                 for (int i = 0; i < 10000000; i++)   // 24ms
                 {
-                    map1[500] = CellType.Empty;
+                    map1[500] = PixType.Empty;
                 }
             }, $"一维数组存");
 
@@ -256,23 +257,23 @@ namespace Script.Test
             }, $"二维数组取");
             DU.RunWithTimer(() =>
             {
-                for (int i = 0; i < 10000000; i++)   // 34ms
+                for (int i = 0; i < 10000000; i++)   // 40ms
                 {
-                    map0[500, 500] = CellType.Empty;
+                    map0[500, 500] = PixType.Empty;
 
                 }
             }, $"二维数组存");
 
             DU.RunWithTimer(() =>
             {
-                for (int i = 0; i < 1000000; i++)   // 900ms <= 补零后
+                for (int i = 0; i < 1000000; i++)   // 换算后 600ms 
                 {
                     bool a = set.Contains(b);
                 }
             }, $"哈希表判断");
             DU.RunWithTimer(() =>
             {
-                for (int i = 0; i < 100000; i++)    // 2000ms <= 补零后
+                for (int i = 0; i < 100000; i++)    // 换算后 1300ms
                 {
                     set.Add(new Vector2Int(i, i));
                 }
@@ -286,6 +287,56 @@ namespace Script.Test
                     list.Add(b);
                 }
             }, $"列表存");
+        }
+
+        public void Test5()
+        {
+            double b = 0;
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 1000000; i++)    // 60ms
+                {
+                    var dx = i - 200;
+                    var dy = i - 200;
+
+                    double b = Math.Sqrt(dx * dx + dy * dy);
+                }
+            }, $"开根号1");
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 1000000; i++)    // 8ms
+                {
+                    var dx = i - 200;
+                    dx = dx < 0 ? -dx : dx;
+                    var dy = i - 200;
+                    dy = dy < 0 ? -dy : dy;
+
+                    if (dx > dy)
+                        b = 1414 * dy + 1000 * (dx - dy);
+                    else
+                        b = 1414 * dx + 1000 * (dy - dx);
+                }
+            }, $"开根号2");
+        }
+
+        public void Test6()
+        {
+            DU.RunWithTimer(() =>
+           {
+               for (int i = -1000000; i < 1000000; i++)    // 36ms 
+               {
+                   var b = Math.Abs(i);
+               }
+           }, $"Math方法");
+            DU.RunWithTimer(() =>
+           {
+               for (int i = -1000000; i < 1000000; i++)    // 8ms 
+               {
+                   var b = i < 0 ? -i : i;
+               }
+           }, $"手动判断");
+
         }
     }
 

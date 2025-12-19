@@ -3,7 +3,8 @@ using System;
 using System.Collections.Generic;
 using Script.Framework.UI;
 using Script.Model.Auto;
-using Script.UI.Component;
+using Script.UI.Components;
+using Script.Util;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -161,7 +162,7 @@ namespace Script.UI.Panel.Auto
             {
                 bool success = manager.CreateScript(name, _directoryPath, out string id);
                 if (!success) return;
-                UIManager.Inst.ShowPanel(PanelEnum.DrawProcessPanel, id);
+                Utils.OpenDrawProcessPanel(id);
             };
 
             EditNamePanelParam param = new EditNamePanelParam

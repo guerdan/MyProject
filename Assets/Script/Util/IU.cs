@@ -110,7 +110,7 @@ namespace Script.Util
         {
             var mode = use_alpha ? ImreadModes.Unchanged : ImreadModes.Color; // Color 强制3通道BGR
             var mat = Cv2.ImRead(path, mode);
-            if (mat.Empty())
+            if (mat.Empty())        // 读取失败，改格式
             {
                 string tempPath = Path.Combine(Path.GetDirectoryName(path), "temp_" + Path.GetFileName(path));
                 using (var bitmap = new Bitmap(path))
@@ -471,15 +471,24 @@ namespace Script.Util
             return bl;
         }
 
+
         public static Color32[] Color32ReverseVertical(Color32[] pixels, int w)
         {
             int h = pixels.Length / w;
-            Color32[] result = new Color32[pixels.Length];
-            for (int i = 0; i < h; i++)
+            int half_h = h / 2;
+            for (int i = 0; i < half_h; i++)
                 for (int j = 0; j < w; j++)
-                    result[(h - 1 - i) * w + j] = pixels[i * w + j];
-            return result;
+                {
+                    var index = i * w + j;
+                    var reverse = (h - 1 - i) * w + j;
+                    var temp = pixels[index];
+                    pixels[index] = pixels[reverse];
+                    pixels[reverse] = temp;
+                }
+
+            return pixels;
         }
+     
 
         public static bool Equal(Color32 c0, Color32 c1)
         {

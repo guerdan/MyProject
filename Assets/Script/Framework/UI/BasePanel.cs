@@ -1,6 +1,6 @@
 using System;
 using DG.Tweening;
-using Script.UI.Component;
+using Script.UI.Components;
 using Script.Util;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -44,7 +44,7 @@ namespace Script.Framework.UI
         protected Sequence openSeq;          //弹窗打开动画
         protected Sequence closeSeq;         //弹窗关闭动画
 
-
+        protected Transform _content;
         protected GameObject _maskBgNode;
         private PanelDefine _panelDefine;
         private int _stackIndex;
@@ -53,18 +53,19 @@ namespace Script.Framework.UI
         protected bool _useScaleAnim = true;
 
 
-        public bool Display { get { return display; } }
-        public PanelDefine PanelDefine { get { return _panelDefine; } set { _panelDefine = value; } }
-        public int StackIndex { get { return _stackIndex; } set { _stackIndex = value; } }
-        public Transform Transform { get { return transform; } }
-        public Transform Content { get { return transform.Find("Content"); } }
-        public bool ShowMask { get { return _panelDefine.ClickOutWinClose; } }
-        public bool AnimEnable { get { return _animEnable && PanelDefine.Type != UITypeEnum.Full; } }  //全屏式界面不提供默认动画，如需要自行实现
+        public bool Display { get => display; }
+        public PanelDefine PanelDefine { get => _panelDefine; set { _panelDefine = value; } }
+        public int StackIndex { get => _stackIndex; set { _stackIndex = value; } }
+        public Transform Transform { get => transform; }
+        public Transform Content { get => _content; }          // 动画需要
+        public bool ShowMask { get => _panelDefine.ClickOutWinClose; }
+        public bool AnimEnable { get => _animEnable && PanelDefine.Type != UITypeEnum.Full; }  //全屏式界面不提供默认动画，如需要自行实现
 
         public virtual void SetData(object data) { }
 
         public virtual void BeforeShow()
         {
+            _content = transform.Find("Content");
             display = true;
 
             if (ShowMask && _maskBgNode == null)
@@ -194,14 +195,16 @@ namespace Script.Framework.UI
         public virtual void Close()
         {
             if (!display) return;
-            UIManager.Inst.PopPanel(PanelDefine.Layer);
-        }
-        public void CloseSelf()
-        {
-            if (!display) return;
             UIManager.Inst.PopPanel(PanelDefine.Key);
         }
 
+        // 手游式弹窗，关闭规则
+        // public virtual void Close()
+        // {
+        //     if (!display) return;
+        //     UIManager.Inst.PopPanel(PanelDefine.Layer);
+        // }
+      
 
         protected void ClearAnim()
         {

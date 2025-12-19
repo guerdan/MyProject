@@ -33,6 +33,90 @@ MonoBehaviour:
     m_Address: Common/Prefabs/Component/LoadingProgressUI
     m_ReadOnly: 0
     m_SerializedLabels: []
+  - m_GUID: c56fc2e9f8bed0147945d06804bc256f
+    m_Address: Common/Prefabs/Panel/EditNamePanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 8b8a98a24de26044585bf56266e52729
+    m_Address: Common/Prefabs/Panel/ImageInfoPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 08de6758a8a0062438190f63c0f64a55
+    m_Address: Common/Prefabs/Panel/ImageSourcePanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: b6190219de9f2dc4fa7b510542c8b4ea
+    m_Address: Common/Prefabs/Component/OutlineEx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: a1ff3380d9e29cb49bacdd83154c921e
+    m_Address: Common/Prefabs/Component/SelectBoxComp
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 998d639322eb80947a4e32ac4a8683f8
+    m_Address: Shader/OutlineEx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 47c3a630b26bb2c41910d93a53c99a97
+    m_Address: Common/Prefabs/Panel/ImageMatchTestPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 4c7182d95be56684e968b08ca3c7d921
+    m_Address: Common/Prefabs/Panel/ImageCompareTestPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 7368b16ae5678f44ab8b194e2d45d25f
+    m_Address: Common/Prefabs/Component/SquareFrameUI
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 5118b0a8dd74aa64ab3e0d315c1c574b
+    m_Address: Common/Prefabs/Component/KeywordTipsComp
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: e6a5987e8fcd72e41b2cdef38b5d52c3
+    m_Address: Common/Prefabs/Component/MenuSystem
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 1d73ada60b920ba4181d7bd6bacc081d
+    m_Address: Common/Prefabs/Component/CheckBox
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 4838981b72d4f8541a2c24ad01d95647
+    m_Address: Common/Prefabs/Component/Button
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: aaed59bf80e88b04f808a2cbe831a2a9
+    m_Address: Common/Prefabs/Component/CheckBoxBool
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 0496977971514d24c86697304ad7c981
+    m_Address: Common/Prefabs/Component/ImageDetailComp
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 2d4f92f59139856428cecd579ee161ca
+    m_Address: Common/Prefabs/Component/InputBox
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 693d4f20878b5264eb91455c19053e7c
+    m_Address: Common/Prefabs/Component/InputTextComp
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 5c661d3d6a03a33459ffa99b1cb0d5b1
+    m_Address: Common/Prefabs/Component/InputTextProComp
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: ff111dab2b7b0974a8eff2cf6d66c6bd
+    m_Address: Common/Prefabs/PanelBg/FloatBg_0
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: ec5eccd7c9ec25d4db3357696959f154
+    m_Address: Common/Prefabs/PanelBg/PanelBg_Full0
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 83bbde2a0d67dde47b24a6d55ff41709
+    m_Address: Common/Prefabs/PanelBg/PanelBg_Pop0
+    m_ReadOnly: 0
+    m_SerializedLabels: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 461c0bb45d0c65047b0497b6d6fed90a, type: 2}
   m_SchemaSet:

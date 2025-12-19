@@ -1,5 +1,5 @@
 using Script.Framework.UI;
-using Script.UI.Component;
+using Script.UI.Components;
 using UnityEngine;
 using UnityEngine.UI;
 

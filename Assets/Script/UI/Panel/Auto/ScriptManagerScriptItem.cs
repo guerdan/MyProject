@@ -1,7 +1,7 @@
 
 using Script.Framework.UI;
 using Script.Model.Auto;
-using Script.UI.Component;
+using Script.UI.Components;
 using Script.UI.Panel.Auto.Node;
 using Script.Util;
 using UnityEngine;
@@ -92,15 +92,7 @@ namespace Script.UI.Panel.Auto
 
         void OnRunBtnClick(bool value)
         {
-            if (value)
-                AutoScriptManager.Inst.StartScript(_id);
-            else
-            {
-                AutoScriptManager.Inst.StopScript(_id);
-                DrawProcessBtnBar.CloseElsePanel();
-            }
-
-            ScriptManagerPanel.OnRefresh?.Invoke(_id);
+            Utils.AutoScriptSwitchRunStatus(_id);
         }
 
         void OnCollectBtnClick(bool value)
@@ -116,7 +108,7 @@ namespace Script.UI.Panel.Auto
 
         void OnBtnClick()
         {
-            UIManager.Inst.ShowPanel(PanelEnum.DrawProcessPanel, _id);
+            Utils.OpenDrawProcessPanel(_id);
         }
     }
 }

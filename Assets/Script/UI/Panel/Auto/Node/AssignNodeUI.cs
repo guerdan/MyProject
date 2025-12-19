@@ -1,5 +1,5 @@
 using Script.Model.Auto;
-using Script.UI.Component;
+using Script.UI.Components;
 using Script.Util;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,6 +8,31 @@ namespace Script.UI.Panel.Auto.Node
 {
     public class AssignNodeUI : ProcessNodeUI
     {
+        public static readonly Color TypeTextColor1;
+        public static readonly Color TypeBgColor1;
+        public static readonly Color TypeLineColor1;
+        public static readonly Color TypeTextColor2;
+        public static readonly Color TypeBgColor2;
+        public static readonly Color TypeLineColor2;
+        public static readonly Color TypeTextColor3;
+        public static readonly Color TypeBgColor3;
+        public static readonly Color TypeLineColor3;
+
+        static AssignNodeUI()
+        {
+            TypeTextColor1 = Utils.ParseHtmlString("#FFF7DC");
+            TypeBgColor1 = Utils.ParseHtmlString("#F1BA02");
+            TypeLineColor1 = Utils.ParseHtmlString("#E0AB00");
+
+            TypeTextColor2 = Utils.ParseHtmlString("#E8FFE3");
+            TypeBgColor2 = Utils.ParseHtmlString("#4c7543");
+            TypeLineColor2 = Utils.ParseHtmlString("#42653b");
+
+            TypeTextColor3 = Utils.ParseHtmlString("#e6f1ff");
+            TypeBgColor3 = Utils.ParseHtmlString("#406087");
+            TypeLineColor3 = Utils.ParseHtmlString("#395576");
+        }
+
         [Header("内容")]
         [SerializeField] private Text Formula;      // 公式 
         [SerializeField] private Text TypeText;     // 类型：条件/触发事件/监听事件 
@@ -50,9 +75,9 @@ namespace Script.UI.Panel.Auto.Node
                 ShowType(true);
                 ShowIsCondition(true);
                 TypeText.text = "条件";
-                TypeText.color = Utils.ParseHtmlString("#FFF7DC");
-                TypeBg.color = Utils.ParseHtmlString("#F1BA02");
-                TypeLine.color = Utils.ParseHtmlString("#E0AB00");
+                TypeText.color = TypeTextColor1;
+                TypeBg.color = TypeBgColor1;
+                TypeLine.color = TypeLineColor1;
             }
 
             else if (_data is TriggerEventNode)
@@ -62,9 +87,9 @@ namespace Script.UI.Panel.Auto.Node
                 ShowType(true);
                 ShowIsCondition(false);
                 TypeText.text = "触发";
-                TypeText.color = Utils.ParseHtmlString("#E8FFE3");
-                TypeBg.color = Utils.ParseHtmlString("#4c7543");
-                TypeLine.color = Utils.ParseHtmlString("#42653b");
+                TypeText.color = TypeTextColor2;
+                TypeBg.color = TypeBgColor2;
+                TypeLine.color = TypeLineColor2;
             }
 
             else if (_data is ListenEventNode)
@@ -74,9 +99,9 @@ namespace Script.UI.Panel.Auto.Node
                 ShowType(true);
                 ShowIsCondition(false);
                 TypeText.text = "监听";
-                TypeText.color = Utils.ParseHtmlString("#e6f1ff");
-                TypeBg.color = Utils.ParseHtmlString("#406087");
-                TypeLine.color = Utils.ParseHtmlString("#395576");
+                TypeText.color = TypeTextColor3;
+                TypeBg.color = TypeBgColor3;
+                TypeLine.color = TypeLineColor3;
             }
         }
 

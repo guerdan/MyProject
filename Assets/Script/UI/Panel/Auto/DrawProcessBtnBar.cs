@@ -53,15 +53,7 @@ namespace Script.UI.Panel.Auto
 
         void OnClickRunBtn()
         {
-            if (AutoScriptManager.Inst.IsRuning(_panel._id))
-            {
-                AutoScriptManager.Inst.StopScript(_panel._id);
-            }
-            else
-            {
-                AutoScriptManager.Inst.StartScript(_panel._id);
-                CloseElsePanel();
-            }
+            Utils.AutoScriptSwitchRunStatus(_panel._id);
             RefreshBtn();
         }
 
@@ -81,12 +73,5 @@ namespace Script.UI.Panel.Auto
             UIManager.Inst.ShowPanel(PanelEnum.ProcessDebugPanel, _panel);
         }
 
-        public static void CloseElsePanel()
-        {
-            UIManager.Inst.PopPanel(PanelEnum.ScriptManagerPanel);
-            UIManager.Inst.PopPanel(PanelEnum.DrawProcessPanel);
-            UIManager.Inst.PopPanel(PanelEnum.ProcessNodeInfoPanel);
-            UIManager.Inst.PopPanel(PanelEnum.ProcessDebugPanel);
-        }
     }
 }

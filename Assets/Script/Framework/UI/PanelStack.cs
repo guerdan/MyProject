@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Script.Util;
 using UnityEngine;
 
 namespace Script.Framework.UI
@@ -84,6 +85,9 @@ namespace Script.Framework.UI
             });
         }
 
+        /// <summary>
+        /// 从顶往下找
+        /// </summary>
         public IPanel FindView(PanelEnum key)
         {
             foreach (var view in _views)
@@ -93,7 +97,6 @@ namespace Script.Framework.UI
                     return view;
                 }
             }
-
             return null;
         }
 

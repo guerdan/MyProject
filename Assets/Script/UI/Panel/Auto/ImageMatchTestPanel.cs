@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using OpenCvSharp;
 using Script.Framework.UI;
-using Script.UI.Component;
+using Script.UI.Components;
 using Script.Util;
 using UnityEngine;
 using UnityEngine.UI;

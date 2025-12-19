@@ -5,11 +5,10 @@ using OpenCvSharp.Dnn;
 using Script.Framework.AssetLoader;
 using Script.Framework.UI;
 using Script.Model.Auto;
-using Script.UI.Component;
+using Script.UI.Components;
 using Script.Util;
 using UnityEngine;
 using UnityEngine.UI;
-using static Script.Model.Auto.MapData;
 
 namespace Script.UI.Panel.Auto
 {
@@ -49,6 +48,7 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private GameObject MouseOperGO;
         [SerializeField] private SelectBoxComp MouseOperTypeBox;
         [SerializeField] private InputTextProComp MouseOperPosInput;
+        [SerializeField] private InputTextComp HoldTimeInput;
 
         [Header("键盘操作")]
         [SerializeField] private GameObject KeyboardOperGO;
@@ -75,6 +75,8 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private GameObject MapCaptureGO;
         [SerializeField] private InputTextProComp MapCaptureRegionInput;
         [SerializeField] private InputTextComp MapCaptureIdInput;
+        [SerializeField] private InputTextComp MapColorSetInput;
+
 
         AutoScriptManager manager => AutoScriptManager.Inst;
         BaseNodeData _data;
@@ -561,7 +563,37 @@ namespace Script.UI.Panel.Auto
 
                     return AutoDataUIConfig.ExpressionIsLegal(str);
                 });
+
+
+            HoldTimeInput.SetData(data.HoldTime + "s", (str) =>
+            {
+                if (str.EndsWith("s"))
+                {
+                    str = str.Substring(0, str.Length - 1);
+                }
+                bool isValid = float.TryParse(str, out float value);
+                float minDelay = manager.GetNodeMinDalay(_nodeType);
+                if (isValid && value >= minDelay)
+                {
+                    data.HoldTime = value;
+                    HoldTimeInput.SetText(value + "s");
+                }
+                else
+                {
+                    data.HoldTime = minDelay;
+                    HoldTimeInput.SetText(minDelay + "s");
+                }
+            });
         }
+
+
+        void OnHoldTimeEndEdit(string str)
+        {
+
+
+            RefreshDrawPanel();
+        }
+
 
         #endregion
         #region  Trigger/Listen
@@ -655,7 +687,21 @@ namespace Script.UI.Panel.Auto
             {
                 str = str.Replace(" ", "");
                 data.MapId = str;
-                EventNameInput.SetText(data.MapId); // 可能会格式化
+                MapCaptureIdInput.SetText(data.MapId); // 可能会格式化
+            });
+            MapColorSetInput.SetData(data.ColorSet.ToString(), str =>
+            {
+                str = str.Replace(" ", "");
+                if (int.TryParse(str, out var result))
+                {
+                    data.ColorSet = result;
+                    MapColorSetInput.SetText(str);
+                }
+                else
+                {
+                    MapColorSetInput.SetText("");
+                }
+
             });
 
 

@@ -16,51 +16,7 @@ MonoBehaviour:
   m_Data:
     m_SerializedData: []
   m_GUID: fda94d65ed226e44eafa83a121cbb0f8
-  m_SerializeEntries:
-  - m_GUID: 7368b16ae5678f44ab8b194e2d45d25f
-    m_Address: Common/Prefabs/Component/SquareFrameUI
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-  - m_GUID: ae8b0695e7e3770438c324c173e98b38
-    m_Address: Auto/Prefabs/DrawProcessPanel
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-  - m_GUID: a1f3e820a4899474980ff04a3f584446
-    m_Address: Auto/Prefabs/ProcessNodeInfoPanel
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-  - m_GUID: c56fc2e9f8bed0147945d06804bc256f
-    m_Address: Common/Prefabs/Panel/EditNamePanel
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-  - m_GUID: 8b8a98a24de26044585bf56266e52729
-    m_Address: Common/Prefabs/Panel/ImageInfoPanel
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-  - m_GUID: 08de6758a8a0062438190f63c0f64a55
-    m_Address: Common/Prefabs/Panel/ImageSourcePanel
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-  - m_GUID: 1896c1decb95f1c4ba64fac090c62136
-    m_Address: Auto/Prefabs/ScriptManagerPanel
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-  - m_GUID: 9df1ef09fb6218d40a66bfc435766c9b
-    m_Address: Auto/Prefabs/TemplateMatchDrawResultPanel
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-  - m_GUID: 47c3a630b26bb2c41910d93a53c99a97
-    m_Address: Common/Prefabs/Panel/ImageMatchTestPanel
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-  - m_GUID: 4c7182d95be56684e968b08ca3c7d921
-    m_Address: Common/Prefabs/Panel/ImageCompareTestPanel
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-  - m_GUID: 4f61f602c778130428fb9b5e037f6132
-    m_Address: Auto/Prefabs/ProcessDebugPanel
-    m_ReadOnly: 0
-    m_SerializedLabels: []
+  m_SerializeEntries: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 461c0bb45d0c65047b0497b6d6fed90a, type: 2}
   m_SchemaSet:

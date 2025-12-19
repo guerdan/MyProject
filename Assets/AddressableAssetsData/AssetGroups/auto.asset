@@ -25,6 +25,38 @@ MonoBehaviour:
     m_Address: Auto/Prefabs/PicMatchFloat
     m_ReadOnly: 0
     m_SerializedLabels: []
+  - m_GUID: 4f61f602c778130428fb9b5e037f6132
+    m_Address: Auto/Prefabs/ProcessDebugPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: ae8b0695e7e3770438c324c173e98b38
+    m_Address: Auto/Prefabs/DrawProcessPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: a1f3e820a4899474980ff04a3f584446
+    m_Address: Auto/Prefabs/ProcessNodeInfoPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 1896c1decb95f1c4ba64fac090c62136
+    m_Address: Auto/Prefabs/ScriptManagerPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 9df1ef09fb6218d40a66bfc435766c9b
+    m_Address: Auto/Prefabs/TemplateMatchDrawResultPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: b760521aff1aac94689f16c766076808
+    m_Address: Auto/Prefabs/DeskPetMain
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: e6cb375a89650f1458641dd5c85a83a9
+    m_Address: Auto/Prefabs/DeskPetMapFloat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: f5968bb5d6937d145a9ce8fed5c607a4
+    m_Address: Auto/Prefabs/DeskPetNodeIcon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 461c0bb45d0c65047b0497b6d6fed90a, type: 2}
   m_SchemaSet:

@@ -1,13 +1,10 @@
 
 
 
-using System;
 using System.Collections.Generic;
-using System.Drawing;
 using Script.Framework.UI;
 using Script.Model.Auto;
 using Script.Util;
-using Unity.VisualScripting;
 using UnityEngine;
 
 namespace Script.UI.Panel.Auto
@@ -40,6 +37,11 @@ namespace Script.UI.Panel.Auto
 
         void Start()
         {
+            // 打开桌宠
+            PanelUtil.PanelDefineDic[PanelEnum.DeskPetMain].InitPos = 
+                new Vector2(100 - Screen.width/2,  Screen.height/2 - 100);
+            UIManager.Inst.ShowPanel(PanelEnum.DeskPetMain, null);
+
             // 获取 System.Drawing 的加载路径
             // string assemblyPath = typeof(Bitmap).Assembly.Location;
             // DU.LogWarning($"System.Drawing.dll is loaded from: {assemblyPath}");
@@ -70,11 +72,6 @@ namespace Script.UI.Panel.Auto
             // {
             //     UIManager.Inst.ShowPanel(PanelEnum.HeroDetailPanel, null);
             // }
-
-            if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                Quit();
-            }
 
 
             if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.L))
@@ -117,10 +114,7 @@ namespace Script.UI.Panel.Auto
             {
                 string id = DrawProcessPanel.LastOpenId;
                 if (id != null)
-                {
-                    AutoScriptManager.Inst.StopScript(id);
-                    UIManager.Inst.ShowPanel(PanelEnum.DrawProcessPanel, id);
-                }
+                    Utils.OpenDrawProcessPanel(id);
             }
             if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.T))
             {

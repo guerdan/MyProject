@@ -1,7 +1,7 @@
 
 using System.Collections.Generic;
 using Script.Framework.UI;
-using Script.UI.Component;
+using Script.UI.Components;
 using Script.Util;
 using UnityEngine;
 

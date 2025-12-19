@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using OpenCvSharp;
 using Script.Model.ListStruct;
-using Script.UI.Component;
+using Script.UI.Components;
 using Script.Util;
 using UnityEngine;
 
@@ -86,8 +86,26 @@ namespace Script.Model.Auto
 
         #region Apply
 
-        public void Apply(List<BigCell> needList)
+        public void Apply(List<Vector2Int> changePixList)
         {
+            List<BigCell> needList = new List<BigCell>();
+            foreach (var pos in changePixList)
+            {
+                int x = pos.x / _s;
+                int y = pos.y / _s;
+                var cell = _grid[x, y];
+                if (cell == null)
+                {
+                    cell = new BigCell(x, y);
+                    _grid[x, y] = cell;
+                }
+                if (!cell.NeedRefresh)
+                {
+                    cell.NeedRefresh = true;
+                    needList.Add(cell);
+                }
+            }
+
             _afterDic.Clear();
 
             // needList的大格子需要重建
@@ -110,6 +128,57 @@ namespace Script.Model.Auto
             BuildCellTimes += needList.Count;
         }
 
+
+        public void ApplyFog(List<Vector2Int> changePixList)
+        {
+            List<BigCell> needList = new List<BigCell>();
+            foreach (var pos in changePixList)
+            {
+                int x = pos.x / _s;
+                int y = pos.y / _s;
+                var cell = _grid[x, y];
+                if (cell == null)
+                {
+                    cell = new BigCell(x, y);
+                    _grid[x, y] = cell;
+                }
+                if (!cell.NeedRefresh)
+                {
+                    cell.NeedRefresh = true;
+                    needList.Add(cell);
+                }
+            }
+
+            foreach (var cell in needList)
+                CellCheckFog(cell);
+
+            foreach (var cell in needList)
+                cell.NeedRefresh = false;
+        }
+
+        public void CellCheckFog(BigCell cell)
+        {
+            PixType[,] map = _mapData._map;
+            int x_start = cell.x * _s;
+            int y_start = cell.y * _s;
+            int x_end = x_start + _s;
+            int y_end = y_start + _s;
+
+            cell.HasFog = false;
+            for (int m = y_start; m < y_end; m++)
+                for (int n = x_start; n < x_end; n++)
+                {
+                    var data = map[n, m];
+                    if (data == PixType.Fog)
+                    {
+                        cell.HasFog = true;
+                        return;
+                    }
+                }
+        }
+
+
+
         #region CellConstruction
 
         // 大格子的构造
@@ -121,7 +190,7 @@ namespace Script.Model.Auto
             int x_end = x_start + _s;
             int y_end = y_start + _s;
 
-            CellType[,] map = _mapData._map;
+            PixType[,] map = _mapData._map;
             // // debug    
             // var s_map = new CellType[5, 5];
             // for (int m = y_start; m < y_end; m++)
@@ -137,8 +206,6 @@ namespace Script.Model.Auto
             //     var a = 2;
             // }
 
-
-            bool have_fog = false;
             int have_obstacle_count = 0;
 
             for (int y = 0; y < _s; y++)
@@ -150,27 +217,19 @@ namespace Script.Model.Auto
                 {
                     var data = map[n, m];
                     // 先重置 ObstacleByBig，后面再刷
-                    if (data == CellType.ObstacleByBig)
+                    if (data == PixType.ObstacleByBig)
                     {
-                        data = CellType.Empty;
+                        data = PixType.Empty;
                         map[n, m] = data;
                     }
 
-                    if (data != CellType.Empty)
+                    if (data != PixType.Empty)
                     {
                         have_obstacle_count++;
                         _cMap[n - x_start, m - y_start] = 1;
                     }
-
-                    // if (data == CellType.Fog)
-                    //     have_fog = true;
                 }
 
-            // if (have_fog)
-            // {
-            //     cell.Type = BigCellType.AllObstacle;
-            //     cell.Direction = 0;
-            // }
 
             if (have_obstacle_count > 0)
             {
@@ -204,7 +263,7 @@ namespace Script.Model.Auto
                             for (int j = 0; j < _mList_count; j++)
                             {
                                 var p = _mList[j];
-                                map[p.x + x_start, p.y + y_start] = CellType.ObstacleByBig;
+                                map[p.x + x_start, p.y + y_start] = PixType.ObstacleByBig;
                             }
                         }
                     }
@@ -262,7 +321,7 @@ namespace Script.Model.Auto
             int cx = cell.x;
             int cy = cell.y;
 
-            CellType[,] map = _mapData._map;
+            PixType[,] map = _mapData._map;
 
             // debug
             // var s_map = new CellType[5, 5];
@@ -296,7 +355,7 @@ namespace Script.Model.Auto
             var cMap = r.Item2;
 
             for (int mx = 0; mx < _s; mx++)
-                if (cMap[mx, 0] == save_num && map[mx + x_start, y_start - 1] == CellType.Empty)
+                if (cMap[mx, 0] == save_num && map[mx + x_start, y_start - 1] == PixType.Empty)
                 {
                     cell.Direction |= 1 << 7; // 下
                     bottom = 1;   // 下
@@ -305,49 +364,49 @@ namespace Script.Model.Auto
 
 
             for (int mx = 0; mx < _s; mx++)
-                if (cMap[mx, 4] == save_num && map[mx + x_start, y_start + 5] == CellType.Empty)
+                if (cMap[mx, 4] == save_num && map[mx + x_start, y_start + 5] == PixType.Empty)
                 {
                     cell.Direction |= 1 << 3;
                     top = 1;   // 上
                     break;
                 }
             for (int my = 0; my < _s; my++)
-                if (cMap[0, my] == save_num && map[x_start - 1, my + y_start] == CellType.Empty)
+                if (cMap[0, my] == save_num && map[x_start - 1, my + y_start] == PixType.Empty)
                 {
                     cell.Direction |= 1 << 1;
                     left = 1;   // 左
                     break;
                 }
             for (int my = 0; my < _s; my++)
-                if (cMap[4, my] == save_num && map[x_start + 5, my + y_start] == CellType.Empty)
+                if (cMap[4, my] == save_num && map[x_start + 5, my + y_start] == PixType.Empty)
                 {
                     cell.Direction |= 1 << 5;
                     right = 1;   // 右
                     break;
                 }
 
-            if (cMap[0, 0] == save_num && map[x_start - 1, y_start - 1] == CellType.Empty
-                && (map[x_start - 1, y_start] == CellType.Empty || map[x_start, y_start - 1] == CellType.Empty))
+            if (cMap[0, 0] == save_num && map[x_start - 1, y_start - 1] == PixType.Empty
+                && (map[x_start - 1, y_start] == PixType.Empty || map[x_start, y_start - 1] == PixType.Empty))
             {
                 cell.Direction |= 1 << 0;
                 left_bottom = 1;   // 左下
             }
-            if (cMap[4, 4] == save_num && map[x_start + 5, y_start + 5] == CellType.Empty
-                && (map[x_start + 5, y_start + 4] == CellType.Empty || map[x_start + 4, y_start + 5] == CellType.Empty))
+            if (cMap[4, 4] == save_num && map[x_start + 5, y_start + 5] == PixType.Empty
+                && (map[x_start + 5, y_start + 4] == PixType.Empty || map[x_start + 4, y_start + 5] == PixType.Empty))
             {
                 cell.Direction |= 1 << 4;
                 right_top = 1;   // 右上
             }
 
-            if (cMap[0, 4] == save_num && map[x_start - 1, y_start + 5] == CellType.Empty
-                && (map[x_start - 1, y_start + 4] == CellType.Empty || map[x_start, y_start + 5] == CellType.Empty))
+            if (cMap[0, 4] == save_num && map[x_start - 1, y_start + 5] == PixType.Empty
+                && (map[x_start - 1, y_start + 4] == PixType.Empty || map[x_start, y_start + 5] == PixType.Empty))
             {
                 cell.Direction |= 1 << 2;
                 left_top = 1;   // 左上
             }
 
-            if (cMap[4, 0] == save_num && map[x_start + 5, y_start - 1] == CellType.Empty
-                && (map[x_start + 5, y_start] == CellType.Empty || map[x_start + 4, y_start - 1] == CellType.Empty))
+            if (cMap[4, 0] == save_num && map[x_start + 5, y_start - 1] == PixType.Empty
+                && (map[x_start + 5, y_start] == PixType.Empty || map[x_start + 4, y_start - 1] == PixType.Empty))
             {
                 cell.Direction |= 1 << 6;
                 right_bottom = 1;   // 右下
@@ -438,6 +497,7 @@ namespace Script.Model.Auto
             _gridEdge = gridEdge;
             var gridB = new BigCell[_gridEdge, _gridEdge];
 
+            // 原本是随便搬的。现在精准搬
             for (int i = 0; i < old_gridEdge; i++)
                 for (int j = 0; j < old_gridEdge; j++)
                 {
@@ -471,7 +531,7 @@ namespace Script.Model.Auto
             _target_c = target;
 
             var times = 0;
-            var openList = new BinarySearchTree<BigCell>();
+            var openList = new BinarySearchTree<BigCell>(BigCell.Comparer);
             var startNode = _grid[start.x, start.y];
             // 角色沿墙壁走，就可能发生。角色被识别跑到障碍里了，就不寻了
             //
@@ -558,7 +618,7 @@ namespace Script.Model.Auto
                     {
                         neighbor.G = new_G;
                         neighbor.F = new_G + Estimate(neighbor_pos.x, neighbor_pos.y, target.x, target.y);
-                        neighbor.ParentPos = current_pos;
+                        neighbor.Parent = current;
                         openList.Insert(neighbor);
                         accessList.Add(neighbor);
                     }
@@ -570,7 +630,7 @@ namespace Script.Model.Auto
 
                         neighbor.F = neighbor.F - neighbor.G + new_G;
                         neighbor.G = new_G;
-                        neighbor.ParentPos = current_pos;
+                        neighbor.Parent = current;
                         // _grid[neighbor_pos.x, neighbor_pos.y] = neighbor;
                         openList.Insert(neighbor);
                     }
@@ -585,12 +645,12 @@ namespace Script.Model.Auto
         public void ClearStatus()
         {
             var defaultV = Utils.DefaultV2I;
-            foreach (var pos in accessList)
+            foreach (var cell in accessList)
             {
-                pos.Access = false;
-                pos.G = 0;
-                pos.F = 0;
-                pos.ParentPos = defaultV;
+                cell.Access = false;
+                cell.G = 0;
+                cell.F = 0;
+                cell.Parent = null;
             }
             accessList.Clear();
             success = false;
@@ -600,7 +660,7 @@ namespace Script.Model.Auto
         public static int Estimate(int x0, int y0, int x1, int y1)
         {
             int delta_x = x0 - x1;
-            delta_x = delta_x < 0 ? -delta_x : delta_x;
+            delta_x = delta_x < 0 ? -delta_x : delta_x;     // Math.Abs()会有调用方法的开销
             int delta_y = y0 - y1;
             delta_y = delta_y < 0 ? -delta_y : delta_y;
             return (delta_x + delta_y) * 1000;
@@ -618,6 +678,157 @@ namespace Script.Model.Auto
         }
 
         #endregion
+
+        #region 找最近迷雾
+
+        public Vector2Int FindNearestFog(Vector2Int start_p)
+        {
+            var start = start_p / 5;
+
+            int min_dist = int.MaxValue;
+            Vector2Int result = new Vector2Int(-1, -1);
+
+            int w = _grid.GetLength(0);
+            int h = _grid.GetLength(1);
+
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    var cell = _grid[x, y];
+                    if (cell == null || !cell.HasFog)
+                        continue;
+
+                    int dist = GetFullDistance(start.x, start.y, x, y);
+                    if (dist < min_dist)
+                    {
+                        min_dist = dist;
+                        result = new Vector2Int(x, y);
+                    }
+                }
+
+            return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int GetFullDistance(int x0, int y0, int x1, int y1)
+        {
+            var dx = x0 - x1;
+            dx = dx < 0 ? -dx : dx;
+            var dy = y0 - y1;
+            dy = dy < 0 ? -dy : dy;
+
+            if (dx > dy)
+                return 1414 * dy + 1000 * (dx - dy);
+            else
+                return 1414 * dx + 1000 * (dy - dx);
+
+        }
+
+        public Vector2Int StartFindFog(Vector2Int start)
+        {
+            ClearStatus();  // 清理状态
+            Vector2Int result = Utils.DefaultV2I;
+
+            var times = 0;
+            var openList = new BinarySearchTree<BigCell>(BigCell.ComparerG);
+            var startNode = _grid[start.x, start.y];
+            // 角色沿墙壁走，就可能发生。角色被识别跑到障碍里了，就不寻了
+            //
+            if (startNode == null)
+                return result;
+
+            startNode.G = 0;
+
+            openList.Insert(startNode);
+            accessList.Add(startNode);
+
+            var method_list = new Vector2Int[8];
+            var method_count = 0;
+
+            // openList 要排序，也要查找
+            while (!openList.Empty())
+            {
+
+                times++;
+                // 获取F值最低的节点
+                var current = openList.FindMin().Value;
+                openList.Delete(current);
+
+                current.Access = true;
+
+                if (current.HasFog)
+                {
+                    success = true;
+                    result = new Vector2Int(current.x, current.y);
+                    break;
+                }
+
+                method_count = 0;
+                int x = current.x;
+                int y = current.y;
+                var current_pos = new Vector2Int(x, y);
+                var direction = current.Direction;
+
+                if ((direction & (1 << 7)) != 0 && _grid[x, y - 1] != null && !_grid[x, y - 1].Access)
+                    method_list[method_count++] = new Vector2Int(x, y - 1);
+
+                if ((direction & (1 << 1)) != 0 && _grid[x - 1, y] != null && !_grid[x - 1, y].Access)
+                    method_list[method_count++] = new Vector2Int(x - 1, y);
+
+                if ((direction & (1 << 3)) != 0 && _grid[x, y + 1] != null && !_grid[x, y + 1].Access)
+                    method_list[method_count++] = new Vector2Int(x, y + 1);
+
+                if ((direction & (1 << 5)) != 0 && _grid[x + 1, y] != null && !_grid[x + 1, y].Access)
+                    method_list[method_count++] = new Vector2Int(x + 1, y);
+
+                if ((direction & (1 << 0)) != 0 && _grid[x - 1, y - 1] != null && !_grid[x - 1, y - 1].Access)
+                    method_list[method_count++] = new Vector2Int(x - 1, y - 1);
+
+                if ((direction & (1 << 2)) != 0 && _grid[x - 1, y + 1] != null && !_grid[x - 1, y + 1].Access)
+                    method_list[method_count++] = new Vector2Int(x - 1, y + 1);
+
+                if ((direction & (1 << 4)) != 0 && _grid[x + 1, y + 1] != null && !_grid[x + 1, y + 1].Access)
+                    method_list[method_count++] = new Vector2Int(x + 1, y + 1);
+
+                if ((direction & (1 << 6)) != 0 && _grid[x + 1, y - 1] != null && !_grid[x + 1, y - 1].Access)
+                    method_list[method_count++] = new Vector2Int(x + 1, y - 1);
+
+                for (int i = 0; i < method_count; i++)
+                {
+                    var neighbor_pos = method_list[i];
+                    var neighbor = _grid[neighbor_pos.x, neighbor_pos.y];
+
+                    //新的邻节点或者要更新G值的邻节点
+                    bool is_new = neighbor.G == 0;
+                    int new_G = current.G + GetDistance(current_pos, neighbor_pos);
+
+                    if (is_new)
+                    {
+                        neighbor.G = new_G;
+                        neighbor.Parent = current;
+                        openList.Insert(neighbor);
+                        accessList.Add(neighbor);
+                    }
+                    else if (new_G < neighbor.G)
+                    {
+                        openList.Delete(neighbor);      //重新排序 => 重新插入
+                        neighbor.G = new_G;
+                        neighbor.Parent = current;
+                        openList.Insert(neighbor);
+                    }
+
+                }
+            }
+
+            var success_str = success ? "成功" : "失败";
+            DU.LogWarning($"Find Fog {success_str}  times:" + times);
+
+            return result;
+        }
+
+        #endregion
+
+
         #region Api
 
         public static Vector2Int[] list = new Vector2Int[5];
@@ -645,24 +856,28 @@ namespace Script.Model.Auto
                 // x_delta、y_delta有一个为0
                 if (x_delta == 1)          //A的右边线 为交界
                 {
+                    rA = new Vector2Int(4, 0);
                     for (int y = 0; y < 5; y++)
                         if (mapA[4, y] && mapB[0, y])
                             list[list_count++] = new Vector2Int(4, y);
                 }
                 else if (x_delta == -1)      //A的左边线 为交界
                 {
+                    rA = new Vector2Int(0, 0);
                     for (int y = 0; y < 5; y++)
                         if (mapA[0, y] && mapB[4, y])
                             list[list_count++] = new Vector2Int(0, y);
                 }
                 else if (y_delta == 1)     //A的上边线 为交界
                 {
+                    rA = new Vector2Int(0, 4);
                     for (int x = 0; x < 5; x++)
                         if (mapA[x, 4] && mapB[x, 0])
                             list[list_count++] = new Vector2Int(x, 4);
                 }
                 else if (y_delta == -1)      //A的下边线 为交界
                 {
+                    rA = new Vector2Int(0, 0);
                     for (int x = 0; x < 5; x++)
                         if (mapA[x, 0] && mapB[x, 4])
                             list[list_count++] = new Vector2Int(x, 0);
@@ -695,6 +910,7 @@ namespace Script.Model.Auto
         public bool Access;
         public int x;
         public int y;
+        public bool HasFog;
 
         /// <summary>
         /// 0-纯空地 1-空地含障碍 2-障碍 3-含迷雾  4-多侧空地
@@ -705,14 +921,13 @@ namespace Script.Model.Auto
         public int F;               // 总值
 
         public int H => F - G;      // 启发值、估计值
-        public Vector2Int ParentPos;        // 指向上一格，实现链表
+        public BigCell Parent;        // 指向上一格，实现链表。原本是Vector2Int，因为Rebuild所以改了
 
         public BigCell(int x, int y)
         {
             this.x = x;
             this.y = y;
             Type = BigCellType.AllObstacle;
-            ParentPos = new Vector2Int(-1, -1);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -727,6 +942,27 @@ namespace Script.Model.Auto
             else
                 return y.CompareTo(other.y);
 
+        }
+
+        public static int Comparer(BigCell a, BigCell b)
+        {
+            if (a.F != b.F)
+                return a.F - b.F > 0 ? 1 : -1;
+            else if (a.G != b.G)
+                return a.G - b.G < 0 ? 1 : -1;
+            else if (a.x != b.x)
+                return a.x - b.x > 0 ? 1 : -1;
+            else
+                return a.y.CompareTo(b.y);
+        }
+        public static int ComparerG(BigCell a, BigCell b)
+        {
+            if (a.G != b.G)
+                return a.G - b.G > 0 ? 1 : -1;
+            else if (a.x != b.x)
+                return a.x - b.x > 0 ? 1 : -1;
+            else
+                return a.y.CompareTo(b.y);
         }
 
         public override string ToString()

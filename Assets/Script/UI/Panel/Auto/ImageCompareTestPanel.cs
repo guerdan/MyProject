@@ -1,25 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using OpenCvSharp;
-using Script.Framework.AssetLoader;
 using Script.Framework.UI;
 using Script.Model.Auto;
 using Script.Test;
-using Script.UI.Component;
+using Script.UI.Components;
 using Script.Util;
-using TMPro;
 using Unity.Collections;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
-using static Script.Model.Auto.MapData;
-using Color = UnityEngine.Color;
 
 namespace Script.UI.Panel.Auto
 {
@@ -115,18 +107,21 @@ namespace Script.UI.Panel.Auto
             Utils.SetActive(RightMemoryBtn, true);
 
             _clickLeft = true;
-            OnSelectMapOption(0);
+            OnSelectTipsComp(0);
         }
 
-        List<string> options = new List<string>()
+        public static List<string> MapOptions = new List<string>()
             {
                 "_map",             // 像素粒度
                 "_grid",            // 5X5大格子粒度
                 "A*寻路",           // 5X5大格子粒度
                 "指定目标寻路",      // 5X5大格子粒度
-                "_light_map",       // 像素粒度
-                "_small_map",        // 像素粒度
-                "_judge_map",        // 像素粒度
+                "最近迷雾",
+                "最近迷雾 (跟踪)",
+                "_light_map",
+                "_small_map",
+                "_judge_map",
+                "_fog_map",
                 "保存全部地图",       // 保存至本地
             };
 
@@ -138,7 +133,7 @@ namespace Script.UI.Panel.Auto
             var comp = _clickLeft ? LeftMemoryBtn : RightMemoryBtn;
 
 
-            TipsComp.SetData(options, OnSelectMapOption, 140, 7);
+            TipsComp.SetData(MapOptions, OnSelectTipsComp, 140, 7);
             TipsComp.SetCurIndex(_optionSelectStatus[_clickLeft ? 0 : 1]);
 
             var tipsCompRectT = TipsComp.GetComponent<RectTransform>();
@@ -146,55 +141,66 @@ namespace Script.UI.Panel.Auto
                 , new Vector2(25, 8), true);
             tipsCompRectT.anchoredPosition = pos;
         }
-
-        /// <summary>
-        /// 0:_map 
-        /// 1:_map1 
-        /// 2:大格子寻路
-        /// </summary>
-        void OnSelectMapOption(int option)
+        void OnSelectTipsComp(int option_int)
         {
-            _onSelectPixel = null;
-
-            if (option < 0)
-                return;
-            MapData mapData = MapDataManager.Inst.Get(_mapId);
-            if (mapData == null)
+            if (option_int < 0)
                 return;
 
-            if (options[option] == "保存全部地图")
-            {
-                //保存
-                var script = AutoScriptManager.Inst.GetScriptData(_scriptId);
-                string dir = $"{script.GetCapturePath()}/拍摄地图节点";
-                if (!Directory.Exists(dir))
-                    Directory.CreateDirectory(dir);
-                mapData.Save($"{dir}/map.png");
-                return;
-            }
 
             ImageDetailComp comp = _clickLeft ? LeftImage : RightImage;
-            _optionSelectStatus[_clickLeft ? 0 : 1] = option;
+            GetSpriteOfMapOption(_scriptId, _mapId, (Options)option_int, InputText.text
+                                , out var mapSprite, out var line_offset, out _, comp);
+
+            if (mapSprite == null)
+                return;
+
+            _optionSelectStatus[_clickLeft ? 0 : 1] = option_int;
+            comp.SetData(mapSprite);
+            comp.SetLineOffset(line_offset);
+
+        }
+
+        #region MapOption
+
+        /// <summary>
+        /// 调用者实例 与 需求资源 绑定关系缓存。调用者实例销毁时，需要通知这里清理缓存
+        /// </summary>
+        static Dictionary<Component, (Texture2D, Sprite)> _mapOptionCache = new Dictionary<Component, (Texture2D, Sprite)>();
+        public static void GetSpriteOfMapOption(string scriptId, string mapId, Options option, string command,
+                         out Sprite sprite, out Vector2Int line_offset, out Vector2Int anchor,
+                        Component cacheKey = null)
+        {
+            sprite = null;
+            line_offset = default;
+            anchor = default;
+
+            MapData mapData = MapDataManager.Inst.Get(mapId);
+            if (mapData == null) return;
 
             mapData.GetContentAttr(out Vector2Int xRange, out Vector2Int yRange
                 , out var w, out var h);
+            if (w == 0) return;
+
+
+            anchor = new Vector2Int(xRange.x, yRange.x);
 
             // 使用 rgba 格式
             // Texture2D 是以左下角为像素坐标系原点，而 Mat、Bitmap是左上角
             Color32[] pixels = null;
             Vector2Int size = new Vector2Int(w, h);
-
-            if (option == 0)
+            // DU.RunWithTimer(() =>
+            // {
+            if (option == Options.Map)
             {
                 pixels = mapData.GetImageMap0();
             }
-            else if (option == 1)
+            else if (option == Options.Grid)
             {
                 pixels = mapData.GetImageGrid();
             }
-            else if (option == 2)
+            else if (option == Options.AStartFunc)
             {
-                var str = InputText.text;
+                var str = command;
                 str.Replace(" ", "");
                 str = str.Substring(1, str.Length - 2);
                 var arr = str.Split(',');
@@ -217,9 +223,9 @@ namespace Script.UI.Panel.Auto
                 pixels = mapData.GetImageGridAStar();
 
             }
-            else if (option == 3)
+            else if (option == Options.SearchTargetFunc)
             {
-                var str = InputText.text;
+                var str = command;
                 int target_index = 0;
                 try
                 {
@@ -242,116 +248,98 @@ namespace Script.UI.Panel.Auto
 
                 pixels = mapData.GetImageGridAStar();
             }
-            else if (option == 4)
+            else if (option == Options.FindNearestFog)
+            {
+                mapData.FindNearestFog();
+                pixels = mapData.GetImageToNearestFog();
+            }
+            else if (option == Options.FindNearestFogFollowing)
+            {
+                size = new Vector2Int(200, 200);
+                mapData.FindNearestFog();
+                pixels = mapData.GetImageToNearestFogFollowing(size.x, size.y);
+            }
+            else if (option == Options.LightMap)
             {
                 pixels = mapData.GetImageLightMap();
             }
-            else if (option == 5)
+            else if (option == Options.SmallMap)
             {
                 size = new Vector2Int(200, 200);
                 pixels = mapData.GetImageSmallMap();
             }
-            else if (option == 6)
+            else if (option == Options.JudgeMap)
             {
                 pixels = mapData.GetImageJudgeMap();
             }
-
-
-            var mapTexture = new Texture2D(size.x, size.y, TextureFormat.RGBA32, false);
+            else if (option == Options.FogMap)
+            {
+                pixels = mapData.GetImageFogMap();
+            }
+            else if (option == Options.SaveAllMap)
+            {
+                //保存
+                var script = AutoScriptManager.Inst.GetScriptData(scriptId);
+                string dir = $"{script.GetCapturePath()}/拍摄地图节点";
+                if (!Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+                mapData.Save($"{dir}/map.png");
+                return;
+            }
+            // }, "MapData");
 
             if (pixels.Length == 0)
                 return;
+
+            Texture2D mapTexture = null;
+            if (cacheKey != null && _mapOptionCache.TryGetValue(cacheKey, out var val)
+                && val.Item1.width == size.x && val.Item1.height == size.y)
+            {
+                // 有缓存。并且长宽都一致，就复用。
+                mapTexture = val.Item1;
+                sprite = val.Item2;
+            }
+            else
+            {
+                // 否则。新建并清理缓存
+                mapTexture = new Texture2D(size.x, size.y, TextureFormat.RGBA32, false);
+                sprite = Sprite.Create(mapTexture, new UnityEngine.Rect(0, 0, size.x, size.y), new Vector2(0.5f, 0.5f));
+
+                if (cacheKey != null)
+                {
+                    ClearMapOptionCache(cacheKey);
+                    _mapOptionCache[cacheKey] = (mapTexture, sprite);
+                }
+            }
+
             pixels = IU.Color32ReverseVertical(pixels, size.x);
 
             // 应用像素数据到纹理
             mapTexture.SetPixels32(pixels);
             mapTexture.Apply();
 
-            var line_offset = new Vector2Int(-(xRange.x % 5), -(yRange.x % 5));
-            var mapSprite = Sprite.Create(mapTexture, new UnityEngine.Rect(0, 0, size.x, size.y), new Vector2(0.5f, 0.5f));
-            comp.SetData(mapSprite);
-            comp.SetLineOffset(line_offset);
-
-            SaveMapImage(_clickLeft, mapTexture, mapSprite);
-
-
-            // 加个选择像素回调，为了方便查看内存
-            _onSelectPixel = v2 =>
-            {
-                if (v2.x < 0 || v2.x >= w || v2.y < 0 || v2.y >= h)
-                    return;
-
-                var px = v2.x + xRange.x;
-                var py = v2.y + yRange.x;
-                var grid_px = px / 5;
-                var grid_py = py / 5;
-
-                BigCell cell = mapData._gridData._grid[grid_px, grid_py];
-                if (cell == null)
-                    return;
-                CellType[,] map = mapData._map;
-
-                int x_start = cell.x * 5;
-                int y_start = cell.y * 5;
-                var s_map = new CellType[5, 5];
-                for (int m = y_start; m < y_start + 5; m++)
-                    for (int n = x_start; n < x_start + 5; n++)
-                    {
-                        s_map[n - x_start, m - y_start] = map[n, m];
-                    }
-
-                var judge_pos = mapData._judgePos;
-                JudgeCell j = default;
-                if (px - judge_pos.x >= 0 && px - judge_pos.x < 300
-                    && py - judge_pos.y >= 0 && py - judge_pos.y < 300)
-                    j = mapData._judge_map[px - judge_pos.x, py - judge_pos.y];
-
-            };
-
+            line_offset = new Vector2Int(-(xRange.x % 5), -(yRange.x % 5));
         }
 
-        void SaveMapImage(bool isLeft, Texture2D texture, Sprite sprite)
+        public static void ClearMapOptionCache(Component cacheKey)
         {
-            ClearMapImage(isLeft);
-            if (isLeft)
+            if (_mapOptionCache.TryGetValue(cacheKey, out var val))
             {
-                _mapLTexture = texture;
-                _mapLSprite = sprite;
-            }
-            else
-            {
-                _mapRTexture = texture;
-                _mapRSprite = sprite;
+                Destroy(val.Item1);
+                Destroy(val.Item2);
+                _mapOptionCache.Remove(cacheKey);
             }
         }
 
-
-        void ClearMapImage(bool isLeft)
-        {
-            if (isLeft && _mapLTexture != null)
-            {
-                Destroy(_mapLTexture);
-                _mapLTexture = null;
-                Destroy(_mapLSprite);
-                _mapLSprite = null;
-            }
-            else if (!isLeft && _mapRTexture != null)
-            {
-                Destroy(_mapRTexture);
-                _mapRTexture = null;
-                Destroy(_mapRSprite);
-                _mapRSprite = null;
-            }
-
-        }
-
+        #endregion
+        
 
         #endregion
 
         void OnClickLeftPathBtn()
         {
             // string init_path = Application.streamingAssetsPath;
-            string init_path = @"C:\Users\hp\Desktop\path\图\0.2间隔";
+            string init_path = @"D:\unityProject\MyProject\TestResource\图";
             string path = WU.OpenFileDialog("选择图片", init_path, "图片 *.png *.jpg)|*.png;*.jpg");
             LoadLeftImage(path);
         }
@@ -394,9 +382,10 @@ namespace Script.UI.Panel.Auto
                 _mapData.Capture(new Bitmap(file_path));
 
                 _clickLeft = false;
-                OnSelectMapOption(_optionSelectStatus[_clickLeft ? 0 : 1]);
+                OnSelectTipsComp(_optionSelectStatus[_clickLeft ? 0 : 1]);
+
                 _clickLeft = true;
-                OnSelectMapOption(_optionSelectStatus[_clickLeft ? 0 : 1]);
+                OnSelectTipsComp(_optionSelectStatus[_clickLeft ? 0 : 1]);
 
                 _mapData.PrintResult();
             }
@@ -480,8 +469,13 @@ namespace Script.UI.Panel.Auto
             _sourceTex.Apply();
         }
         #region 筛选
-        int max_r = 0;
 
+
+
+
+
+
+        #region FilterPixel
         void FilterPixel()
         {
             if (_sourceTex == null) return;
@@ -497,29 +491,47 @@ namespace Script.UI.Panel.Auto
             // if (!float.TryParse(arr[2], out float b)) return;
             // var target = new Color32((byte)r, (byte)g, (byte)b, 255);
 
-            // 第1版  颜色偏白，微蓝   
-            //
-            // var min_1th = new Color32(117, 123, 128, 255);
-            // var max_1th = new Color32(173, 165, 180, 255);
-            // var min_2th = new Color32(86, 88, 90, 255);
-            // var max_2th = max_1th;
-            // var min_3th = new Color32(65, 120, 135, 255);
-            // var max_3th = new Color32(95, 140, 170, 255);
-            // var B_to_G = new Vector2Int(5, 30);
+            var color_set = 1;
 
-            // 第2版  颜色偏蓝   
-            //
-            // 1类边界
-            var min_1th = new Color32(110, 110, 150, 255);
-            var max_1th = new Color32(145, 145, 195, 255);
-            var B_to_G_1th = new Vector2Int(30, 60);
-            // 2类边界
-            var min_2th = new Color32(86, 88, 90, 255);
-            var max_2th = max_1th;
-            // 1类迷雾
-            var min_3th = new Color32(0, 130, 170, 255);
-            var max_3th = new Color32(90, 142, 192, 255);
-            var B_to_G_3th = new Vector2Int(38, 55);
+            Color32 min_1th = default;
+            Color32 max_1th = default;
+            Vector2Int B_to_G_1th = default;
+            Color32 min_2th = default;
+            Color32 max_2th = default;
+            Color32 min_3th = default;
+            Color32 max_3th = default;
+            Vector2Int B_to_G_3th = default;
+
+            if (color_set == 1)
+            {
+                // 第1版  颜色偏蓝   
+                //
+                // 1类边界
+                min_1th = new Color32(110, 110, 150, 255);
+                max_1th = new Color32(145, 145, 195, 255);
+                B_to_G_1th = new Vector2Int(30, 60);
+                // 2类边界
+                min_2th = new Color32(86, 88, 90, 255);
+                max_2th = max_1th;
+                // 1类迷雾
+                min_3th = new Color32(0, 130, 170, 255);
+                max_3th = new Color32(90, 142, 192, 255);
+                B_to_G_3th = new Vector2Int(38, 55);
+            }
+            else
+            {
+                // 第2版 偏白
+                //
+                min_1th = new Color32(117, 123, 128, 255);
+                max_1th = new Color32(173, 165, 180, 255);
+                B_to_G_1th = new Vector2Int(30, 60);
+                min_2th = new Color32(86, 88, 90, 255);
+                max_2th = max_1th;
+                min_3th = new Color32(65, 120, 135, 255);
+                max_3th = new Color32(100, 140, 170, 255);
+                B_to_G_3th = new Vector2Int(5, 30);
+            }
+
 
 
             var x_start = 2;
@@ -539,7 +551,6 @@ namespace Script.UI.Panel.Auto
                 new Vector2Int(0,2),new Vector2Int(0,-2),
             };
 
-            #region 筛-初始像素
 
             DU.RunWithTimer(() =>
             {
@@ -555,7 +566,7 @@ namespace Script.UI.Panel.Auto
                             byte g = color.g;
                             byte b = color.b;
 
-                            if (r == 0 && g == 0 && b == 0) // 文字描边
+                            if (r <= 3 && g <= 3 && b <= 3) // 文字描边
                                 colorData[j, i] = 0;
 
                             else if (r < 50 && g < 50 && b < 50) // 空地
@@ -589,7 +600,7 @@ namespace Script.UI.Panel.Auto
                             byte r = color.r;
                             byte g = color.g;
                             byte b = color.b;
-                            if (colorData[j, i] == 1 || colorData[j, i] > 9)
+                            if (colorData[j, i] != 0)
                                 continue;
 
                             if (Between(color, min_1th, max_1th)
@@ -613,7 +624,7 @@ namespace Script.UI.Panel.Auto
 
             }, "GenerateMap");
 
-            #endregion
+        #endregion
 
             var temp = new int[_imgW, _imgH];
 
@@ -642,19 +653,19 @@ namespace Script.UI.Panel.Auto
                     var data = colorData[j, i];
                     if (data == 0)
                         pixels[index] = new Color32(128, 128, 128, 255);
-                    if (data == 1)
+                    if (data == 1)          // 空地
                         pixels[index] = new Color32(0, 0, 0, 255);
-                    else if (data == 2)      // 边界     
+                    else if (data == 2)     // 边界     
                         pixels[index] = new Color32(255, 255, 255, 255);
-                    else if (data == 5)      // 二阶边界,弱一点                 
+                    else if (data == 5)     // 若边界                
                         pixels[index] = new Color32(255, 0, 0, 255);
-                    else if (data == 10)
+                    else if (data == 10)    // 迷雾
                         pixels[index] = new Color32(0, 0, 255, 255);
-                    else if (data == 11)
-                        pixels[index] = new Color32(128, 128, 200, 255);
+                    else if (data == 11)    // 弱迷雾
+                        pixels[index] = new Color32(0, 0, 180, 255);
 
                 }
-            #endregion
+        #endregion
 
 
             // 应用像素数据到纹理
@@ -721,46 +732,7 @@ namespace Script.UI.Panel.Auto
 
                 }
 
-                // if (colorData[x, y - 1] == 3)
-                // {
-                //     colorData[x, y - 1] = 5;
-                //     stack[count++] = new Vector2Int(x, y - 1);
-                // }
-                // if (colorData[x - 1, y] == 3)
-                // {
-                //     colorData[x - 1, y] = 5;
-                //     stack[count++] = new Vector2Int(x - 1, y);
-                // }
-                // if (colorData[x, y + 1] == 3)
-                // {
-                //     colorData[x, y + 1] = 5;
-                //     stack[count++] = new Vector2Int(x, y + 1);
-                // }
-                // if (colorData[x + 1, y] == 3)
-                // {
-                //     colorData[x + 1, y] = 5;
-                //     stack[count++] = new Vector2Int(x + 1, y);
-                // }
-                // if (colorData[x - 1, y - 1] == 3)
-                // {
-                //     colorData[x - 1, y - 1] = 5;
-                //     stack[count++] = new Vector2Int(x - 1, y - 1);
-                // }
-                // if (colorData[x - 1, y + 1] == 3)
-                // {
-                //     colorData[x - 1, y + 1] = 5;
-                //     stack[count++] = new Vector2Int(x - 1, y + 1);
-                // }
-                // if (colorData[x + 1, y + 1] == 3)
-                // {
-                //     colorData[x + 1, y + 1] = 5;
-                //     stack[count++] = new Vector2Int(x + 1, y + 1);
-                // }
-                // if (colorData[x + 1, y - 1] == 3)
-                // {
-                //     colorData[x + 1, y - 1] = 5;
-                //     stack[count++] = new Vector2Int(x + 1, y - 1);
-                // }
+
             }
         }
 
@@ -821,7 +793,7 @@ namespace Script.UI.Panel.Auto
             _imgH = 0;
         }
 
-        #region 处理小地图
+        #region Btn 1
 
         MapData _mapData;
 
@@ -878,17 +850,23 @@ namespace Script.UI.Panel.Auto
             var result = finder.BeginAStar(map, new Vector2Int(2, 1), new Vector2Int(6, 6));
 
         }
+
+        #endregion
+        #region Btn 2
+
         void OnClickBtn2th()
         {
-            // FilterPixel();
+            FilterPixel();
 
             //  比较下谁执快
             // TestExecutionTime.Inst.Test1();
             // TestExecutionTime.Inst.Test2();
             // TestExecutionTime.Inst.Test3();
-            TestExecutionTime.Inst.Test4();
+            // TestExecutionTime.Inst.Test4();
+            // TestExecutionTime.Inst.Test5();
         }
-
+        #endregion
+        #region Btn 3 
         int _index;
         int _max_index;
         string _debug_dir;
@@ -898,7 +876,7 @@ namespace Script.UI.Panel.Auto
             // if (_mapData == null)
             // {
             MapDataManager.Inst.Remove("Map-22");
-            MapDataManager.Inst.Create("Map-22", new CVRect(0, 0, 200, 200));
+            MapDataManager.Inst.Create("Map-22", new CVRect(0, 0, 200, 200), 0);
             _mapData = MapDataManager.Inst.Get("Map-22");
             // }
 
@@ -909,9 +887,10 @@ namespace Script.UI.Panel.Auto
 
             // var dir = @"D:\unityProject\MyProject\Assets\StreamingAssets\SmallMap\小地图_22";
 
-            _index = 31;
-            _max_index = 111;
-            _debug_dir = @"D:\unityProject\MyProject\TestResource\图\0.2间隔";
+            _index = 1;
+            _max_index = 40;
+            // _debug_dir = @"D:\unityProject\MyProject\TestResource\图\0.2间隔";
+            _debug_dir = @"Assets\StreamingAssets\SmallMap\Map-22";
 
             // for (_index = 31; _index <= 111; _index++)
             // {
@@ -924,7 +903,8 @@ namespace Script.UI.Panel.Auto
             // _mapData.Save(save_path);
 
         }
-
+        #endregion
+        #region Btn 4
         void OnClickBtn4th()
         {
             if (_mapData == null)
@@ -952,7 +932,7 @@ namespace Script.UI.Panel.Auto
         }
 
 
-
+        #endregion
         Sprite _show_sprite;
         void OnDestroy()
         {
@@ -962,18 +942,35 @@ namespace Script.UI.Panel.Auto
                 Destroy(_show_sprite.texture);
                 _show_sprite = null;
 
-                ClearMapImage(true);
-                ClearMapImage(false);
+                ClearMapOptionCache(LeftImage);
+                ClearMapOptionCache(RightImage);
             }
         }
 
 
-        #endregion
         public override void Close()
         {
             base.Close();
             UIManager.Inst.ShowPanel(PanelEnum.TemplateMatchDrawResultPanel, new List<object> { null, 0 });
         }
+
+        #region Options
+        public enum Options
+        {
+            Map,
+            Grid,
+            AStartFunc,
+            SearchTargetFunc,
+            FindNearestFog,
+            FindNearestFogFollowing,
+            LightMap,
+            SmallMap,
+            JudgeMap,
+            FogMap,
+            SaveAllMap,
+        }
+
+        #endregion
     }
 
 
