@@ -89,15 +89,8 @@ namespace Script.Framework
         private void DeleteCor(object obj, Action action)
         {
             if (objDic.TryGetValue(obj, out var actionDic))
-            {
                 if (actionDic.TryGetValue(action, out var cor))
-                {
                     actionDic.Remove(action);
-                    if (actionDic.Count == 0)
-                        objDic.Remove(obj);
-                }
-            }
         }
-
     }
 }

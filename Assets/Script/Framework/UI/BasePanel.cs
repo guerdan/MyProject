@@ -44,6 +44,7 @@ namespace Script.Framework.UI
         protected Sequence openSeq;          //弹窗打开动画
         protected Sequence closeSeq;         //弹窗关闭动画
 
+        protected RectTransform _rectT;
         protected Transform _content;
         protected GameObject _maskBgNode;
         private PanelDefine _panelDefine;
@@ -61,6 +62,15 @@ namespace Script.Framework.UI
         public bool ShowMask { get => _panelDefine.ClickOutWinClose; }
         public bool AnimEnable { get => _animEnable && PanelDefine.Type != UITypeEnum.Full; }  //全屏式界面不提供默认动画，如需要自行实现
 
+        public virtual void SetConfig(BasePanelConfig config)
+        {
+            _rectT = (RectTransform)transform;
+            if (config == null)
+                SetPos(PanelDefine.InitPos);
+            else
+                SetPos(config.WinPos);
+
+        }
         public virtual void SetData(object data) { }
 
         public virtual void BeforeShow()
@@ -78,8 +88,8 @@ namespace Script.Framework.UI
             BeforeShowEvent?.Invoke(PanelDefine.Key);
             // Debug.Log($"BeforeShow Panel {PanelDefine.Name} {DateTime.UtcNow} {DateTime.UtcNow.Millisecond}");
 
-            RefreshPos();
-            GetComponentInChildren<DragPanel>()?.SetData(this);
+            var comp = GetComponentInChildren<DragPanel>();
+            comp?.SetData(this);
         }
 
 
@@ -204,7 +214,7 @@ namespace Script.Framework.UI
         //     if (!display) return;
         //     UIManager.Inst.PopPanel(PanelDefine.Layer);
         // }
-      
+
 
         protected void ClearAnim()
         {
@@ -248,9 +258,9 @@ namespace Script.Framework.UI
             }
         }
 
-        public virtual void RefreshPos()
+        public void SetPos(Vector2 pos)
         {
-            ((RectTransform)transform).anchoredPosition = PanelDefine.InitPos;
+            _rectT.anchoredPosition = pos;
         }
 
         public void OnPointerDown(PointerEventData eventData)

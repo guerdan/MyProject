@@ -53,8 +53,10 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 96d15300f795c754abd5e137fda0268a, type: 3}
   - {fileID: 21300000, guid: 4cfb9d1021f2a714486e95155a621632, type: 3}
   - {fileID: 21300000, guid: 9b26aaa0c8f925f4cb7b7fa7e6bffa25, type: 3}
+  - {fileID: 21300000, guid: 079ef8b0013496f4f9787995bdb51373, type: 3}
   - {fileID: 21300000, guid: 992704c04e94f104b9068d064390aa2a, type: 3}
   - {fileID: 21300000, guid: 155ca5d065c8739409127d9d858104e3, type: 3}
+  - {fileID: 21300000, guid: 5f4ca0f04debbf94493feaed02d421a6, type: 3}
   - {fileID: 21300000, guid: 81568311075b7ec488c4ca826b319602, type: 3}
   - {fileID: 21300000, guid: 23bdb351ffe5cb94cb0adb00be98ddcc, type: 3}
   - {fileID: 21300000, guid: bcc9716178064de49883d09d4a5205f7, type: 3}
@@ -70,7 +72,9 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 113424f2f6b8611429a849b68572a864, type: 3}
   - {fileID: 21300000, guid: 0b2aa9f2be541b344b1932d576f75638, type: 3}
   - {fileID: 21300000, guid: 44103b33ac4780a45b08d752db379a72, type: 3}
+  - {fileID: 21300000, guid: 6c14038394084794d91244e488743bc4, type: 3}
   - {fileID: 21300000, guid: 765bdda359c52984c804e2f37a5f4178, type: 3}
+  - {fileID: 21300000, guid: 6f5f91c3c1fb61a48b3936eb810176a1, type: 3}
   - {fileID: 21300000, guid: 374c4404ef9d2904f81c7247876b5ec1, type: 3}
   - {fileID: 21300000, guid: 367d5214049147349aa5017340d60396, type: 3}
   - {fileID: 21300000, guid: 7cb18c24ffb21454eaaf2d8a57e3e413, type: 3}
@@ -91,6 +95,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 66b16786e946ef6469fd37763f795d85, type: 3}
   - {fileID: 21300000, guid: b3aef0a63aa728840a256052be0a34a7, type: 3}
   - {fileID: 21300000, guid: 346671a6c0ad7eb4d8177cdee8141813, type: 3}
+  - {fileID: 21300000, guid: b72906a6429dae74faeeb15f03f1df20, type: 3}
   - {fileID: 21300000, guid: bd3a98a662f9e5d4aa57a3e913cda9d6, type: 3}
   - {fileID: 21300000, guid: 5ee2ebb616460c9498322961ff5b154f, type: 3}
   - {fileID: 21300000, guid: 9c979be6357f16d478aaf2203f2ffc23, type: 3}
@@ -112,12 +117,14 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 634d1a4986c28d9469d12212bdac38d9, type: 3}
   - {fileID: 21300000, guid: ba8d94a9b9c03bd47a977f2662db81d5, type: 3}
   - {fileID: 21300000, guid: f92e27e9df544164e83c62b0bd2780bf, type: 3}
+  - {fileID: 21300000, guid: 9f4f271aea35f8f46b535d5d6198bba4, type: 3}
   - {fileID: 21300000, guid: 8792bb3a06715c849bc4e699f0958a3e, type: 3}
   - {fileID: 21300000, guid: f9f37f3a4b1e83748b33156a55e57e4b, type: 3}
   - {fileID: 21300000, guid: 74f3ae6aa46d6844ba5b23f39db4bd9b, type: 3}
   - {fileID: 21300000, guid: 7b660a9a380c3d64d979109ea44d995d, type: 3}
   - {fileID: 21300000, guid: 484f57eae66a3f443923405704b247b1, type: 3}
   - {fileID: 21300000, guid: 35ec8dfacd6c07c41a30560084d2e96a, type: 3}
+  - {fileID: 21300000, guid: f016aa1b3f770fe4b923229b634dbdcc, type: 3}
   - {fileID: 21300000, guid: 18326d1bc73daba44ad3c939dd02b08e, type: 3}
   - {fileID: 21300000, guid: 999f922b4b1850c408298b5f88ceedc8, type: 3}
   - {fileID: 21300000, guid: 2511282ba2d656d49bec4981a7e86563, type: 3}
@@ -147,6 +154,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 0022613e9faa2d24cbb5606c123929d4, type: 3}
   - {fileID: 21300000, guid: 552ef9be6e694324eb064bcbf6758e2f, type: 3}
   - {fileID: 21300000, guid: 3bafe8ce610cf8c439122930a236874b, type: 3}
+  - {fileID: 21300000, guid: 10489cceeaa3cad49a6277158d3ca7af, type: 3}
   - {fileID: 21300000, guid: be33170f9ecdfab4b9473c27d96ce2c1, type: 3}
   - {fileID: 21300000, guid: 53f9c51fb729f194a969d69e4627dc4c, type: 3}
   - {fileID: 21300000, guid: de1e052ff7bf9ab4e8b55255fbdc453d, type: 3}
@@ -159,8 +167,10 @@ SpriteAtlas:
   - button_close
   - icon_pvp_score
   - wooden
+  - s1_button
   - bg_shitou
   - b_start
+  - s1_panelBg_bottom
   - mouse_move
   - icon_pvp_rank1
   - tab_common
@@ -176,7 +186,9 @@ SpriteAtlas:
   - button_blue
   - dot_line_9px
   - folder_add
+  - s1_close
   - white_square_10px
+  - s1_tab_unable
   - tab_hero_active
   - settings
   - search_icon
@@ -197,6 +209,7 @@ SpriteAtlas:
   - b_stop1
   - frame1_white
   - menus_arrow
+  - b_restart
   - frame
   - menus_selected
   - wooden_white
@@ -218,12 +231,14 @@ SpriteAtlas:
   - b_stop
   - bg_shitou2_bottom
   - button_brown
+  - b_restart1
   - float_bg_0
   - tab_common_select
   - bg_wooden
   - transparent
   - book_circle
   - icon_pvp_rank3
+  - s1_panelBg_top
   - icon_pvp_defence_en
   - icon_pvp_fail
   - icon_pvp_attack
@@ -253,6 +268,7 @@ SpriteAtlas:
   - cross_white
   - b_start1
   - icon_pvp_rank2
+  - s1_tab_able
   - icon_pvp_win_en
   - button_blue
   - bg_paper2

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Script.Framework;
 using Script.Framework.UI;
 using Script.Model.Auto;
 using Script.UI.Panel.Auto;
@@ -41,7 +42,14 @@ namespace Script.Util
         };
 
         public static readonly Vector2Int DefaultV2I = new Vector2Int(-1, -1);
-
+        public static readonly float Epsilon = 1e-6f;
+        public static readonly float OneFrame = 0.0335f;
+        public static readonly float MinFrameTime = 0.01f;           // 用来完成一帧的等待
+        public static readonly Color32 Red = new Color32(255, 0, 0, 255);
+        /// <summary>
+        /// text组件中，不会换行的空格
+        /// </summary>
+        public static readonly string SpaceStr = "\u00A0";
         /// <summary>
         /// 如果没有什么特别组件而想存成List[GameObject]，就改用存List[Transform]或者List[RectTransform]
         /// 以达到相同的效果
@@ -109,6 +117,14 @@ namespace Script.Util
             return color;
         }
 
+        public static Vector2 GetScreenPos(Transform trans)
+        {
+            Canvas canvas = Root.Inst.Canvas;
+            Camera cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+            Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(cam, trans.position);
+            return screenPoint;
+        }
+
         /// <summary>
         /// UI下，非相同父节点的位置复制。
         /// 解耦target.pivot
@@ -120,15 +136,14 @@ namespace Script.Util
                 (0.5f - target.pivot.x) * target.rect.width,
                 (0.5f - target.pivot.y) * target.rect.height
             );
-            // 1. 获取 nodeA 在世界空间的位置
-            Vector3 worldPos = target.position;
+            // 1. 获取 target 屏幕坐标
+            Vector2 screenPoint = GetScreenPos(target);
 
-            // 2. 将 worldPos 转为 parentB 下的本地坐标
+            // 2. 将 target 屏幕坐标 转为 actor.parent ui坐标系下的坐标
             Vector2 localPoint;
             RectTransform parentRect = actor.parent.GetComponent<RectTransform>();
             Canvas canvas = actor.GetComponentInParent<Canvas>();
             Camera cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
-            Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(cam, worldPos);
             RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRect, screenPoint, cam, out localPoint);
 
             if (use_pivot)
@@ -214,6 +229,26 @@ namespace Script.Util
             canvasGroup.blocksRaycasts = canClick;
         }
 
+        /// <summary>
+        /// 点击穿透。 偶尔会报错这句： EventSystem.current.RaycastAll(pointerEventData, raycastResults); 
+        /// 普通的点击有效，但不适用drag
+        /// </summary>
+        public static void PassEvent<T>(GameObject avoidGo, PointerEventData pointerEventData
+                        , ExecuteEvents.EventFunction<T> eventFunction) where T : IEventSystemHandler
+        {
+            List<RaycastResult> raycastResults = new List<RaycastResult>();
+            EventSystem.current.RaycastAll(pointerEventData, raycastResults);
+            foreach (var result in raycastResults)
+            {
+                var go = result.gameObject;
+                if (go != null && go != avoidGo)
+                {
+                    ExecuteEvents.ExecuteHierarchy(go, pointerEventData, eventFunction);
+                    break;
+                }
+            }
+        }
+
         #region AutoScript
         public static void AutoScriptSwitchRunStatus(string id)
         {
@@ -244,6 +279,7 @@ namespace Script.Util
         {
             // 打开后占全屏，一定会影响脚本执行，故暂停
             AutoScriptManager.Inst.StopScript(id);
+            AutoScriptManager.Inst.ChangeHotScript(id);
             AutoScriptManager.Inst.Settings.AddOpenRecent(id);
             UIManager.Inst.PopPanel(PanelEnum.DeskPetMain);
             UIManager.Inst.ShowPanel(PanelEnum.DrawProcessPanel, id);

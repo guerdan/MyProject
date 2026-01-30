@@ -33,39 +33,29 @@ namespace Script.UI.Panel.Auto.Node
             TypeLineColor3 = Utils.ParseHtmlString("#395576");
         }
 
-        [Header("内容")]
+        [Header("扩展内容")]
         [SerializeField] private Text Formula;      // 公式 
         [SerializeField] private Text TypeText;     // 类型：条件/触发事件/监听事件 
         [SerializeField] private Image TypeBg;      // 图 
         [SerializeField] private Image TypeLine;    // 图 
-
-        [SerializeField] public CheckBox TopCircle;       // 上圈圈
-        [SerializeField] public CheckBox BottomCircle;    // 下圈圈
-
-        RectTransform TopCircleR;
-        RectTransform TopCircleTextR;
-        RectTransform BottomCircleR;
-        RectTransform BottomCircleTextR;
 
 
 
         protected void Awake()
         {
             base.Awake();
-            TopCircleR = (RectTransform)TopCircle.transform;
-            TopCircleTextR = (RectTransform)TopCircle.GetComponentInChildren<Text>().transform;
-            BottomCircleR = (RectTransform)BottomCircle.transform;
-            BottomCircleTextR = (RectTransform)BottomCircle.GetComponentInChildren<Text>().transform;
+           
         }
 
         public override void RefreshContent()
         {
+            base.RefreshContent();
             if (_data is AssignOperNode)
             {
                 AssignOperNode data = _data as AssignOperNode;
                 Formula.text = AutoDataUIConfig.FormulaFormat(data.Formula);
                 ShowType(false);
-                ShowIsCondition(false);
+                // ShowIsCondition(false);
             }
 
             else if (_data is ConditionOperNode)
@@ -73,7 +63,7 @@ namespace Script.UI.Panel.Auto.Node
                 ConditionOperNode data = _data as ConditionOperNode;
                 Formula.text = AutoDataUIConfig.FormulaFormat(data.Formula);
                 ShowType(true);
-                ShowIsCondition(true);
+                // ShowIsCondition(true);
                 TypeText.text = "条件";
                 TypeText.color = TypeTextColor1;
                 TypeBg.color = TypeBgColor1;
@@ -85,7 +75,7 @@ namespace Script.UI.Panel.Auto.Node
                 TriggerEventNode data = _data as TriggerEventNode;
                 Formula.text = data.EventName;
                 ShowType(true);
-                ShowIsCondition(false);
+                // ShowIsCondition(false);
                 TypeText.text = "触发";
                 TypeText.color = TypeTextColor2;
                 TypeBg.color = TypeBgColor2;
@@ -97,7 +87,7 @@ namespace Script.UI.Panel.Auto.Node
                 ListenEventNode data = _data as ListenEventNode;
                 Formula.text = data.EventName;
                 ShowType(true);
-                ShowIsCondition(false);
+                // ShowIsCondition(false);
                 TypeText.text = "监听";
                 TypeText.color = TypeTextColor3;
                 TypeBg.color = TypeBgColor3;
@@ -123,67 +113,29 @@ namespace Script.UI.Panel.Auto.Node
             }
         }
 
-        void ShowIsCondition(bool isCondition)
-        {
-            TopCircle.gameObject.SetActive(isCondition);
-            BottomCircle.gameObject.SetActive(isCondition);
-        }
+        // void ShowIsCondition(bool isCondition)
+        // {
+        //     TopCircle.gameObject.SetActive(isCondition);
+        //     BottomCircle.gameObject.SetActive(isCondition);
+        // }
 
-        public override void RefreshSelected()
-        {
-            if (_data is ConditionOperNode)
-            {
-                bool selected = _id == _panel.MouseSelectedId;
-                TopCircle.SetData(selected);
-                BottomCircle.SetData(selected);
-            }
-            else
-            {
-                base.RefreshSelected();
-            }
-        }
+        // public override void RefreshSlotUI()
+        // {
+        //     base.RefreshSlotUI();
 
-        public override void RefreshSlotUI()
-        {
-            if (_data is ConditionOperNode)
-            {
-                var pos0 = _panel.GetLineEndPos(_data, 1) - selfR.anchoredPosition;
-                TopCircleR.anchoredPosition = pos0;
-                TopCircleTextR.anchoredPosition = GetTextPos(pos0);
+        //     if (_data is ConditionOperNode)
+        //     {
+        //         var pos0 = _panel.GetLineEndPos(_data, 1) - selfR.anchoredPosition;
+        //         TrueCircleTextR.anchoredPosition = GetTextPos(pos0);
 
-                var pos1 = _panel.GetLineEndPos(_data, 2) - selfR.anchoredPosition;
-                BottomCircleR.anchoredPosition = pos1;
-                BottomCircleTextR.anchoredPosition = GetTextPos(pos1);
-            }
-            else
-            {
-                base.RefreshSlotUI();
-            }
-        }
+        //         var pos1 = _panel.GetLineEndPos(_data, 2) - selfR.anchoredPosition;
+        //         FalseCircleTextR.anchoredPosition = GetTextPos(pos1);
+        //         var pos2 = _panel.GetLineEndPos(_data, 0) - selfR.anchoredPosition;
+        //         InCircleTextR.anchoredPosition = GetTextPos(pos2, 2);
+        //     }
+        // }
 
-        Vector2 GetTextPos(Vector2 source)
-        {
-
-            int x = 0;
-            int y = 0;
-
-
-            if (source.y == 0)
-                y = 0;
-            else if (source.y > 0)
-                y = -6;
-            else
-                y = 6;
-
-            if (source.x >= 0)
-                x = -10;
-            else
-                x = 10;
-
-            return new Vector2(x, y);
-        }
-
-
+        
 
     }
 }

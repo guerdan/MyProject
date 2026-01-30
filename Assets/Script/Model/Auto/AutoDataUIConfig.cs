@@ -5,7 +5,6 @@ using Script.Util;
 
 namespace Script.Model.Auto
 {
-    #region UI
 
     public static class AutoDataUIConfig
     {
@@ -16,9 +15,11 @@ namespace Script.Model.Auto
             NodeType.KeyBoardOper,
             NodeType.AssignOper,
             NodeType.ConditionOper,
+            NodeType.WaitOper,
             NodeType.TriggerEvent,
             NodeType.ListenEvent,
             NodeType.MapCapture,
+            NodeType.MapPathFinding,
             NodeType.StopScript,
         };
 
@@ -29,9 +30,11 @@ namespace Script.Model.Auto
             { NodeType.KeyBoardOper, "键盘" },
             { NodeType.AssignOper, "赋值" },
             { NodeType.ConditionOper, "条件" },
-            { NodeType.TriggerEvent, "触发事件" },
-            { NodeType.ListenEvent, "监听" },
-            { NodeType.MapCapture, "地图截图" },
+            { NodeType.WaitOper, "等待" },
+            { NodeType.TriggerEvent, "事件触发" },
+            { NodeType.ListenEvent, "事件监听" },
+            { NodeType.MapCapture, "地图识别 "},
+            { NodeType.MapPathFinding, "地图寻路" },
             { NodeType.StopScript, "暂停脚本" },
         };
 
@@ -46,10 +49,7 @@ namespace Script.Model.Auto
             return list;
         }
 
-        public static string GetNodeId(BaseNodeData node)
-        {
-            return "id:" + node.Id.Substring(5);
-        }
+
 
         #region 键盘UI
         public static Dictionary<KeyboardEnum, string> KeyboardEnum2Name = new Dictionary<KeyboardEnum, string>()
@@ -254,11 +254,41 @@ namespace Script.Model.Auto
             }
         }
 
+        #endregion
+
+
+        #region 地图寻路UI
+
+        public static List<PathFindingType> MapPFTypes = new List<PathFindingType>()
+        {
+            PathFindingType.ExploreFog,
+            PathFindingType.SearchTarget,
+            PathFindingType.KillAllTarget,
+        };
+
+        public static Dictionary<PathFindingType, string> MapPFTypeNames = new Dictionary<PathFindingType, string>()
+        {
+            { PathFindingType.ExploreFog, "探索迷雾" },
+            { PathFindingType.SearchTarget, "搜寻目标" },
+            { PathFindingType.KillAllTarget, "消灭全部目标" },
+        };
+
+        public static List<string> GetMapPFTypeNameList()
+        {
+            var list = new List<string>();
+            foreach (var type in MapPFTypes)
+            {
+                list.Add(MapPFTypeNames[type]);
+            }
+
+            return list;
+        }
+        #endregion
         #region 格式化
 
         static HashSet<string> _symbols = new HashSet<string>()
         {
-            "+", "-", "*", "/", "=", ",","(",")", ">", "<", ">=", "<=", "==", "!=", "&&", "||"
+            "+", "-", "*", "/", "=", ",","(",")", "==", "!=", ">", "<", ">=", "<=", "&&", "||"
             ,".","{","}"
         };
         static HashSet<string> _operators = new HashSet<string>()
@@ -335,7 +365,9 @@ namespace Script.Model.Auto
 
         #endregion
 
+        #region Other
         // 搜索匹配的变量名
+        // 要求: 小写变量名能搜出来大写的变量名
         public static List<string> GetAssignMatchList(string search, Dictionary<string, FormulaVarInfo> varRef)
         {
             List<string> r = new List<string>();
@@ -343,21 +375,40 @@ namespace Script.Model.Auto
                 return r;
 
             search = search.ToLower();
-            foreach (var tuple in varRef)
-            {
-                var var_name = tuple.Key;
-                var var_info = tuple.Value;
-                if (var_name.Contains(search))
-                {
+
+            foreach (var var_info in varRef.Values)
+                if (var_info.VarNameLower.Contains(search))
                     r.Add(var_info.VarName);
-                }
+
+            Utils.CommonSort(r);
+            return r;
+        }
+
+        // 搜索匹配的事件名，编辑监听节点的事件名时提示已存在的事件。
+        // 要求: 小写变量名能搜出来大写的变量名
+        public static List<string> GetEventMatchList(string search
+                    , Dictionary<string, (List<TriggerEventNode>, string)> varRef)
+        {
+            List<string> r = new List<string>();
+            if (string.IsNullOrEmpty(search))
+                return r;
+
+            search = search.ToLower();
+
+            foreach (var pair in varRef)
+            {
+                var event_name = pair.Key;
+                var event_lower_name = pair.Value.Item2;
+                if (event_lower_name.Contains(search))
+                    r.Add(event_name);
             }
+
             Utils.CommonSort(r);
             return r;
         }
 
         // 提取在编辑中的表达式中最后一个关键词
-        // 光标放到 带有"."目前会失效
+        // 光标放到带有"." 目前会失效
         public static void GetAssignKeyword(string formula, int cursorPos, out string keyword, out int startIndex)
         {
             keyword = "";
@@ -464,5 +515,4 @@ namespace Script.Model.Auto
         }
         #endregion
     }
-    #endregion
 }

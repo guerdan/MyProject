@@ -55,5 +55,7 @@ namespace Script.UI.Components
             Refresh();
             _clickFunc?.Invoke(_value);
         }
+
+        
     }
 }

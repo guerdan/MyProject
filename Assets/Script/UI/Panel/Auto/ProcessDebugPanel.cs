@@ -12,7 +12,7 @@ namespace Script.UI.Panel.Auto
 {
     public class ProcessDebugPanel : BasePanel
     {
-        public AutoScriptManager manager => AutoScriptManager.Inst;
+        public AutoScriptManager Manager => AutoScriptManager.Inst;
 
         [SerializeField] private CheckBox ScreenDrawBtn;        //开启屏幕绘制
         [SerializeField] private CheckBox SaveMapCaptureBtn;    //保存地图拍摄快照
@@ -36,16 +36,16 @@ namespace Script.UI.Panel.Auto
         }
         void Refresh()
         {
-            ScreenDrawBtn.SetData(manager.ScreenDrawStatus, OnChangeScreenDraw);
-            SaveMapCaptureBtn.SetData(manager.SaveMapCaptureStatus, OnChangeSaveMapCapture);
+            ScreenDrawBtn.SetData(Manager.ScreenDrawDebug, OnChangeScreenDraw);
+            SaveMapCaptureBtn.SetData(Manager.SaveMapCaptureStatus, OnChangeSaveMapCapture);
         }
         void OnChangeScreenDraw(bool value)
         {
-            manager.ScreenDrawStatus = value;
+            Manager.ScreenDrawDebug = value;
         }
         void OnChangeSaveMapCapture(bool value)
         {
-            manager.SaveMapCaptureStatus = value;
+            Manager.SaveMapCaptureStatus = value;
         }
 
         void OnClickLookRunTimeBtn()

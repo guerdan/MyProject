@@ -143,10 +143,11 @@ namespace Script.Util
             PostMessage(handle, (uint)flag, (IntPtr)key, (IntPtr)lParam);
         }
 
-        public static void keybd_event_packed(int vkCode, bool isDown = true)
+        public static void keybd_event_packed(KeyboardEnum vkCode, bool isDown = true)
         {
             var flag = isDown ? 0 : KEYEVENTF_KEYUP;
-            keybd_event((byte)vkCode, 0, (uint)flag, UIntPtr.Zero);
+            byte scanCode = (byte)MapVirtualKey((uint)vkCode, 0); 
+            keybd_event((byte)vkCode, scanCode, (uint)flag, UIntPtr.Zero);
         }
 
         #endregion
@@ -663,7 +664,7 @@ namespace Script.Util
         SystemUp = 0x0105,   // 系统按键释放
     }
 
-    public enum KeyboardEnum
+    public enum KeyboardEnum 
     {
         Esc = 0x1B,
         Tab = 0x09,

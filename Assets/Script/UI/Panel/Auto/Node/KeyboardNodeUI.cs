@@ -6,10 +6,11 @@ namespace Script.UI.Panel.Auto.Node
 {
     public class KeyboardNodeUI : ProcessNodeUI
     {
-        [Header("内容")]
+        [Header("扩展内容")]
         [SerializeField] private Text Key;      // 图标
         public override void RefreshContent()
         {
+            base.RefreshContent();
             KeyBoardOperNode data = _data as KeyBoardOperNode;
             Key.text = data.Key;
         }

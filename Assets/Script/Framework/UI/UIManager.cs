@@ -11,7 +11,7 @@ namespace Script.Framework.UI
     public interface IUIManager
     {
         // 打开一个界面
-        void ShowPanel(PanelEnum panelEnum, object data);
+        void ShowPanel(PanelEnum panelEnum, object data, BasePanelConfig config = null);
         // 关掉层级中最上一个界面
         void PopPanel(int layer = 0);
         // 关闭指定界面
@@ -20,18 +20,7 @@ namespace Script.Framework.UI
         void ClearCache();
 
     }
-    public class BasePanelWait
-    {
-        public BasePanel Panel;
-        public object Data;
-        public PanelDefine PanelDefine;
-        public BasePanelWait(BasePanel panel, object data, PanelDefine panelDefine)
-        {
-            Panel = panel;
-            Data = data;
-            PanelDefine = panelDefine;
-        }
-    }
+
 
     public class UIManager : IUIManager
     {
@@ -59,7 +48,7 @@ namespace Script.Framework.UI
         }
 
         // 打开一个界面
-        public void ShowPanel(PanelEnum panelKey, object data)
+        public void ShowPanel(PanelEnum panelKey, object data, BasePanelConfig config = null)
         {
             PanelDefine define = PanelUtil.PanelDefineDic[panelKey];
             if (define == null)
@@ -90,14 +79,14 @@ namespace Script.Framework.UI
             {
                 BasePanel panel = _panelCache[panelKey];
                 DeleteCache(panelKey);
-                AddPanelStackWaits(panel, data, layer, define);
+                AddPanelStackWaits(panel, data, layer, define, config);
                 ShowPanelInternal(layer);
                 Debug.Log($"打开界面 {define.Name} 缓存 耗时：{(DateTime.Now - time).TotalMilliseconds}ms");
             }
             else
             {
                 UISceneMixin.Inst.ShowLoadingAnim();
-                var waitResult = AddPanelStackWaits(null, data, layer, define);
+                var waitResult = AddPanelStackWaits(null, data, layer, define, config);
 
                 AssetUtil.LoadPrefab(define.Path, (prefab) =>
                 {
@@ -119,9 +108,10 @@ namespace Script.Framework.UI
 
             }
         }
-        private BasePanelWait AddPanelStackWaits(BasePanel panel, object data, int layer, PanelDefine define)
+        private BasePanelWait AddPanelStackWaits(BasePanel panel, object data, int layer, PanelDefine define
+                                                , BasePanelConfig config)
         {
-            var wait = new BasePanelWait(panel, data, define);
+            var wait = new BasePanelWait(panel, data, define, config);
             if (!_panelStackWaits.TryGetValue(layer, out var list))
             {
                 list = new List<BasePanelWait>();
@@ -149,6 +139,7 @@ namespace Script.Framework.UI
                 wait.Panel.PanelDefine = wait.PanelDefine;
                 wait.Panel.StackIndex = UISceneMixin.Inst.GetPanelCount(layer);
                 wait.Panel.gameObject.SetActive(true);
+                wait.Panel.SetConfig(wait.Config);
                 wait.Panel.SetData(wait.Data);
 
                 var last = UISceneMixin.Inst.PeekPanel(layer);
@@ -280,5 +271,26 @@ namespace Script.Framework.UI
             _canRecycle = false;
             GameTimer.Inst.SetTimeOnce(this, () => AssetManager.Inst.ReleaseUnuseAsset(), 0);//Destroy在下帧才真正销毁,故延迟1帧
         }
+    }
+
+    public class BasePanelWait
+    {
+        public BasePanel Panel;
+        public object Data;
+        public BasePanelConfig Config;
+        public PanelDefine PanelDefine;
+        public BasePanelWait(BasePanel panel, object data, PanelDefine panelDefine, BasePanelConfig config)
+        {
+            Panel = panel;
+            Data = data;
+            PanelDefine = panelDefine;
+            Config = config;
+        }
+    }
+
+    public class BasePanelConfig
+    {
+        public Vector2 WinPos;
+
     }
 }

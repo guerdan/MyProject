@@ -149,6 +149,7 @@ namespace Script.Editor
             {
                 $"{path}_Data/StreamingAssets/Script",
                 $"{path}_Data/StreamingAssets/SmallMap",
+                $"{path}_Data/StreamingAssets/Capture",
                 $"{folderPath}/MonoBleedingEdge",
                 $"{folderPath}/UnityCrashHandler64.exe",
                 $"{folderPath}/UnityPlayer.dll",

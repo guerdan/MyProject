@@ -553,7 +553,7 @@ namespace Script.Model.Auto
         }
 
         static System.Text.RegularExpressions.Regex _conditionRegex =
-        new System.Text.RegularExpressions.Regex(@"(==|>=|<=|>|<)");
+        new System.Text.RegularExpressions.Regex(@"(==|!=|>|<|>=|<=)");
 
         /// <summary>
         /// 分隔 操作符 与 左右表达式

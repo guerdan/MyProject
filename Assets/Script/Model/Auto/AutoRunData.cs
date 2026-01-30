@@ -15,15 +15,18 @@ namespace Script.Model.Auto
 
     public struct FormulaVarInfo
     {
-        public HashSet<AssignOperNode> Nodes;           //变量名
+        public HashSet<BaseNodeData> Nodes;             //变量名
         public FormulaVarType Type;                     //变量类型
-        public string VarName;                          //实际变量名
+        public string VarName;                          //变量名
+        public string VarNameLower;                     //小写变量名，用于搜索
 
-        public FormulaVarInfo(HashSet<AssignOperNode> nodes, FormulaVarType type, string varName)
+        public FormulaVarInfo(FormulaVarType type, string varName)
         {
-            Nodes = nodes;
             Type = type;
             VarName = varName;
+            VarNameLower = VarName.ToLower();
+
+            Nodes = new HashSet<BaseNodeData>();
         }
     }
 
@@ -41,6 +44,7 @@ namespace Script.Model.Auto
     public partial class AutoScriptData
     {
         public static readonly string IN_VarName = "IN";
+        public event Action OnVarValueChange;
         #region 运行变量
 
         // 存储运行中的float变量
@@ -53,11 +57,12 @@ namespace Script.Model.Auto
         private Dictionary<string, object> _allVars = new Dictionary<string, object>();
 
 
-        // 编辑下：变量的赋值次数。
+        // 编辑下：统计变量的"赋值"。
         // 变化时机：1.增赋值节点 2.删赋值节点 3.修改赋值节点
         private Dictionary<string, FormulaVarInfo> _inEditVarRef = new Dictionary<string, FormulaVarInfo>();
 
 
+        
         /// <summary>
         /// 赋值语句。必须指定类型。在UI侧第一次赋值变量需指定类型，后面就可自动
         /// 影响运行变量的
@@ -67,56 +72,80 @@ namespace Script.Model.Auto
             _allVars[IN_VarName] = inData;
             Action delete = null;
 
-            string in_type = inData?.GetType().Name;
-            switch (in_type)
+            if (inData != null)
             {
-                case "Single":
-                    _floatVars[IN_VarName] = (float)inData;
-                    delete = () => _floatVars.Remove(IN_VarName);
-                    break;
-                case "Vector2":
-                    _v2Vars[IN_VarName] = (Vector2)inData;
-                    delete = () => _v2Vars.Remove(IN_VarName);
-                    break;
-                case "Vector4":
-                    _v4Vars[IN_VarName] = (Vector4)inData;
-                    delete = () => _v4Vars.Remove(IN_VarName);
-                    break;
+                string in_type = inData.GetType().Name;
+                switch (in_type)
+                {
+                    case "Single":
+                        _floatVars[IN_VarName] = (float)inData;
+                        delete = () => _floatVars.Remove(IN_VarName);
+                        break;
+                    case "Vector2":
+                        _v2Vars[IN_VarName] = (Vector2)inData;
+                        delete = () => _v2Vars.Remove(IN_VarName);
+                        break;
+                    case "Vector4":
+                        _v4Vars[IN_VarName] = (Vector4)inData;
+                        delete = () => _v4Vars.Remove(IN_VarName);
+                        break;
+                }
             }
 
-
+            float f = 0; Vector2 v2 = default; Vector4 v4 = default;
             switch (type)
             {
                 case FormulaVarType.Float:
-                    {
-                        var v = FormulaGetResult(expression);
-                        _floatVars[var_name] = v;
-                        _allVars[var_name] = v;
-                        DU.LogWarning($"变量 {var_name} : {v}");
-                    }
+                    f = FormulaGetResult(expression);
                     break;
                 case FormulaVarType.Vector2:
-                    {
-                        var v = FormulaGetResultV2(expression);
-                        _v2Vars[var_name] = v;
-                        _allVars[var_name] = v;
-                        DU.LogWarning($"变量 {var_name} : {v}");
-                    }
+                    v2 = FormulaGetResultV2(expression);
                     break;
                 case FormulaVarType.Vector4:
-                    {
-                        var v = FormulaGetResultV4(expression);
-                        _v4Vars[var_name] = v;
-                        _allVars[var_name] = v;
-                        DU.LogWarning($"变量 {var_name} : {v}");
-                    }
+                    v4 = FormulaGetResultV4(expression);
                     break;
             }
+
+            RunAssign(var_name, type, f, v2, v4);
+
 
             _allVars.Remove(IN_VarName);
             delete?.Invoke();
         }
 
+
+        public void RunAssign(string var_name, FormulaVarType type, float f = 0, Vector2 v2 = default, Vector4 v4 = default)
+        {
+            bool is_debug = true;
+            switch (type)
+            {
+                case FormulaVarType.Float:
+                    {
+                        var v = f;
+                        _floatVars[var_name] = v;
+                        _allVars[var_name] = v;
+                        if (is_debug) DU.LogWarning($"变量 {var_name} : {v}");
+                    }
+                    break;
+                case FormulaVarType.Vector2:
+                    {
+                        var v = v2;
+                        _v2Vars[var_name] = v;
+                        _allVars[var_name] = v;
+                        if (is_debug) DU.LogWarning($"变量 {var_name} : {v}");
+                    }
+                    break;
+                case FormulaVarType.Vector4:
+                    {
+                        var v = v4;
+                        _v4Vars[var_name] = v;
+                        _allVars[var_name] = v;
+                        if (is_debug) DU.LogWarning($"变量 {var_name} : {v}");
+                    }
+                    break;
+            }
+            OnVarValueChange?.Invoke();
+        }
 
         /// <summary>
         /// 编辑器环境下：统计所有的变量名和方法名
@@ -126,34 +155,31 @@ namespace Script.Model.Auto
             return _inEditVarRef;
         }
 
-        public void AddVarRef(AssignOperNode node)
+        public void AddVarRef(string var_name, FormulaVarType var_type, BaseNodeData node)
         {
-            var lower_name = node.VarNameLower;
-            if (node.VarType == FormulaVarType.Undefined || lower_name == "") return;
+            if (var_type == FormulaVarType.Undefined || var_name == "")
+                return;
 
-            if (_inEditVarRef.TryGetValue(lower_name, out FormulaVarInfo info))
+            if (!_inEditVarRef.TryGetValue(var_name, out FormulaVarInfo info))
             {
-                info.Nodes.Add(node);
+                info = new FormulaVarInfo(var_type, var_name);
+                _inEditVarRef[var_name] = info;
             }
-            else
-            {
-                var l = new HashSet<AssignOperNode>() { node };
-                info = new FormulaVarInfo(l, node.VarType, node.VarName);
-                _inEditVarRef[lower_name] = info;
-            }
+
+            info.Nodes.Add(node);
         }
 
-        public void DeleteVarRef(AssignOperNode node)
+        public void DeleteVarRef(string var_name, FormulaVarType var_type, BaseNodeData node)
         {
-            if (node.VarType == FormulaVarType.Undefined) return;
+            if (var_type == FormulaVarType.Undefined || var_name == "")
+                return;
 
-            var name = node.VarNameLower;
-            if (_inEditVarRef.TryGetValue(name, out FormulaVarInfo info))
+            if (_inEditVarRef.TryGetValue(var_name, out FormulaVarInfo info))
             {
                 info.Nodes.Remove(node);
                 if (info.Nodes.Count <= 0)
                 {
-                    _inEditVarRef.Remove(name);
+                    _inEditVarRef.Remove(var_name);
                 }
             }
         }
@@ -163,18 +189,31 @@ namespace Script.Model.Auto
             if (type == FormulaVarType.Undefined || name == "")
                 return false;
 
-            if (GetVarInfo(name, out var info) && info.Type != type)
+            if (GetFormulaVarInfo(name, out var info) && info.Type != type)
                 return false;
 
             return AutoDataUIConfig.ExpressionIsLegal(expression);
 
         }
 
-
-
-        public bool GetVarInfo(string name, out FormulaVarInfo info)
+        public bool GetFormulaVarInfo(string name, out FormulaVarInfo info)
         {
             return _inEditVarRef.TryGetValue(name, out info);
+        }
+        public float GetFloatVarValue(string name)
+        {
+            _floatVars.TryGetValue(name, out var result);
+            return result;
+        }
+        public Vector2 GetV2VarValue(string name)
+        {
+            _v2Vars.TryGetValue(name, out var result);
+            return result;
+        }
+        public Vector4 GetV4VarValue(string name)
+        {
+            _v4Vars.TryGetValue(name, out var result);
+            return result;
         }
 
         #region float
@@ -395,7 +434,7 @@ namespace Script.Model.Auto
             if (oper == "")
             {
                 DU.LogWarning($"变量 {operand} 不含比较符");
-                return false;  
+                return false;
             }
             var left_v = ParseFloat(left);
             var right_v = ParseFloat(right);
@@ -421,6 +460,14 @@ namespace Script.Model.Auto
 
         }
         #endregion
+
+        void ClearRunData()
+        {
+            _floatVars.Clear();
+            _v2Vars.Clear();
+            _v4Vars.Clear();
+            _allVars.Clear();
+        }
         #endregion
     }
 }

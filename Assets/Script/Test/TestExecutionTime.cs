@@ -1,8 +1,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using OpenCvSharp;
 using Script.Model.Auto;
 using Script.Util;
 using UnityEngine;
@@ -213,7 +215,7 @@ namespace Script.Test
 
             DU.RunWithTimer(() =>
            {
-               for (int i = 0; i < 10000000; i++)   //29ms 
+               for (int i = 0; i < 10000000; i++)   //300ms 
                {
                    b = a1.GetHashCode();
                }
@@ -338,6 +340,132 @@ namespace Script.Test
            }, $"手动判断");
 
         }
+
+        public void Test7()
+        {
+            var pathI = $"{Application.streamingAssetsPath}/木质1.png";
+            var pathT = $"{Application.streamingAssetsPath}/木质1.png";
+            var matI = IU.GetMat(pathI);
+            var matT = IU.GetMat(pathT);
+            matI = new Mat(144, 140, MatType.CV_8UC3);      //生成的是随机图像
+            matT = new Mat(144, 140, MatType.CV_8UC3);      //生成的是随机图像
+            // Cv2.ImShow("matInput",matI);
+
+
+            List<CVMatchResult> resultL = null;
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 1000; i++)    // 
+                {
+                    // var result = IU.MatchTemplate1(matI, matT, true, TemplateMatchModes.SqDiff);
+                    using (var result = IU.MatchTemplate1(matI, matT, true, TemplateMatchModes.CCorrNormed))
+                    {
+                        if (resultL == null)
+                            resultL = IU.FindResult(result, 140, 144, 0, out _);
+                    }
+                }
+            }, $"模版匹配");
+
+
+            // DU.LogWarning($"结果：{resultL[0].Score}");
+
+
+            // DU.RunWithTimer(() =>
+            // {
+            //     for (int i = -1000000; i < 1000000; i++)    // 8ms 
+            //     {
+            //         var b = i < 0 ? -i : i;
+            //     }
+            // }, $"手动判断");
+
+        }
+
+        public void Test8()
+        {
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)    // 26ms 
+                {
+                }
+            }, $"单层循环");
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000; i++)    // 29ms 
+                {
+                    for (int j = 0; j < 1000; j++)
+                    {
+                    }
+                }
+            }, $"双层循环");
+        }
+
+
+
+        // 1. 访问栈上声明字段 = 访问对象字段 (联级访问与次数成正比)
+        // 2. 调用方法(只算壳) = 10倍 访问字段
+        // 3. List等高封装数据结构的Count是属性,属性是方法。int[]是基础列表，Length是字段。
+        public void Test9()
+        {
+            var list = new int[1000000];
+            var list1 = new List<int>();
+            for (int i = 0; i < 10000000; i++)   
+            {
+                list1.Add(0);
+            }
+
+            var a = new ClassA();
+            a.b = new ClassB();
+            var b = 20;
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)    // 42ms 
+                {
+                    var k = a.b.a;
+                }
+            }, $"暂存对象字段，再访问");
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)    // 36ms 
+                {
+                    var a = b;
+                }
+            }, $"访问栈对象");
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)    // 36ms 
+                {
+                    var a = 20;
+                }
+            }, $"访问栈对象");
+
+            DU.RunWithTimer(() =>
+           {
+               for (int i = 0; i < 10000000; i++)    // 30ms 
+               {
+               }
+           }, $"空");
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < list1.Count; i++)    // 88ms 
+                {
+                }
+            }, $"对象访问");
+
+        }
+
+        int field_1 = 10000000;
+        int field_2 => field_1;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        int GetNumber()
+        {
+            return 10000000;
+        }
     }
 
     public struct StructT
@@ -358,6 +486,7 @@ namespace Script.Test
         public int a;
         public int a1;
         public int a2;
+        public ClassB b;
 
     }
     public struct StructA
@@ -366,5 +495,10 @@ namespace Script.Test
         public int a1;
         public int a2;
 
+    }
+
+    public class ClassB
+    {
+        public int a;
     }
 }

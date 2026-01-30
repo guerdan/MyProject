@@ -1,4 +1,5 @@
 
+using System.Collections.Generic;
 using Script.Model.Auto;
 using Script.UI.Panel.Auto.Node;
 using Script.Util;
@@ -32,11 +33,11 @@ namespace Script.UI.Panel.Auto
             _id = id;
             _panel = panel;
 
+            // line-11-12
             var s = id.Substring(5);
             int first = s.IndexOf('-');
-            int second = s.IndexOf('-', first + 1);
-            _fromId = s.Substring(0, second);      // from-id
-            _toId = s.Substring(second + 1);    // to-id
+            _fromId = BaseNodeData.IdStart + s.Substring(0, first);      // from-id
+            _toId = BaseNodeData.IdStart + s.Substring(first + 1);    // to-id
 
             _fromData = AutoScriptManager.Inst.GetNode(_panel._scriptData, _fromId);
             _toData = AutoScriptManager.Inst.GetNode(_panel._scriptData, _toId);
@@ -111,7 +112,13 @@ namespace Script.UI.Panel.Auto
         // 选中线段，此线段变白
         public void OnPointerDown(PointerEventData eventData)
         {
+            if (eventData.button == PointerEventData.InputButton.Right)
+                return;
+
             _panel.MouseSelectedId = _id;
         }
+
+
+
     }
 }

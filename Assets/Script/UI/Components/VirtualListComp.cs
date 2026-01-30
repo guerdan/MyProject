@@ -27,8 +27,8 @@ namespace Script.UI.Components
             public void setItemTemplate(GameObject inst, GameObject template)
             {
                 this.inst = inst;
-                this.node = inst.GetComponent<RectTransform>();
                 this.template = template;
+                node = inst.GetComponent<RectTransform>();
 
                 node.pivot = new Vector2(0.5f, 0.5f);
                 //需要统一锚点。置于顶部。
@@ -90,14 +90,14 @@ namespace Script.UI.Components
         // private Action scrollEnd = null;
 
         //item大小回调
-        public Func<int, Vector2> OnGetItemSize { set { this.getItemSize = value; } }
+        public Func<int, Vector2> OnGetItemSize { set { getItemSize = value; } }
         //item模板回调
-        public Func<int, GameObject> OnGetItemTemplate { set { this.getItemTemplate = value; } }
+        public Func<int, GameObject> OnGetItemTemplate { set { getItemTemplate = value; } }
         //item更新回调
-        public Action<GameObject, int> OnUpdateItem { set { this.updateItem = value; } }
+        public Action<GameObject, int> OnUpdateItem { set { updateItem = value; } }
 
         private readonly int _bufferZone = 10; //缓冲区大小
-        public ScrollRect _scrollView = null;
+        private ScrollRect _scrollView = null;
         private bool _horizontal;
         private RectTransform _scrollViewRect;
         private RectTransform _scrollContent;
@@ -116,15 +116,15 @@ namespace Script.UI.Components
 
         void Awake()
         {
-            this._scrollView = GetComponent<ScrollRect>();
-            this._horizontal = this._scrollView.horizontal;
-            this._scrollViewRect = this._scrollView.GetComponent<RectTransform>();
-            this._scrollContent = this._scrollView.content;
+            _scrollView = GetComponent<ScrollRect>();
+            _horizontal = _scrollView.horizontal;
+            _scrollViewRect = _scrollView.GetComponent<RectTransform>();
+            _scrollContent = _scrollView.content;
             // 内容的锚点在左上角
-            this._scrollContent.pivot = new Vector2(0, 1);
+            _scrollContent.pivot = new Vector2(0, 1);
             // 代码设置锚点时，ui会移动
-            this._scrollContent.anchorMin = new Vector2(0, 1);
-            this._scrollContent.anchorMax = new Vector2(0, 1);
+            _scrollContent.anchorMin = new Vector2(0, 1);
+            _scrollContent.anchorMax = new Vector2(0, 1);
 
             var rect = _scrollContent.rect;
             if (_horizontal)
@@ -141,13 +141,13 @@ namespace Script.UI.Components
 
 
             // 监听滑动事件
-            this._scrollView.onValueChanged.AddListener(OnScrolling);
+            _scrollView.onValueChanged.AddListener(OnScrolling);
 
             // 实现点击 clickItem
-            // this.node.on(Node.EventType.TOUCH_START, this.onTouchStart, this);
-            // this.node.on(Node.EventType.TOUCH_MOVE, this.onTouchMove, this);
-            // this.node.on(Node.EventType.TOUCH_END, this.onTouchEnd, this);
-            this._inited = true;
+            // node.on(Node.EventType.TOUCH_START, onTouchStart, this);
+            // node.on(Node.EventType.TOUCH_MOVE, onTouchMove, this);
+            // node.on(Node.EventType.TOUCH_END, onTouchEnd, this);
+            _inited = true;
             //更新scroll布局
             _scrollViewRect.ForceUpdateRectTransforms();
 
@@ -158,7 +158,7 @@ namespace Script.UI.Components
             _scrollContent.ForceUpdateRectTransforms();
 
             //删除布局，大小手动计算
-            // this._scrollContent.removeComponent(Widget);
+            // _scrollContent.removeComponent(Widget);
 
             //更新位置
             if (_horizontal)
@@ -170,17 +170,17 @@ namespace Script.UI.Components
                 _scrollView.verticalNormalizedPosition = 1;
             }
 
-            if (this._needReload)
+            if (_needReload)
             {
-                this.DoReload();
+                DoReload();
             }
         }
 
         void OnDestroy()
         {
-            this._scrollView.onValueChanged.RemoveAllListeners();
-            this._itemList.Clear();
-            this._recyclePool.Clear();
+            _scrollView.onValueChanged.RemoveAllListeners();
+            _itemList.Clear();
+            _recyclePool.Clear();
         }
 
 
@@ -214,13 +214,13 @@ namespace Script.UI.Components
         //更新列表数据
         public void UpdateData()
         {
-            if (!this._inited)
+            if (!_inited)
             {
                 return;
             }
 
-            this.UpdateContent();
-            this.UpdateItems(true);
+            UpdateContent();
+            UpdateItems(true);
         }
 
         private void DoReload()
@@ -278,6 +278,10 @@ namespace Script.UI.Components
                     _scrollContent.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, totalHeight);
                 }
             }
+            else
+                _scrollContent.SetSizeWithCurrentAnchors(
+                    _horizontal ? RectTransform.Axis.Horizontal : RectTransform.Axis.Vertical, 0);
+
         }
 
         private void calcItemPostionInfo(int idx)
@@ -360,29 +364,22 @@ namespace Script.UI.Components
             UpdateItems();
         }
 
-        List<bool> showList;
         private void UpdateItems(bool forceUpdate = false)
         {
 
             List<VirtualListCompItem> inViewList = new List<VirtualListCompItem>();
             var itemCount = _itemList.Count;
 
-            showList = new List<bool>(itemCount);
             for (var i = 0; i < itemCount; ++i)
             {
                 instantiateFunc(i, forceUpdate, inViewList);
             }
-            string s = "";
-            for (var i = 0; i < showList.Count; ++i)
-            {
-                s += $"{i}:{showList[i]} ";
-            }
-            // DU.LogWarning(s);
 
-            // this.frameLoad(itemCount, this.instantiateFunc.bind(this), 5, 0, forceUpdate, inViewList);
+
+            // frameLoad(itemCount, instantiateFunc.bind(this), 5, 0, forceUpdate, inViewList);
 
             //排序节点，下层覆盖上层，用于挖矿地图
-            // if (this._useCoverageOrder)
+            // if (_useCoverageOrder)
             // {
             //     let need = false
             //     for (let i = 0; i < inViewList.length - 1; i++)
@@ -429,7 +426,7 @@ namespace Script.UI.Components
         //         {
         //             setTimeout(() =>
         //             {
-        //                 this._scrollViewNode?.isValid && this.frameLoad(loop, func, frameTime, __index, forceUpdate, inViewList);
+        //                 _scrollViewNode?.isValid && frameLoad(loop, func, frameTime, __index, forceUpdate, inViewList);
         //             }, 10);
         //             break;
         //         }
@@ -485,8 +482,6 @@ namespace Script.UI.Components
                     isItemInView = false;
                 }
             }
-
-            showList.Add(isItemInView);
 
             if (isItemInView)
             {
@@ -646,12 +641,17 @@ namespace Script.UI.Components
         {
             var item = _itemList[index];
             var rectT = item.node.node;
-
-            Canvas canvas = GetComponentInParent<Canvas>();
-            Camera cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
-            Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(cam, rectT.position);
+            Vector2 screenPoint = Utils.GetScreenPos(rectT);
             return screenPoint;
         }
+
+
+        public void ScrollToBottom()
+        {
+            _scrollView.verticalNormalizedPosition = 0;
+            UpdateData();
+        }
+
     }
 
 }

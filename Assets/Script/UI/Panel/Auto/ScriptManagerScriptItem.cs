@@ -29,13 +29,13 @@ namespace Script.UI.Panel.Auto
         void OnEnable()
         {
             ScriptManagerPanel.OnRefresh += OnRefresh;
-            AutoScriptManager.Inst.Tick += Refresh;
+            AutoScriptManager.Inst.OnTick += Refresh;
 
         }
         void OnDisable()
         {
             ScriptManagerPanel.OnRefresh -= OnRefresh;
-            AutoScriptManager.Inst.Tick -= Refresh;
+            AutoScriptManager.Inst.OnTick -= Refresh;
         }
 
         public void SetData(string id, ScriptManagerPanel panel, bool is_collection = false)
@@ -60,13 +60,13 @@ namespace Script.UI.Panel.Auto
         void Refresh()
         {
             ScriptName.text = _scriptData.Config.Name;
-            RunBtn.SetData(_scriptData.Running, OnRunBtnClick);
+            RunBtn.SetData(_scriptData.IsRunning, OnRunBtnClick);
 
             bool contain = AutoScriptManager.Inst.Settings.Collections.Contains(_id);
             CollectBtn.SetData(contain, OnCollectBtnClick);
 
 
-            if (_scriptData.Running)
+            if (_scriptData.IsRunning)
             {
                 Utils.SetActive(OutlineF, true);
                 Utils.SetActive(OutlineB, true);

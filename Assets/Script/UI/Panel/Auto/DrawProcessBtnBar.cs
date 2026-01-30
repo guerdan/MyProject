@@ -20,7 +20,7 @@ namespace Script.UI.Panel.Auto
         void Awake()
         {
             RunBtn.onClick.AddListener(OnClickRunBtn);
-            CloseBtn.onClick.AddListener(OnClickCloseBtn);
+            CloseBtn.onClick.AddListener(OnClickTerminateBtn);
             CreateNodeBtn.onClick.AddListener(OnClickCreateNodeBtn);
             DebugBtn.onClick.AddListener(OnClickDebugBtn);
         }
@@ -45,8 +45,15 @@ namespace Script.UI.Panel.Auto
 
         void RefreshBtn()
         {
-            var isRuning = AutoScriptManager.Inst.IsRuning(_panel._id);
-            var path = "Common/Sprites/New/" + (isRuning ? "b_stop" : "b_start");
+            AutoScriptData data = AutoScriptManager.Inst.GetScriptData(_panel._id);
+            string name = "";
+
+            if (data.IsRunning)
+                name = "b_stop";
+            else
+                name = data.IsEnd ? "b_restart" : "b_start";
+
+            var path = "Common/Sprites/New/" + name;
             AssetUtil.SetImage(path, RunBtn.GetComponent<Image>());
 
         }
@@ -57,9 +64,10 @@ namespace Script.UI.Panel.Auto
             RefreshBtn();
         }
 
-        void OnClickCloseBtn()
+        void OnClickTerminateBtn()
         {
             AutoScriptManager.Inst.TerminateScript(_panel._id);
+            RefreshBtn();
         }
 
 

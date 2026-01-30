@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using OpenCvSharp;
 using Unity.VisualScripting;
@@ -142,6 +143,56 @@ namespace Script.Util
 
         }
 
+        public static byte[] Color32ToByte(Color32[] colors)
+        {
+            byte[] bl = new byte[colors.Length * 4];
+            for (int i = 0; i < colors.Length; i++)
+            {
+                var color = colors[i];
+                bl[i * 4] = color.b;
+                bl[i * 4 + 1] = color.g;
+                bl[i * 4 + 2] = color.r;
+                bl[i * 4 + 3] = color.a;
+            }
+            return bl;
+        }
+        public static byte[] Color32ToByteWithoutAlpha(Color32[] colors)
+        {
+            byte[] bl = new byte[colors.Length * 3];
+            for (int i = 0; i < colors.Length; i++)
+            {
+                var color = colors[i];
+                bl[i * 3] = color.b;
+                bl[i * 3 + 1] = color.g;
+                bl[i * 3 + 2] = color.r;
+            }
+            return bl;
+        }
+
+
+        public static Color32[] Color32ReverseYAxis(Color32[] pixels, int w)
+        {
+            int h = pixels.Length / w;
+            int half_h = h / 2;
+            for (int i = 0; i < half_h; i++)
+                for (int j = 0; j < w; j++)
+                {
+                    var index = i * w + j;
+                    var reverse = (h - 1 - i) * w + j;
+                    var temp = pixels[index];
+                    pixels[index] = pixels[reverse];
+                    pixels[reverse] = temp;
+                }
+
+            return pixels;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool Color32Equal(Color32 c0, Color32 c1)
+        {
+            return c0.a == c1.a && c0.r == c1.r && c0.g == c1.g && c0.b == c1.b;
+        }
+
         #region MatchTemplate
         /// <summary>
         /// 规定：use_mask && （matT有alpha通道)，才能使用模版匹配的掩码模式
@@ -151,46 +202,46 @@ namespace Script.Util
         /// CCoeffNormed--80ms--无mask是16ms     
         /// 所以建议使用CCorrNormed,从耗时上讲, 阈值应该在0.95以上
         /// </summary>
-        public static Mat MatchTemplate1(Mat matI, Mat matT, bool use_mask = true)
+        public static Mat MatchTemplate1(Mat matI, Mat matT, bool auto_use_mask = true
+                                        , TemplateMatchModes mode = TemplateMatchModes.CCorrNormed)
         {
-            // 可以做缓存图片来优化
-            //
 
             if (matI.Width < matT.Width || matI.Height < matT.Height)
             {
-                DU.MessageBox("模板图片尺寸不能大于原图！");
+                // DU.MessageBox("模板图片尺寸不能大于原图！");
+                DU.LogWarning("模板图片尺寸不能大于原图！");
                 return null;
             }
 
             Mat result = new Mat();
-            if (use_mask && matT.Channels() == 4)
+            if (auto_use_mask && matT.Channels() == 4)
             {
                 var channels = Cv2.Split(matT);
                 using (Mat mask = channels[3]) // alpha通道作为mask。掩码，能剪裁模版区域
                 {
                     using (Mat matTemplate = new Mat())
                     {
-                        Cv2.Merge(new[] { channels[0], channels[1], channels[2] }, matTemplate); // 只保留BGR
-                                                                                                 //用mask比不用的耗时要大。 12ms 变 55ms
-                        Cv2.MatchTemplate(matI, matTemplate, result, TemplateMatchModes.CCorrNormed, mask);
+                        Cv2.Merge(new[] { channels[0], channels[1], channels[2] }, matTemplate); //用mask比不用的耗时要大。 12ms 变 55ms
+                        Cv2.MatchTemplate(matI, matTemplate, result, mode, mask);
                     }
                 }
             }
             else
             {
-                // 通道数要是对不上。一般模版图存在本地，有些有alpha通道。
-                if (matT.Channels() == 4)
+                // 遇到通道数对不上的情况，就构造通道数一致的mat。
+                // 一般有些本地的模版图有alpha通道。
+                if (matT.Channels() != matI.Channels())
                 {
                     var channels = Cv2.Split(matT);
                     using (Mat matTemplate = new Mat())
                     {
                         Cv2.Merge(new[] { channels[0], channels[1], channels[2] }, matTemplate); // 只保留BGR
-                        Cv2.MatchTemplate(matI, matTemplate, result, TemplateMatchModes.CCorrNormed);
+                        Cv2.MatchTemplate(matI, matTemplate, result, mode);
                     }
                 }
                 else
                 {
-                    Cv2.MatchTemplate(matI, matT, result, TemplateMatchModes.CCorrNormed);
+                    Cv2.MatchTemplate(matI, matT, result, mode);
                 }
             }
 
@@ -390,7 +441,7 @@ namespace Script.Util
             int h = bitmap.Height;
 
             // 锁定 Bitmap 的像素数据
-            Rectangle rect = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+            Rectangle rect = new Rectangle(0, 0, w, h);
             BitmapData bitmapData = bitmap.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
 
             // 将像素数据复制到字节数组
@@ -412,38 +463,74 @@ namespace Script.Util
         /// </summary>
         public static Color32[] BitmapToColor32(Bitmap bitmap)
         {
+            int w = bitmap.Width;
+            int h = bitmap.Height;
             // 锁定 Bitmap 的像素数据
-            Rectangle rect = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+            Rectangle rect = new Rectangle(0, 0, w, h);
             BitmapData bitmapData = bitmap.LockBits(rect, ImageLockMode.ReadOnly, bitmap.PixelFormat);
 
+            int h_stride = bitmapData.Stride;
+            int stride = h_stride / w;
             // 获取像素数组
-            int byteCount = bitmapData.Stride * bitmap.Height;
+            int byteCount = h_stride * h;
             byte[] pixels = new byte[byteCount];
 
             // 将像素数据复制到字节数组
-            System.Runtime.InteropServices.Marshal.Copy(bitmapData.Scan0, pixels, 0, byteCount);
+            Marshal.Copy(bitmapData.Scan0, pixels, 0, byteCount);
 
             // 解锁 Bitmap
             bitmap.UnlockBits(bitmapData);
 
-            int len = pixels.Length / 4;
+            int len = w * h;
             Color32[] colors = new Color32[len];
-            for (int i = 0; i < len; i++)
+
+            // bitmapData.Stride在设计上被补齐到4的倍数字节，所以当stride = 3时要舍弃"用于补齐"的字节
+            //
+            if (stride == 3)
             {
-                colors[i] = new Color32(pixels[i * 4 + 2], pixels[i * 4 + 1], pixels[i * 4 + 0], pixels[i * 4 + 3]);
+                for (int y = 0; y < h; y++)
+                    for (int x = 0; x < w; x++)
+                    {
+                        int start = y * h_stride + x * stride;
+                        colors[y * w + x] = 
+                            new Color32(pixels[start + 2], pixels[start + 1], pixels[start + 0], 255);
+                    }
+              
             }
+            else
+            {
+                for (int i = 0; i < len; i++)
+                {
+                    colors[i] = new Color32(pixels[i * 4 + 2], pixels[i * 4 + 1], pixels[i * 4 + 0], pixels[i * 4 + 3]);
+                }
+            }
+
+
 
             return colors;
         }
 
 
-        public static void SaveBitmap(Bitmap bitmap, string folder, string name)
+        public static void SaveBitmap(Bitmap bitmap, string path)
         {
+            var folder = Path.GetDirectoryName(path);
             if (!Directory.Exists(folder))
                 Directory.CreateDirectory(folder);
 
-            string path = $"{folder}/{name}.png";
             bitmap.Save(path, ImageFormat.Png);
+        }
+        public static void SaveColor32(Color32[] colors, int w, string path)
+        {
+            var folder = Path.GetDirectoryName(path);
+            if (!Directory.Exists(folder))
+                Directory.CreateDirectory(folder);
+
+            int h = colors.Length / w;
+            byte[] bytes = Color32ToByte(colors);
+            using (Mat mat = Mat.FromPixelData(h, w, MatType.CV_8UC4, bytes))
+            {
+                SaveMat(mat, path);
+            }
         }
 
         /// <summary>
@@ -451,52 +538,18 @@ namespace Script.Util
         /// </summary>
         public static Bitmap CutOutImage(Bitmap bitmap, CVRect region)
         {
-            Rectangle rect = new Rectangle((int)region.x, (int)region.y, (int)region.w, (int)region.h);
+            Rectangle rect = new Rectangle(region.x, region.y, region.w, region.h);
             Bitmap cut_bitmap = bitmap.Clone(rect, bitmap.PixelFormat);
             return cut_bitmap;
         }
 
         #endregion
 
-        public static byte[] Color32ToByte(Color32[] colors)
-        {
-            byte[] bl = new byte[colors.Length * 3];
-            for (int i = 0; i < colors.Length; i++)
-            {
-                var color = colors[i];
-                bl[i * 3] = color.b;
-                bl[i * 3 + 1] = color.g;
-                bl[i * 3 + 2] = color.r;
-            }
-            return bl;
-        }
-
-
-        public static Color32[] Color32ReverseVertical(Color32[] pixels, int w)
-        {
-            int h = pixels.Length / w;
-            int half_h = h / 2;
-            for (int i = 0; i < half_h; i++)
-                for (int j = 0; j < w; j++)
-                {
-                    var index = i * w + j;
-                    var reverse = (h - 1 - i) * w + j;
-                    var temp = pixels[index];
-                    pixels[index] = pixels[reverse];
-                    pixels[reverse] = temp;
-                }
-
-            return pixels;
-        }
-     
-
-        public static bool Equal(Color32 c0, Color32 c1)
-        {
-            return c0.a == c1.a && c0.r == c1.r && c0.g == c1.g && c0.b == c1.b;
-        }
 
 
     }
+
     #endregion
+
 
 }

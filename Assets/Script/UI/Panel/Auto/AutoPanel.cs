@@ -215,7 +215,7 @@ namespace Script.UI.Panel.Auto
 
                 bool repeat = repeatKeySet.Contains(key);
                 // AU.PostMessagePacked(selectedWin, key, repeat);
-                WU.keybd_event_packed((int)key);
+                WU.keybd_event_packed(key);
                 repeatKeySet.Add(key);
             }
             else
@@ -228,7 +228,7 @@ namespace Script.UI.Panel.Auto
                 // else
                 // {
                 // AU.PostMessagePacked(selectedWin, key, true, false);
-                WU.keybd_event_packed((int)key, false);
+                WU.keybd_event_packed(key, false);
                 repeatKeySet.Remove(key);
                 // }
 

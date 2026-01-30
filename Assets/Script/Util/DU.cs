@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using Unity.VisualScripting;
 using UnityEngine;
 
 namespace Script.Util
@@ -39,15 +40,29 @@ namespace Script.Util
         }
 
         /// <summary>
-        /// 保留小数点后num位并向下取
+        /// 保留小数点后最多save位, 打个比方：如果是整数则不带.00
         /// </summary>
-        public static string FloatFormat(float v, int num = 2)
+        public static string FloatFormat(float v, int max_save = 2)
         {
-            var power = Mathf.Pow(10, num);
-            v = Mathf.Floor(v * power) / power;
 
-            string format = "F" + num;
-            return v.ToString(format);
+            var s = v.ToString($"F{max_save}");      // 保留方式是四舍五入
+            char[] chars = s.ToCharArray();
+            int sub = 0;
+            for (int i = chars.Length - 1; i >= 0; i--)
+            {
+                char c = s[i];
+                if (c == '.')
+                {
+                    sub = i;
+                    break;
+                }
+                else if (c != '0')
+                {
+                    sub = i + 1;
+                    break;
+                }
+            }
+            return s.Substring(0, sub);
         }
 
         private static System.Diagnostics.Stopwatch stopwatch;

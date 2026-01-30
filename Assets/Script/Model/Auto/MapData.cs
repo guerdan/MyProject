@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using OpenCvSharp;
 using Script.Util;
 using UnityEngine;
@@ -24,6 +25,7 @@ namespace Script.Model.Auto
 
         readonly int sourceEdge = 150;          // 源图边长
         readonly int templateEdge = 100;        // 模版图边长，一帧最多走17像素，这里有25像素的空间。
+        readonly Vector2Int PlayerPos_SmallMap = new Vector2Int(100, 99);
 
         Vector2Int ellipseRadius;                           // 椭圆轴半径
         Vector3Int ellipseRadiusSquare;                     // 椭圆轴半径平方,平方积
@@ -64,7 +66,7 @@ namespace Script.Model.Auto
         PixType[,] _small_map = new PixType[200, 200];            // 本帧小地图
         public JudgePix[,] _judge_map = new JudgePix[300, 300];   // 本帧的判定地图
         LightType[,] _light_cal_map = new LightType[200, 200];       // 用于运算的光照地图
-        Vector2Int _zeroPos;
+        Vector2Int _fixedZeroPos;
         Vector2Int _templatePos;                                    // 模版图左下角坐标
         public Vector2Int _judgePos;                                // 判定图左下角坐标
 
@@ -74,22 +76,30 @@ namespace Script.Model.Auto
         int _light_count;                                           // 光照：5个移动后触发光照地图检查
 
 
-        public Vector2Int _find_start = Utils.DefaultV2I;           //寻路起点，像素粒度
-        public Vector2Int _find_target = Utils.DefaultV2I;          //寻路最终目标，像素粒度
-        public Vector2Int _find_aStar_target = Utils.DefaultV2I;    //实际目标，像素粒度。迷雾情况下会切换
+        BigCellPath _findPointPath;                             // 两定点间的寻路
         public bool _find_target_in_empty;
 
-        List<Vector2Int> TargetList;                        // 按固定目标寻路 用
+        List<Vector2Int> TargetList;                            // 按固定目标寻路 用
 
-        (int, int, Color32[]) _colorsBuffer;                         //复用Color32[], 条件：连续两次相同的w、h  
+
+        BigCellPath _findFogPath;                               //记录的是对象，所以不受地图扩容影响
+        PathFindingResult _findFogResult;
+        public PathFindingResult FindFogResult => _findFogResult;   // 寻找最近迷雾的结果。
+
+
+
+        //// *********  以下变量起到复用作用，无需理解   ********* ////
+
+        (int, int, Color32[]) _colorsBuffer;                            //复用Color32[], 条件：连续两次相同的w、h  
         Vector2Int[] _EdgeTraversal_list1 = new Vector2Int[800];        //方法内部复用
         Vector2Int[] _EdgeTraversal_list2 = new Vector2Int[800];        //方法内部复用
 
-        Vector2Int[] _stack = new Vector2Int[40000];        //方法内部复用
+        Vector2Int[] _stack = new Vector2Int[40000];                    //方法内部复用
 
-        List<Vector2Int> _reusedList1 = new List<Vector2Int>();   //方法内部复用
-        List<Vector2Int> _reusedList2 = new List<Vector2Int>();   //方法内部复用
+        List<Vector2Int> _reusedList1 = new List<Vector2Int>();         //方法内部复用
+        List<Vector2Int> _reusedList2 = new List<Vector2Int>();         //方法内部复用
 
+        //// ************************************************** ////
 
 
         /// <summary>
@@ -108,7 +118,7 @@ namespace Script.Model.Auto
             _light_map = new LightUnion[_mapEdge, _mapEdge];   // 1000 * 1000, 1MB
             _confirm_map = new bool[_mapEdge, _mapEdge];   // 1000 * 1000, 1MB
             _templatePos = new Vector2Int((_mapEdge - 200) / 2, (_mapEdge - 200) / 2);   // 右上角就是(599,599)
-            _zeroPos = new Vector2Int(_templatePos.x + 100, _templatePos.y + 100);
+            _fixedZeroPos = _templatePos + PlayerPos_SmallMap;
             _judgePos = _templatePos + new Vector2Int(-50, -50);
 
             if (_gridData == null)
@@ -141,7 +151,7 @@ namespace Script.Model.Auto
                     new Vector2Int(-400, 200),
                 };
             }
-            return TargetList[index] + _zeroPos;
+            return TargetList[index] + _fixedZeroPos;
         }
 
 
@@ -155,7 +165,7 @@ namespace Script.Model.Auto
                 // 转成像素数组, 再垂直方向反序一下，从下至上，和人观察习惯一致
                 // 
                 Color32[] pixels = IU.BitmapToColor32(bitmap);
-                pixels = IU.Color32ReverseVertical(pixels, _rectW);
+                pixels = IU.Color32ReverseYAxis(pixels, _rectW);
 
                 _small_map = ColorToData(pixels);
 
@@ -490,7 +500,7 @@ namespace Script.Model.Auto
                         colorData[x, y] = PixType.EmptyTemp;
                     }
 
-                ColorToDataTraversalEmpty(colorData, new List<Vector2Int>() { new Vector2Int(101, 100) });
+                ColorToDataTraversalEmpty(colorData, new List<Vector2Int>() { PlayerPos_SmallMap });
             }
             else
             {
@@ -712,7 +722,9 @@ namespace Script.Model.Auto
 
         void ApplyOffset(Vector2Int offset)
         {
-            _zeroPos += offset;
+            var bigGrid_off = offset / 5;
+
+            _fixedZeroPos += offset;
             _templatePos += offset;
             _judgePos += offset;
             // 改xRange
@@ -734,8 +746,6 @@ namespace Script.Model.Auto
             _light_range[0] = _light_range[0] + offset;
             _light_range[1] = _light_range[1] + offset;
 
-            _findFog_start += offset;
-            _findFog_target = _findFog_target + offset / 5;
         }
 
         #endregion
@@ -800,7 +810,8 @@ namespace Script.Model.Auto
 
 
                     var light = _light_map[px, py];
-                    if (InEllipse(x - 100, y - 100))        // 光照判定范围和遍历范围不一致
+                    // 光照判定范围和遍历范围不一致
+                    if (InEllipse(x - PlayerPos_SmallMap.x, y - PlayerPos_SmallMap.y))
                         light.LightType = LightType.Light;
                     light.Access = true;
                     _light_map[px, py] = light;
@@ -1126,7 +1137,7 @@ namespace Script.Model.Auto
 
         #endregion
 
-        #region 寻路
+        #region 寻路-普通
 
 
 
@@ -1155,14 +1166,14 @@ namespace Script.Model.Auto
         // 绝对坐标 absolute
         public void StartAStarBigGridAbs(Vector2Int find_start, Vector2Int find_target)
         {
-            _find_start = find_start;
-            _find_target = find_target;
-            _find_target_in_empty = _map[_find_target.x, _find_target.y] == PixType.Empty;
+            // Clear
+            _findPointPath = null;
+
+            _find_target_in_empty = _map[find_target.x, find_target.y] == PixType.Empty;
 
             if (_find_target_in_empty)
             {
-                _find_aStar_target = _find_target;
-                _gridData.StartAStar(_find_start, _find_aStar_target);
+                _findPointPath = _gridData.StartAStar(find_start, find_target);
             }
             else
             {
@@ -1172,10 +1183,10 @@ namespace Script.Model.Auto
                 // 2.从K点开始"边界"连通性递归，按距离顺序，直到遇到"迷雾"，记为点T
                 // 3.从T点开始"迷雾"连通性递归，按距离顺序，直到遇到"空地"，记为点E
                 // 4.所在地到点E的寻路。
-                _find_aStar_target = Utils.DefaultV2I;      //_find_aStar_target 是作为寻路成功否的标识
+                var change_target = Utils.DefaultV2I;      //_find_aStar_target 是作为寻路成功否的标识
                 _pixRecord[PixRecordType.AreaOfFindNearestFog].Clear();
 
-                Vector2Int pointK = BresenhamGetCross(_find_start, _find_target);
+                Vector2Int pointK = GetTileFromLine(find_start, find_target);
                 if (pointK == Utils.DefaultV2I)
                 {
                     DU.LogWarning("[BresenhamGetCross] 无法找到交点K");
@@ -1186,7 +1197,7 @@ namespace Script.Model.Auto
                 PixType typeK = _map[pointK.x, pointK.y];
                 if (typeK == PixType.Empty)
                 {
-                    _find_aStar_target = pointK;
+                    change_target = pointK;
                 }
                 else
                 {
@@ -1205,8 +1216,8 @@ namespace Script.Model.Auto
                         pointT = pointK;
                     }
 
-                    _find_aStar_target = FogTraversal(pointT);
-                    if (_find_aStar_target == Utils.DefaultV2I)
+                    change_target = FogTraversal(pointT);
+                    if (change_target == Utils.DefaultV2I)
                     {
                         DU.LogWarning("[FogTraversal] 无法找到邻近空地E");
                         return;
@@ -1215,8 +1226,7 @@ namespace Script.Model.Auto
 
 
                 // 寻路
-                _gridData.StartAStar(_find_start, _find_aStar_target);
-
+                _findPointPath = _gridData.StartAStar(find_start, change_target);
             }
 
         }
@@ -1224,7 +1234,7 @@ namespace Script.Model.Auto
 
         public Vector2Int GetPlayerPos()
         {
-            return _templatePos + new Vector2Int(100, 100);
+            return _templatePos + PlayerPos_SmallMap;
         }
         public Vector2Int GetPlayerPosEmpty()
         {
@@ -1242,52 +1252,53 @@ namespace Script.Model.Auto
             return Utils.DefaultV2I;
         }
 
-        #region 寻路-迷雾情况
+        #region 寻路-目标在迷雾
 
-        // Bresenham获取交点
-        Vector2Int BresenhamGetCross(Vector2Int start, Vector2Int target)
+        // 指定连线倒着找指定地块
+        Vector2Int GetTileFromLine(Vector2Int start, Vector2Int target)
         {
-            if (MathF.Abs(start.x - target.x) > MathF.Abs(start.y - target.y))
-                DrawLineH(start, target);
-            else
-                DrawLineV(start, target);
+            var record = GetLineBresenham(start, target);
+            _pixRecord[PixRecordType.LineOfFindPath] = record;      // 存一下,for debug
 
-            var record = _pixRecord[PixRecordType.LineOfFindPath];
             var len = record.Count();
-            if (record[0] == target)
-                for (int i = 0; i < len; i++)
-                {
-                    var p = record[i];
-                    var data = _map[p.x, p.y];
-                    if (data != PixType.Undefined && data != PixType.ObstacleByBig)
-                        return p;
-                }
-            else
-                for (int i = len - 1; i >= 0; i--)
-                {
-                    var p = record[i];
-                    var data = _map[p.x, p.y];
-                    if (data != PixType.Undefined && data != PixType.ObstacleByBig)
-                        return p;
-                }
+            for (int i = len - 1; i >= 0; i--)
+            {
+                var p = record[i];
+                var data = _map[p.x, p.y];
+                if (data != PixType.Undefined && data != PixType.ObstacleByBig)
+                    return p;
+            }
 
             return Utils.DefaultV2I;
         }
 
-        // 水平
-        void DrawLineH(Vector2Int start, Vector2Int target)
+        /// <summary>
+        /// 用Bresenham方法，返回连线，顺序: start => target
+        /// </summary>
+        List<Vector2Int> GetLineBresenham(Vector2Int start, Vector2Int target)
         {
-            var record = _pixRecord[PixRecordType.LineOfFindPath];
-            record.Clear();
+            if (MathF.Abs(start.x - target.x) > MathF.Abs(start.y - target.y))
+                return DrawLineH(start, target);
+            else
+                return DrawLineV(start, target);
+        }
+
+        // 水平
+        List<Vector2Int> DrawLineH(Vector2Int start, Vector2Int target)
+        {
+            var record = new List<Vector2Int>();
+            bool need_reverse;
 
             int x0, y0, x1, y1;
             if (start.x < target.x)
             {
                 x0 = start.x; y0 = start.y; x1 = target.x; y1 = target.y;
+                need_reverse = false;
             }
             else
             {
                 x0 = target.x; y0 = target.y; x1 = start.x; y1 = start.y;
+                need_reverse = true;
             }
             int dx = x1 - x0, dy = y1 - y0;
             int dir = dy < 0 ? -1 : 1;
@@ -1309,21 +1320,27 @@ namespace Script.Model.Auto
                 D = D + 2 * dy;
             }
 
+            if (need_reverse)
+                record.Reverse();
+
+            return record;
         }
         // 竖直
-        void DrawLineV(Vector2Int start, Vector2Int target)
+        List<Vector2Int> DrawLineV(Vector2Int start, Vector2Int target)
         {
-            var record = _pixRecord[PixRecordType.LineOfFindPath];
-            record.Clear();
+            var record = new List<Vector2Int>();
+            bool need_reverse;
 
             int x0, y0, x1, y1;
             if (start.y < target.y)
             {
                 x0 = start.x; y0 = start.y; x1 = target.x; y1 = target.y;
+                need_reverse = false;
             }
             else
             {
                 x0 = target.x; y0 = target.y; x1 = start.x; y1 = start.y;
+                need_reverse = true;
             }
 
             int dx = x1 - x0, dy = y1 - y0;
@@ -1346,6 +1363,10 @@ namespace Script.Model.Auto
                 D = D + 2 * dx;
             }
 
+            if (need_reverse)
+                record.Reverse();
+
+            return record;
         }
 
         // 得8方向。参照_map
@@ -1473,51 +1494,132 @@ namespace Script.Model.Auto
 
         #region 寻路-最近迷雾
 
-        public bool FindFog_has = true;
-        public PathFindingResult ResultOfFind;
-        Vector2Int _findFog_start = Utils.DefaultV2I;           //寻路起点，像素粒度
-        Vector2Int _findFog_target = Utils.DefaultV2I;          //寻路起点，大格子粒度
 
-        public void FindNearestFog()
+
+        /// <summary>
+        /// 找最近迷雾。
+        /// refresh: 每次调用是否都重新(用当前位置)A星寻路
+        /// </summary>
+        public void FindNearestFog(bool refresh)
         {
-            if (!FindFog_has)
-            {
-                ResultOfFind = PathFindingResult.NoTarget;
+            if (_findFogResult == PathFindingResult.NoTarget)
                 return;
-            }
 
-            if (_findFog_target != Utils.DefaultV2I)
+            // 查看上个迷雾消失没
+            if (_findFogPath != null)
             {
-                var cell = _gridData._grid[_findFog_target.x, _findFog_target.y];
+                var path = _findFogPath.Path;
+                var cell = path[path.Count - 1].Cell;
                 if (cell == null || !cell.HasFog)
                 {
-                    _findFog_target = Utils.DefaultV2I;
+                    _findFogPath = null;
                 }
             }
 
-            if (_findFog_target == Utils.DefaultV2I)
+            // 寻找最近迷雾
+            if (refresh || _findFogPath == null)
             {
-                _findFog_start = GetPlayerPosEmpty();
-                if (_findFog_start == Utils.DefaultV2I)
+                var start_pos = GetPlayerPosEmpty();
+                if (start_pos == Utils.DefaultV2I)
                 {
-                    ResultOfFind = PathFindingResult.StartPosFail;
+                    _findFogResult = PathFindingResult.StartPosFail;
                     return;
                 }
-
-                _findFog_target = _gridData.StartFindFog(_findFog_start / 5);
+                _findFogPath = _gridData.StartFindFog(start_pos);
             }
 
-            if (_findFog_target == Utils.DefaultV2I)
-            {
-                FindFog_has = false;
-                ResultOfFind = PathFindingResult.NoTarget;
-            }
+
+            if (_findFogPath == null)
+                _findFogResult = PathFindingResult.NoTarget;
             else
-                ResultOfFind = PathFindingResult.Success;
-
-
-
+                _findFogResult = PathFindingResult.Success;
         }
+
+        /// <summary>
+        /// GetPathFindingDirection。执行寻路后，获取当前前进的方向
+        /// </summary>
+        public Vector2Int GetPFDirection()
+        {
+            if (FindFogResult != PathFindingResult.Success)
+                return default;
+
+
+            SmallCellFinder finder = new SmallCellFinder();
+            var Path = _findFogPath.Path;
+
+            // 如果重合了就出error, 看来真得优化一下了。
+
+            var node0 = Path[0];
+            var path0 = node0.GetPixPath(this, finder);
+            Vector2Int from = path0[0];
+            Vector2Int to = default;
+            List<Vector2Int> to_list = new List<Vector2Int>();
+
+            // 第一个大格子
+            for (int i = 1; i < path0.Count; i++)
+                to_list.Add(path0[i]);
+
+            if (Path.Count > 1)
+            {
+                var node1 = Path[1];
+                var path1 = node1.GetPixPath(this, finder);
+                for (int i = 0; i < path1.Count; i++)
+                    to_list.Add(path1[i]);
+            }
+
+            // 从远到近，选一个from-to连线间无障碍的to
+            for (int i = to_list.Count - 1; i >= 0; i--)
+            {
+                to = to_list[i];
+                var line = GetLineBresenham(from, to);
+                bool has_obstacle = false;
+                foreach (var p in line)
+                {
+                    var data = _map[p.x, p.y];
+                    if (data != PixType.Empty)
+                    {
+                        has_obstacle = true;
+                        break;
+                    }
+                }
+
+                if (!has_obstacle)
+                    break;
+            }
+
+            //偏好斜着走。 1/2为阈值   26.5°   37°   26.5°
+            Vector2Int normal_dir = default;
+            Vector2Int dir = to - from;
+            int x = dir.x;
+            int y = dir.y;
+            if (x == 0 && y == 0)
+                normal_dir = new Vector2Int(0, 0);
+            else
+            {
+                int x_abs = x > 0 ? x : -x;
+                int y_abs = y > 0 ? y : -y;
+                bool x_bigger = x_abs > y_abs;
+                var a = x_bigger ? x_abs : y_abs;
+                var b = x_bigger ? y_abs : x_abs;
+                float rate = (float)b / a;
+                if (rate <= 0.5f)
+                {
+                    if (x_bigger)
+                        normal_dir = new Vector2Int(x > 0 ? 1 : -1, 0);
+                    else
+                        normal_dir = new Vector2Int(0, y > 0 ? 1 : -1);
+
+                }
+                else
+                    normal_dir = new Vector2Int(x > 0 ? 1 : -1, y > 0 ? 1 : -1);
+
+            }
+
+
+
+            return normal_dir;
+        }
+
 
 
         public string GetPathFindingDebugStr(PathFindingResult result)
@@ -1570,7 +1672,7 @@ namespace Script.Model.Auto
         public void Save(string path)
         {
             Color32[] colors = GetImageMap0();
-            byte[] bytes = IU.Color32ToByte(colors);
+            byte[] bytes = IU.Color32ToByteWithoutAlpha(colors);
             using (Mat mat = Mat.FromPixelData(_h, _w, MatType.CV_8UC3, bytes))
             {
                 IU.SaveMat(mat, path);
@@ -1578,7 +1680,7 @@ namespace Script.Model.Auto
 
 
             colors = GetImageGrid();
-            bytes = IU.Color32ToByte(colors);
+            bytes = IU.Color32ToByteWithoutAlpha(colors);
             var path2 = path.Substring(0, path.Length - 4) + "_grid.png";
             using (Mat mat = Mat.FromPixelData(_h, _w, MatType.CV_8UC3, bytes))
             {
@@ -1613,16 +1715,18 @@ namespace Script.Model.Auto
                     var data = _grid[x, y];
                     if (data != null)
                     {
-                        big_cell_active++;
-                        if (data.HasFog) fog_cell++;
+                        if (data.HasFog)
+                            fog_cell++;
+                        if (data.Type != BigCellType.UnInit)
+                            big_cell_active++;
                     }
                 }
 
 
-            int big_cell_total = _gridData.BuildCellTimes;
+            int build_count = _gridData.BuildCellTimes;
             int big_cell_multi = _gridData.MultiEmptyCellCount;
 
-            result.Add($"大格子重建次数 {big_cell_total - big_cell_active}；构造次数 {big_cell_total}");
+            result.Add($"大格子重建次数 {build_count - big_cell_active}；构造次数 {build_count}");
             result.Add($"迷雾数 {fog_cell}");
 
             if (big_cell_multi > 0)
@@ -1688,16 +1792,16 @@ namespace Script.Model.Auto
         /// <summary>
         /// 固定大小，超出实际地图的部分补灰色
         /// </summary>
-        public Color32[] GetImageMap0Following(int w, int h)
+        public Color32[] GetImageMap0Following(int w, int h, out Vector2Int start_pos)
         {
             Color32[] colors = GetColorsBuffer(w, h);
             var charaP = GetPlayerPos();
-            var draw_zero = new Vector2Int(charaP.x - w / 2, charaP.y - h / 2);
+            start_pos = new Vector2Int(charaP.x - w / 2, charaP.y - h / 2);
 
             for (int y = 0; y < h; y++)
                 for (int x = 0; x < w; x++)
                 {
-                    var pos = new Vector2Int(x + draw_zero.x, y + draw_zero.y);
+                    var pos = new Vector2Int(x + start_pos.x, y + start_pos.y);
                     Color32 color = color_gray;
 
                     if (pos.x >= _xRange.x && pos.x <= _xRange.y
@@ -1714,7 +1818,7 @@ namespace Script.Model.Auto
 
 
             foreach (var off in playerIconDraw)
-                colors[GetColorsIndex(charaP.x + off.x - draw_zero.x, charaP.y + off.y - draw_zero.y, w, h)] = color_green_blue;
+                colors[GetColorsIndex(charaP.x + off.x - start_pos.x, charaP.y + off.y - start_pos.y, w, h)] = color_green_blue;
 
             return colors;
         }
@@ -2003,7 +2107,7 @@ namespace Script.Model.Auto
             }
 
 
-            if (_find_aStar_target == Utils.DefaultV2I)
+            if (_findPointPath == null)
                 return colors;
 
             // 迷雾分析流程 —— 展示
@@ -2017,17 +2121,10 @@ namespace Script.Model.Auto
                 }
             }
 
-
-            var grid = _gridData._grid;
-            var target_c = _gridData._target_c;
-            BigCell cell = grid[target_c.x, target_c.y];
-
-            //两格之间的寻路, 以目标像素点为最开始的起点。
-            SmallCellFinder finder = new SmallCellFinder();
-            Vector2Int start = _find_aStar_target;        //从终点倒着寻找起点
-            Vector2Int target = _find_start;
             Color32 yellow = new Color32(150, 150, 20, 255);
 
+            // 把寻路计算过的大格子标黄，把算法耗时图形化
+            var grid = _gridData._grid;
             int gw = grid.GetLength(0);
             int gh = grid.GetLength(1);
             for (int cy = 0; cy < gh; cy++)
@@ -2044,8 +2141,8 @@ namespace Script.Model.Auto
                         for (int px = pxs; px < pxe; px++)
                         {
                             int index = GetColorsIndex(px, py);
-                            if (IU.Equal(colors[index], new Color32(20, 60, 20, 255))
-                            || IU.Equal(colors[index], color_dark))
+                            if (IU.Color32Equal(colors[index], new Color32(20, 60, 20, 255))
+                            || IU.Color32Equal(colors[index], color_dark))
                                 colors[index] = yellow;
                         }
                 }
@@ -2053,47 +2150,20 @@ namespace Script.Model.Auto
             if (!_gridData.success)
                 return colors;
 
-            var next_cell = cell.Parent;
-            // 循环粒度：从cell_find_start走到 当前cell与next_cell的边界位置
-            while (next_cell != null)
+            SmallCellFinder finder = new SmallCellFinder();
+            var path = _findPointPath.Path;
+
+            for (int i = 0; i < path.Count; i++)
             {
-                var cx = cell.x;
-                var cy = cell.y;
-                var nextCX = next_cell.x;
-                var nextCY = next_cell.y;
-                // 找终点
-                var zero_pos = new Vector2Int(cx * 5, cy * 5);
+                var node = path[i];
+                BigCell c = node.Cell;
+
+                var zero_pos = new Vector2Int(c.x * 5, c.y * 5);
                 var map = GetByRegion(zero_pos.x, zero_pos.y, 5, 5);
-                var next_map = GetByRegion(nextCX * 5, nextCY * 5, 5, 5);
 
-                GridData.GetConnectPixel(map, next_map, new Vector2Int(cx, cy)
-                , new Vector2Int(next_cell.x, next_cell.y), out var rA, out var rB);
-
-
-                // 在大格子中去寻路，从start走到A再走一步到B。
-                var result = finder.BeginAStar(map, start - zero_pos, rA);
+                var result = finder.BeginAStar(map, node.From, node.To);
                 DrawColor(colors, result, zero_pos, color_green);
-
-
-                cell = next_cell;
-                next_cell = cell.Parent;
-
-                //下个起点在哪里
-                start = rB + zero_pos;
             }
-
-            {
-                // 终点还要一次。
-                var zero_pos = new Vector2Int(cell.x * 5, cell.y * 5);
-                var map = GetByRegion(zero_pos.x, zero_pos.y, 5, 5);
-                var result = finder.BeginAStar(map, start - zero_pos, target - zero_pos);
-                // 涂颜色
-                DrawColor(colors, result, zero_pos, color_green);
-
-            }
-
-
-
 
             return colors;
         }
@@ -2102,59 +2172,25 @@ namespace Script.Model.Auto
         {
             Color32[] colors = GetImageMap0();
 
-            if (!FindFog_has)
+            if (_findFogResult != PathFindingResult.Success)
                 return colors;
 
-
-            var grid = _gridData._grid;
-            BigCell cell = grid[_findFog_target.x, _findFog_target.y];
-
+            var path = _findFogPath.Path;
             SmallCellFinder finder = new SmallCellFinder();
-            int times = 0;
-            Vector2Int start = default;                 //从终点倒着寻找起点
-            Vector2Int target = _findFog_start;
 
-            var next_cell = cell.Parent;
-            // 循环粒度：从start走到 当前cell与next_cell的边界位置
-            while (next_cell != null)
+            // 第一次不用画。因为它的大格子没"寻路起点"
+            for (int i = 0; i < path.Count - 1; i++)
             {
-                var cx = cell.x;
-                var cy = cell.y;
-                var nextCX = next_cell.x;
-                var nextCY = next_cell.y;
-                // 终点在哪里
-                var zero_pos = new Vector2Int(cx * 5, cy * 5);
-                var map = GetByRegion(zero_pos.x, zero_pos.y, 5, 5);
-                var next_map = GetByRegion(nextCX * 5, nextCY * 5, 5, 5);
+                var node = path[i];
+                BigCell cell = node.Cell;
 
-                GridData.GetConnectPixel(map, next_map, new Vector2Int(cx, cy)
-                , new Vector2Int(next_cell.x, next_cell.y), out var rA, out var rB);
-
-
-                // 第一次不用画。
-                if (times > 0)
-                {
-                    var result = finder.BeginAStar(map, start - zero_pos, rA);
-                    DrawColor(colors, result, zero_pos, color_green);
-                }
-
-                cell = next_cell;
-                next_cell = cell.Parent;
-
-                //下个起点在哪里
-                start = rB + zero_pos;
-                times++;
-            }
-
-            {
-                // 终点还要一次。
                 var zero_pos = new Vector2Int(cell.x * 5, cell.y * 5);
                 var map = GetByRegion(zero_pos.x, zero_pos.y, 5, 5);
-                var result = finder.BeginAStar(map, start - zero_pos, target - zero_pos);
-                // 涂颜色
-                DrawColor(colors, result, zero_pos, color_green);
 
+                var result = finder.BeginAStar(map, node.From, node.To);
+                DrawColor(colors, result, zero_pos, color_green);
             }
+
             DrawPlayerIcon(colors);
 
             return colors;
@@ -2163,65 +2199,30 @@ namespace Script.Model.Auto
         /// <summary>
         /// w、h 赋值为10的倍数。固定大小
         /// </summary>
-        public Color32[] GetImageToNearestFogFollowing(int w, int h)
+        public Color32[] GetImageToNearestFogFollowing(int w, int h, out Vector2Int start_pos)
         {
-            Color32[] colors = GetImageMap0Following(w, h);
+            Color32[] colors = GetImageMap0Following(w, h, out start_pos);
 
-            if (!FindFog_has)
+            if (_findFogResult != PathFindingResult.Success)
                 return colors;
 
             var charaP = GetPlayerPos();
             var draw_zero = new Vector2Int(charaP.x - w / 2, charaP.y - h / 2);
 
-            var grid = _gridData._grid;
-            BigCell cell = grid[_findFog_target.x, _findFog_target.y];
-
+            var path = _findFogPath.Path;
             SmallCellFinder finder = new SmallCellFinder();
-            int times = 0;
-            Vector2Int start = default;                 //从终点倒着寻找起点
-            Vector2Int target = _findFog_start;
-
-            var next_cell = cell.Parent;
-            // 循环粒度：从start走到 当前cell与next_cell的边界位置
-            while (next_cell != null)
+            for (int i = 0; i < path.Count - 1; i++)
             {
-                var cx = cell.x;
-                var cy = cell.y;
-                var nextCX = next_cell.x;
-                var nextCY = next_cell.y;
-                // 终点在哪里
-                var zero_pos = new Vector2Int(cx * 5, cy * 5);
-                var map = GetByRegion(zero_pos.x, zero_pos.y, 5, 5);
-                var next_map = GetByRegion(nextCX * 5, nextCY * 5, 5, 5);
+                var node = path[i];
+                BigCell cell = node.Cell;
 
-                GridData.GetConnectPixel(map, next_map, new Vector2Int(cx, cy)
-                , new Vector2Int(next_cell.x, next_cell.y), out var rA, out var rB);
-
-
-                // 第一次不用画。只有画与它有关
-                if (times > 0)
-                {
-                    var result = finder.BeginAStar(map, start - zero_pos, rA);
-                    DrawColor(colors, result, zero_pos - draw_zero, color_green, w, h);
-                }
-
-                cell = next_cell;
-                next_cell = cell.Parent;
-
-                //下个起点在哪里
-                start = rB + zero_pos;
-                times++;
-            }
-
-            {
-                // 终点还要一次。
                 var zero_pos = new Vector2Int(cell.x * 5, cell.y * 5);
                 var map = GetByRegion(zero_pos.x, zero_pos.y, 5, 5);
-                var result = finder.BeginAStar(map, start - zero_pos, target - zero_pos);
-                // 涂颜色
-                DrawColor(colors, result, zero_pos - draw_zero, color_green, w, h);
 
+                var result = finder.BeginAStar(map, node.From, node.To);
+                DrawColor(colors, result, zero_pos - draw_zero, color_green, w, h);
             }
+
 
             foreach (var off in playerIconDraw)
                 colors[GetColorsIndex(charaP.x + off.x - draw_zero.x, charaP.y + off.y - draw_zero.y, w, h)]
@@ -2273,7 +2274,7 @@ namespace Script.Model.Auto
 
 
             var colors = GetImageGridAStar();
-            var bytes = IU.Color32ToByte(colors);
+            var bytes = IU.Color32ToByteWithoutAlpha(colors);
             var path3 = path.Substring(0, path.Length - 4) + "_grid_AStar.png";
             using (Mat mat = Mat.FromPixelData(_h, _w, MatType.CV_8UC3, bytes))
             {
@@ -2386,6 +2387,14 @@ namespace Script.Model.Auto
         NoTarget,               // 没有目标
     }
 
+    public enum PathFindingType
+    {
+        ExploreFog,                 // 探索迷雾。没有迷雾 就输出成功，否则输出失败
+        SearchTarget,               // 寻找目标。目标出现 就输出成功
+        KillAllTarget,              // 寻找目标。目标全部消失 就输出成功
+
+    }
+
 
 
     #region MapDataManager
@@ -2402,11 +2411,12 @@ namespace Script.Model.Auto
         public Dictionary<string, MapData> mapDataDic = new Dictionary<string, MapData>();
 
 
-        public void Create(string id, CVRect rect, int color_set)
+        public MapData Create(string id, CVRect rect, int color_set)
         {
-            if (mapDataDic.ContainsKey(id))
-                return;
-            mapDataDic[id] = new MapData(id, rect, color_set);
+            if (!mapDataDic.ContainsKey(id))
+                mapDataDic[id] = new MapData(id, rect, color_set);
+
+            return Get(id);
         }
 
         public MapData Get(string id)

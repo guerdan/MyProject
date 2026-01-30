@@ -1,6 +1,7 @@
 
 using System;
 using System.Collections.Generic;
+using Script.Framework;
 using Script.Framework.AssetLoader;
 using Script.Framework.UI;
 using Script.Model.Auto;
@@ -33,16 +34,14 @@ namespace Script.UI.Panel.Auto.DeskPet
 
         MenuSystem MenuSystem;                      //菜单
         DeskPetMapFloat MapFloat;                   //小地图窗
-        RectTransform _rectT;
         string _script_id;
+        AutoScriptData _scriptData;
 
         void Awake()
         {
 
             RunBtn.onClick.AddListener(OnClickRunBtn);
             Utils.SetActive(TipsCompShared, false);
-
-            _rectT = transform as RectTransform;
 
             //异步加载菜单
             var path = "Common/Prefabs/Component/MenuSystem";
@@ -81,44 +80,43 @@ namespace Script.UI.Panel.Auto.DeskPet
 
         void UpdateStatus()
         {
-            AutoScriptData scriptData = null;
+            _scriptData = null;
 
             var script_id = Manager.HotSpotScriptId;
             _script_id = script_id;
 
             if (Manager.HotSpotScriptId != null)
             {
-                scriptData = Manager.GetScriptData(Manager.HotSpotScriptId);
+                _scriptData = Manager.GetScriptData(Manager.HotSpotScriptId);
             }
 
-            if (scriptData == null)
+            RefreshRunBtn();
+            if (_scriptData == null)
             {
-                Utils.SetActive(RunBtn, false);
                 ScriptName.text = "无执行脚本";
                 ClearNodeInfo();
                 return;
             }
-            ScriptName.text = scriptData.Config.Name;
+            ScriptName.text = _scriptData.Config.Name;
 
-            Utils.SetActive(ErrorIcon, scriptData.IsError);
-            Utils.SetActive(RunBtn, true);
-            RunBtn.GetComponent<CheckBox>().SetData(!scriptData.Running);
-            if (scriptData.IsEnd)
+            Utils.SetActive(ErrorIcon, _scriptData.IsError);
+            if (_scriptData.IsEnd)
             {
                 ClearNodeInfo();
                 return;
             }
 
-            var node_id = scriptData.HotSpotNodeId;
-            var node = scriptData.NodeDatas[node_id];
+            var node_id = _scriptData.HotSpotNodeId;
+            
+            var node = _scriptData.NodeDatas[node_id];
             NodeName.text = node.Name;
             NodeCountDown.text = $"{(node.Delay - node.Timer).ToString("F1")}s";
             NodeIcon.SetData(script_id, node_id, true);
 
-            string last_node_id = node.ExcuteLastNodId;
+            string last_node_id = node.ExcuteLastNodeId;
             if (last_node_id != null)
             {
-                var last_node = scriptData.NodeDatas[last_node_id];
+                var last_node = _scriptData.NodeDatas[last_node_id];
                 LastNodeName.text = last_node.Name;
                 LastNodeIcon.SetData(script_id, last_node_id, false);
             }
@@ -129,6 +127,23 @@ namespace Script.UI.Panel.Auto.DeskPet
             }
         }
 
+        void RefreshRunBtn()
+        {
+            int active_child = -1;
+
+            if (_scriptData != null)
+                if (_scriptData.IsRunning)
+                    active_child = 0;
+                else
+                    active_child = _scriptData.IsEnd ? 1 : 2;
+
+            for (int i = 0; i < 3; i++)
+            {
+                Transform child = RunBtn.transform.GetChild(i);
+                Utils.SetActive(child.gameObject, i == active_child);
+            }
+
+        }
         void ClearNodeInfo()
         {
             NodeName.text = "无执行节点";
@@ -138,7 +153,6 @@ namespace Script.UI.Panel.Auto.DeskPet
             LastNodeIcon.SetData(null, null, false);
 
             Utils.SetActive(ErrorIcon, false);
-            Utils.SetActive(RunBtn, false);
         }
 
 
@@ -153,8 +167,9 @@ namespace Script.UI.Panel.Auto.DeskPet
                    { if (ScriptId != null) Utils.OpenDrawProcessPanel(ScriptId); }
                 ));
                 options.Add(($"{(int)MO.Debug}", "debug", null));
-                options.Add(($"{(int)MO.Debug}_0", "小地图", OpenMapFloat));
-                options.Add(($"{(int)MO.Debug}_1", "物品", () => { }));
+                options.Add(($"{(int)MO.Debug}_0", "日志", OpenDebugMessageFloat));
+                options.Add(($"{(int)MO.Debug}_1", "变量", OpenDebugVarsFloat));
+                options.Add(($"{(int)MO.Debug}_2", "小地图", OpenMapFloat));
                 options.Add(($"{(int)MO.OpenScriptManager}", "管理器", () => { UIManager.Inst.ShowPanel(PanelEnum.ScriptManagerPanel, null); }));
                 options.Add(($"{(int)MO.Minimize}", "最小化", () => { AutoRoot.Inst.Minimize(); }));
                 options.Add(($"{(int)MO.Quit}", "关闭", () => { AutoRoot.Inst.Quit(); }));
@@ -193,6 +208,22 @@ namespace Script.UI.Panel.Auto.DeskPet
             MenuSystem.Open();
         }
 
+        void OpenDebugMessageFloat()
+        {
+            var config = new BasePanelConfig();
+            Vector2 screenPoint = Utils.GetScreenPos(_rectT);
+            config.WinPos = screenPoint + new Vector2(100, 100);
+            UIManager.Inst.ShowPanel(PanelEnum.DebugMessageFloat, null, config);
+        }
+        void OpenDebugVarsFloat()
+        {
+            var config = new BasePanelConfig();
+            Vector2 screenPoint = Utils.GetScreenPos(_rectT);
+            config.WinPos = screenPoint + new Vector2(100, 100);
+            UIManager.Inst.ShowPanel(PanelEnum.DebugVarsFloat, _script_id, config);
+        }
+
+
         void OpenMapFloat()
         {
             Action doAction = () =>
@@ -228,7 +259,8 @@ namespace Script.UI.Panel.Auto.DeskPet
         {
             var id = Manager.HotSpotScriptId;
             Utils.AutoScriptSwitchRunStatus(id);
-            RunBtn.GetComponent<CheckBox>().SetData(!Manager.IsRuning(id));
+            RefreshRunBtn();
+
         }
 
         /// <summary>

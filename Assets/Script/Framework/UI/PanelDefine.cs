@@ -47,6 +47,8 @@ namespace Script.Framework.UI
         ImageCompareTestPanel,
         ProcessDebugPanel,
         DeskPetMain,
+        DebugMessageFloat,
+        DebugVarsFloat,
     }
 
 
@@ -268,6 +270,26 @@ namespace Script.Framework.UI
                 Key = PanelEnum.DeskPetMain,
                 Name = "DeskPetMain",
                 Path = "Auto/Prefabs/DeskPetMain",
+                Type = UITypeEnum.TopSystem,
+                RecycleType = UIRecycleTypeEnum.Frequent,
+                InitPos = new Vector2(0, 0),
+                HideLastPanel = false,
+            },
+            
+            new PanelDefine{
+                Key = PanelEnum.DebugMessageFloat,
+                Name = "DebugMessageFloat",
+                Path = "Auto/Prefabs/DebugMessageFloat",
+                Type = UITypeEnum.TopSystem,
+                RecycleType = UIRecycleTypeEnum.Frequent,
+                InitPos = new Vector2(0, 0),
+                HideLastPanel = false,
+            },
+
+            new PanelDefine{
+                Key = PanelEnum.DebugVarsFloat,
+                Name = "DebugVarsFloat",
+                Path = "Auto/Prefabs/DebugVarsFloat",
                 Type = UITypeEnum.TopSystem,
                 RecycleType = UIRecycleTypeEnum.Frequent,
                 InitPos = new Vector2(0, 0),

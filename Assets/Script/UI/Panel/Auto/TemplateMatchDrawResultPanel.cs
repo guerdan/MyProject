@@ -1,6 +1,8 @@
 
+using System;
 using System.Collections.Generic;
 using Script.Framework.UI;
+using Script.Model.Auto;
 using Script.UI.Components;
 using Script.Util;
 using UnityEngine;
@@ -9,22 +11,21 @@ namespace Script.UI.Panel.Auto
 {
     public class TemplateMatchDrawResultPanel : BasePanel
     {
-        static Color Blue;
-        static TemplateMatchDrawResultPanel()
-        {
-            Blue = Utils.ParseHtmlString("#003EFF");
-        }
-
+        public static TemplateMatchDrawResultPanel Inst;
+        public AutoScriptManager Manager => AutoScriptManager.Inst;
         [SerializeField] private RectTransform Content;
         [SerializeField] private GameObject Prefab;
 
         List<SquareFrameUI> _itemList = new List<SquareFrameUI>();
+        bool _show = false;
         float _countDown = 0;
         void Awake()
         {
+            Inst = this;
             _animEnable = false;
             Prefab.SetActive(false);
         }
+
 
         public override void SetData(object data)
         {
@@ -36,6 +37,9 @@ namespace Script.UI.Panel.Auto
                 return;
             }
             float duration = (float)dataList[1];
+
+
+            _show = true;
             Utils.RefreshItemListByCount<SquareFrameUI>(_itemList, itemdata.Count, Prefab, Content, (item, index) =>
                {
                    var matchResult = itemdata[index];
@@ -50,26 +54,40 @@ namespace Script.UI.Panel.Auto
                        item.SetData(DU.FloatFormat(matchResult.Score, 2), matchResult.Rect, new Color());
                });
 
+            // 若此时不让显示。就得隐藏
+            if (!Manager.ScreenDrawAllow)
+                Clear();
+
             _countDown = duration;
         }
 
-        void Update()
+        public void OnUpdate()
         {
-            if (_countDown > 0)
-            {
-                _countDown -= Time.deltaTime;
-                if (_countDown <= 0)
-                {
-                    Clear();
-                }
-            }
+            if (_countDown <= 0) return;
+
+            _countDown -= Time.deltaTime;
+            if (_show && (_countDown <= 0 || !Manager.ScreenDrawAllow))
+                Clear();
+
+            if (_countDown > 0 && !_show && Manager.ScreenDrawAllow)
+                Show();
         }
 
 
         void Clear()
         {
+            _show = false;
             foreach (var item in _itemList)
                 item.gameObject.SetActive(false);
         }
+
+        void Show()
+        {
+            _show = true;
+            foreach (var item in _itemList)
+                item.gameObject.SetActive(true);
+        }
+
+
     }
 }

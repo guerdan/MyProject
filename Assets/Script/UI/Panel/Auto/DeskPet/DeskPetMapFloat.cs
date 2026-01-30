@@ -134,7 +134,7 @@ namespace Script.UI.Panel.Auto.DeskPet
 
             if (_option == Options.FindNearestFogFollowing)
             {
-                var result = _mapData.ResultOfFind;
+                var result = _mapData.FindFogResult;
                 string title1 = $"全图 {w} * {h}";
                 string debug_str = _mapData.GetPathFindingDebugStr(result);
                 title = result == PathFindingResult.Success ? title1 : debug_str;

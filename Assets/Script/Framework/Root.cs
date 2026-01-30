@@ -1,23 +1,24 @@
-using Script.Framework;
 using Script.Framework.AssetLoader;
 using Script.Framework.UI;
 using Script.Model.Auto;
+using Script.UI.Panel.Auto;
 using UnityEngine;
-using UnityEngine.UI;
 
-namespace Script.UI
+namespace Script.Framework
 {
+    [RequireComponent(typeof(GameTimer))]
+    [RequireComponent(typeof(SceneTool))]
     public class Root : MonoBehaviour
     {
         protected static Root inst;
         public static Root Inst { get { return inst; } }
-        [HideInInspector] public Camera Camera;
+        
+        [SerializeField] public Camera Camera;
         [SerializeField] public Canvas Canvas;
 
         protected void Awake()
         {
             inst = this;
-            gameObject.AddComponent<GameTimer>();
             Camera = Camera.main;
 
             // 提前加载
@@ -39,6 +40,7 @@ namespace Script.UI
             }
 
             AutoScriptManager.Inst.OnUpdate(delta);
+            TemplateMatchDrawResultPanel.Inst?.OnUpdate();
         }
 
 

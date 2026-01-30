@@ -12,9 +12,9 @@ namespace Script.UI.Panel.Auto.Node
 {
     public class TemplateMatchNodeUI : ProcessNodeUI
     {
-        [SerializeField] private Text TitleText;
-        [SerializeField] private Text DelayText;
 
+        [Header("扩展内容")]
+        [SerializeField] private Text TitleText;
         [SerializeField] private ImageLoadComp TemplateImage;
         [SerializeField] private Text RegionText;
 
@@ -36,9 +36,9 @@ namespace Script.UI.Panel.Auto.Node
         /// </summary>
         public override void RefreshContent()
         {
+            base.RefreshContent();
             var data = _data as TemplateMatchOperNode;
             TitleText.text = data.Name;
-            DelayText.text = $"{Math.Round(data.Delay, 2)}s";
             TemplateImage.SetData(ImageManager.GetFullPath(data.TemplatePath), new Vector2(90, 90), true, 2);
             RegionText.text = AutoDataUIConfig.FormulaFormat(data.RegionExpression);
             RefreshTemplateImageBtn();

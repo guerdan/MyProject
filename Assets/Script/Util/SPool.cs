@@ -11,15 +11,17 @@ namespace Script.Util
     {
 
         private GameObject _prefab;
+        private Transform _recycleParent;
         private List<GameObject> _cache;
 
         private string _nickName;
 
-        public SPool(GameObject prefab, int init_count = 0, string nickName = "")
+        public SPool(GameObject prefab, int init_count = 0, string nickName = "", Transform recycleParent = null)
         {
             _prefab = prefab;
             _cache = new List<GameObject>();
             _nickName = nickName;
+            _recycleParent = recycleParent;
 
             for (int i = 0; i < init_count; i++)
             {
@@ -59,8 +61,11 @@ namespace Script.Util
         {
             item.SetActive(false);
             _cache.Add(item);
+
+            if (_recycleParent)
+                item.transform.SetParent(_recycleParent, false);
         }
-        
+
 
     }
 }

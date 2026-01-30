@@ -2,6 +2,7 @@
 
 
 using System.Collections.Generic;
+using Script.Framework;
 using Script.Framework.UI;
 using Script.Model.Auto;
 using Script.Util;

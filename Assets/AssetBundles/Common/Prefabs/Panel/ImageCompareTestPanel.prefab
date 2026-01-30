@@ -269,6 +269,7 @@ MonoBehaviour:
   SyncCB: {fileID: 4564786136077732615}
   LeftImage: {fileID: 1764952310786113867}
   RightImage: {fileID: 5466677919276591325}
+  MaskImage: {fileID: 0}
   Btn1th: {fileID: 826366164430119160}
   Btn2th: {fileID: 7836732698201511290}
   Btn3th: {fileID: 6065180091269442873}
@@ -2923,7 +2924,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1951847463334957377, guid: 4838981b72d4f8541a2c24ad01d95647, type: 3}
       propertyPath: m_Text
-      value: "\u6D4B\u8BD5"
+      value: "\u5DE5\u5177\u7BB1"
       objectReference: {fileID: 0}
     - target: {fileID: 5743549967029667456, guid: 4838981b72d4f8541a2c24ad01d95647, type: 3}
       propertyPath: m_Sprite

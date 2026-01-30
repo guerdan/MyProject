@@ -27,11 +27,7 @@ namespace Script.UI.Panel.Auto.DeskPet
         [SerializeField] private Sprite Sprite_MouseMove;           // 图标
         [SerializeField] private Sprite Sprite_StopScript;          // 图标
 
-        [Header("键盘")]
-        [SerializeField] private GameObject KeyBoardGO;
-        [SerializeField] private Image KeyBoardOutlineRed;
-        [SerializeField] private Image KeyBoardOutlineWhite;
-        [SerializeField] private Text KeyBoardKey;              // 按键
+        [SerializeField] private Text MouseTitle;                   // 按键
 
         [Header("赋值、条件、监听、触发")]
         [SerializeField] private GameObject AssignGO;
@@ -40,10 +36,11 @@ namespace Script.UI.Panel.Auto.DeskPet
         [SerializeField] private Text AssignTypeText;           // 类型：条件/触发事件/监听事件 
         [SerializeField] private Image AssignTypeBg;            // 图 
         [SerializeField] private Image AssignTypeLine;          // 图 
-        [Header("小地图拍摄")]
-        [SerializeField] private GameObject MapCaptureGO;
-        [SerializeField] private Image MapCaptureOutlineRed;
-        [SerializeField] private Image MapCaptureOutlineWhite;
+        [Header("小地图")]
+        [SerializeField] private GameObject MapGO;
+        [SerializeField] private Image MapOutlineRed;
+        [SerializeField] private Image MapOutlineWhite;
+        [SerializeField] private Text MapTitle;
 
         string _scriptId;
         string _nodeId;
@@ -73,17 +70,17 @@ namespace Script.UI.Panel.Auto.DeskPet
             var nodeType = node.NodeType;
 
             bool is_TemplateMatch = nodeType == NodeType.TemplateMatchOper;
-            bool is_Mouse = nodeType == NodeType.MouseOper || nodeType == NodeType.StopScript;
-            bool is_KeyBoard = nodeType == NodeType.KeyBoardOper;
+            bool use_MouseGo = nodeType == NodeType.MouseOper || nodeType == NodeType.StopScript
+                || nodeType == NodeType.KeyBoardOper || nodeType == NodeType.WaitOper;
+
             bool is_AssignSeries = nodeType == NodeType.AssignOper || nodeType == NodeType.ConditionOper
                 || nodeType == NodeType.TriggerEvent || nodeType == NodeType.ListenEvent;
-            bool is_MapCapture = nodeType == NodeType.MapCapture;
+            bool is_MapCapture = nodeType == NodeType.MapCapture || nodeType == NodeType.MapPathFinding;
 
             Utils.SetActive(TemplateMatchGO, is_TemplateMatch);
-            Utils.SetActive(MouseGO, is_Mouse);
-            Utils.SetActive(KeyBoardGO, is_KeyBoard);
+            Utils.SetActive(MouseGO, use_MouseGo);
             Utils.SetActive(AssignGO, is_AssignSeries);
-            Utils.SetActive(MapCaptureGO, is_MapCapture);
+            Utils.SetActive(MapGO, is_MapCapture);
 
             Image outlineRed = null;
             Image outlineWhite = null;
@@ -95,36 +92,46 @@ namespace Script.UI.Panel.Auto.DeskPet
                 Utils.SetActive(BgIfNeed, !show_time);
 
             }
-            else if (is_Mouse)
+            else if (use_MouseGo)
             {
                 outlineRed = MouseOutlineRed;
                 outlineWhite = MouseOutlineWhite;
-                if (node is MouseOperNode mouseNode)
+                if (nodeType == NodeType.MouseOper)
                 {
-                    var type = mouseNode.ClickType;
+                    Utils.SetActive(MouseIconRT, true);
+                    Utils.SetActive(MouseTitle, false);
+                    var mNode = node as MouseOperNode;
+                    var type = mNode.ClickType;
                     MouseIconRT.GetComponent<Image>().sprite = type == 2 ? Sprite_MouseMove : Sprite_MouseClick;
-                    MouseIconRT.localScale = new Vector3(mouseNode.ClickType == 0 ? 1 : -1, 1, 1);
-                    MouseIconRT.anchoredPosition = new Vector2(mouseNode.ClickType == 0 ? -3 : 3, 5);
+                    MouseIconRT.localScale = new Vector3(mNode.ClickType == 0 ? 1 : -1, 1, 1);
+                    MouseIconRT.anchoredPosition = new Vector2(mNode.ClickType == 0 ? -3 : 3, 5);
                     MouseIconRT.sizeDelta = new Vector2(27.5f, 40.25f);
                 }
-                else if (node is StopScriptNode stopNode)
+                else if (nodeType == NodeType.StopScript)
                 {
+                    Utils.SetActive(MouseIconRT, true);
+                    Utils.SetActive(MouseTitle, false);
                     MouseIconRT.GetComponent<Image>().sprite = Sprite_StopScript;
                     MouseIconRT.localScale = Vector3.one;
                     MouseIconRT.anchoredPosition = new Vector2(0, 3);
                     MouseIconRT.sizeDelta = new Vector2(25.6f, 30.8f);
                 }
-
-
+                else if (nodeType == NodeType.KeyBoardOper)
+                {
+                    Utils.SetActive(MouseIconRT, false);
+                    Utils.SetActive(MouseTitle, true);
+                    KeyBoardOperNode data = node as KeyBoardOperNode;
+                    MouseTitle.text = data.Key;
+                }
+                else if (nodeType == NodeType.WaitOper)
+                {
+                    Utils.SetActive(MouseIconRT, false);
+                    Utils.SetActive(MouseTitle, true);
+                    MouseTitle.text = "待";
+                }
 
             }
-            else if (is_KeyBoard)
-            {
-                outlineRed = KeyBoardOutlineRed;
-                outlineWhite = KeyBoardOutlineWhite;
-                KeyBoardOperNode data = node as KeyBoardOperNode;
-                KeyBoardKey.text = data.Key;
-            }
+
             else if (is_AssignSeries)
             {
                 outlineRed = AssignOutlineRed;
@@ -164,8 +171,9 @@ namespace Script.UI.Panel.Auto.DeskPet
             }
             else if (is_MapCapture)
             {
-                outlineRed = MapCaptureOutlineRed;
-                outlineWhite = MapCaptureOutlineWhite;
+                outlineRed = MapOutlineRed;
+                outlineWhite = MapOutlineWhite;
+                MapTitle.text = nodeType == NodeType.MapCapture ? "地图识别" : "地图寻路";
             }
 
             //common logic

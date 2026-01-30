@@ -44,38 +44,44 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private InputTextProComp RegionInput;
         [SerializeField] private CheckBox SaveCaptureCheck;
 
-        [Header("鼠标操作")]
+        [Header("鼠标")]
         [SerializeField] private GameObject MouseOperGO;
         [SerializeField] private SelectBoxComp MouseOperTypeBox;
         [SerializeField] private InputTextProComp MouseOperPosInput;
-        [SerializeField] private InputTextComp HoldTimeInput;
+        [SerializeField] private InputTextComp MouseHoldTimeInput;
 
-        [Header("键盘操作")]
+        [Header("键盘")]
         [SerializeField] private GameObject KeyboardOperGO;
         [SerializeField] private InputTextComp KeyboardInput;
         [SerializeField] private CheckBox KeyboardCheck;
+        [SerializeField] private InputTextComp KeyboardHoldTimeInput;
 
-
-        [Header("赋值操作")]
+        [Header("赋值")]
         [SerializeField] private GameObject AssignOperGO;
         [SerializeField] private InputTextProComp AssignInput;
         [SerializeField] private SelectBoxComp VarTypeBox;      // 变量类型
-        [SerializeField] private Text AssignCheckNum;           // 已声明此变量的个数
+        [SerializeField] private Text AssignCheckNum;           // 统计赋值此变量的节点个数,包含自己
 
-        [Header("条件判断操作")]
+        [Header("条件判断")]
         [SerializeField] private GameObject ConditionOperGO;
         [SerializeField] private InputTextProComp ConditionInput;
 
-        [Header("抛出/监听事件操作")]
+        [Header("抛出/监听事件")]
         [SerializeField] private GameObject EventOperGO;
         [SerializeField] private InputTextComp EventNameInput;
-        [SerializeField] private Text EventNum;
+        [SerializeField] private Text EventNum;                 // 检索被对方的引用数量，例如监听查看有几个触发
 
-        [Header("拍摄地图操作")]
+        [Header("地图识别")]
         [SerializeField] private GameObject MapCaptureGO;
         [SerializeField] private InputTextProComp MapCaptureRegionInput;
         [SerializeField] private InputTextComp MapCaptureIdInput;
         [SerializeField] private InputTextComp MapColorSetInput;
+        [Header("地图寻路")]
+        [SerializeField] private GameObject MapPFGO;                    //MapPathFindingGO
+        [SerializeField] private InputTextComp MapPFIdInput;
+        [SerializeField] private InputTextComp MapPFXAxisInput;
+        [SerializeField] private InputTextComp MapPFYAxisInput;
+        [SerializeField] private SelectBoxComp MapPFTypeBox;
 
 
         AutoScriptManager manager => AutoScriptManager.Inst;
@@ -110,18 +116,15 @@ namespace Script.UI.Panel.Auto
             TipsComp.gameObject.SetActive(false);
 
             if (display)
-                SetPos();
+                CalPos();
 
             Refresh();
         }
 
-        public override void BeforeShow()
-        {
-            SetPos();
-            base.BeforeShow();
-        }
+
+
         // 目的是，显示在_target矩形的周围。优先级下方、右方、左方（界面的下方不合适）
-        void SetPos()
+        void CalPos()
         {
             var selfR = (RectTransform)transform;
             var target_size = _target.rect.size;
@@ -141,9 +144,7 @@ namespace Script.UI.Panel.Auto
                 pos.x = pos.x - target_size.x / 2 - selfR.rect.width / 2;
             }
 
-
-            PanelDefine.InitPos = pos;
-            RefreshPos();
+            SetPos(pos);
         }
 
         void Refresh()
@@ -152,7 +153,7 @@ namespace Script.UI.Panel.Auto
             DelayInput.SetData(_data.Delay + "s", OnDelayEndEdit);
             DescriptionInput.SetData(_data.Description, str => _data.Description = str);
 
-            IdText.text = AutoDataUIConfig.GetNodeId(_data);
+            IdText.text = $"id: {_data.Id}";
             List<string> list = AutoDataUIConfig.GetNodeTypeNameList();
             TypeBox.SetData(list, OnSelect, TipsComp);
             TypeBox.SetCurIndex(AutoDataUIConfig.NodeTypes.IndexOf(_nodeType));
@@ -168,7 +169,8 @@ namespace Script.UI.Panel.Auto
             ConditionOperGO.SetActive(_nodeType == NodeType.ConditionOper);
             EventOperGO.SetActive(_nodeType == NodeType.TriggerEvent || _nodeType == NodeType.ListenEvent);
             MapCaptureGO.SetActive(_nodeType == NodeType.MapCapture);
-            YellowBtn.gameObject.SetActive(_nodeType == NodeType.MapCapture);
+            MapPFGO.SetActive(_nodeType == NodeType.MapPathFinding);
+            YellowBtn.gameObject.SetActive(_nodeType == NodeType.MapCapture || _nodeType == NodeType.MapPathFinding);
 
 
             if (_nodeType == NodeType.TemplateMatchOper)
@@ -193,6 +195,26 @@ namespace Script.UI.Panel.Auto
                 KeyboardInput.SetData(data.Key, save_func);
                 KeyboardInput.UseKeywordTips(TipsComp, AutoDataUIConfig.GetKeyboardMatchList);
                 KeyboardInput.UseCheckBox(KeyboardCheck, AutoDataUIConfig.IsLegalKeyboardName);
+                KeyboardHoldTimeInput.SetData(data.HoldTime + "s", (str) =>
+                           {
+                               if (str.EndsWith("s"))
+                               {
+                                   str = str.Substring(0, str.Length - 1);
+                               }
+                               bool isValid = float.TryParse(str, out float value);
+                               float minDelay = manager.GetNodeMinDalay(_nodeType);
+                               if (isValid && value >= minDelay)
+                               {
+                                   data.HoldTime = value;
+                                   KeyboardHoldTimeInput.SetText(value + "s");
+                               }
+                               else
+                               {
+                                   data.HoldTime = minDelay;
+                                   KeyboardHoldTimeInput.SetText(minDelay + "s");
+                               }
+                           });
+
             }
 
             else if (_nodeType == NodeType.AssignOper)
@@ -213,6 +235,10 @@ namespace Script.UI.Panel.Auto
             else if (_nodeType == NodeType.MapCapture)
             {
                 RefreshMapCapturePanel();
+            }
+            else if (_nodeType == NodeType.MapPathFinding)
+            {
+                RefreshMapPathFindingPanel();
             }
         }
 
@@ -452,7 +478,7 @@ namespace Script.UI.Panel.Auto
             var equal_index = text.IndexOf("=");
             if (equal_index > 0)
             {
-                var varNameLower = text.Substring(0, equal_index).ToLower();
+                var varNameLower = text.Substring(0, equal_index);
                 var expression = text.Substring(equal_index + 1);
                 isLegal = _scriptData.CheckFormula(varNameLower, expression, data.VarType);
             }
@@ -465,11 +491,7 @@ namespace Script.UI.Panel.Auto
             }
             else
             {
-                var count = info.Nodes.Count;
-                if (info.Nodes.Contains(data))
-                {
-                    count--;
-                }
+                var count = info.Nodes.Count;               // 包含本次
                 AssignCheckNum.text = count.ToString();
             }
         }
@@ -482,8 +504,8 @@ namespace Script.UI.Panel.Auto
                 info = new FormulaVarInfo();
                 return false;
             }
-            var varName = text.Substring(0, i).Trim().ToLower();
-            bool has = _scriptData.GetVarInfo(varName, out info);
+            var varName = text.Substring(0, i).Trim();
+            bool has = _scriptData.GetFormulaVarInfo(varName, out info);
             return has;
         }
         #endregion
@@ -565,7 +587,7 @@ namespace Script.UI.Panel.Auto
                 });
 
 
-            HoldTimeInput.SetData(data.HoldTime + "s", (str) =>
+            MouseHoldTimeInput.SetData(data.HoldTime + "s", (str) =>
             {
                 if (str.EndsWith("s"))
                 {
@@ -576,23 +598,16 @@ namespace Script.UI.Panel.Auto
                 if (isValid && value >= minDelay)
                 {
                     data.HoldTime = value;
-                    HoldTimeInput.SetText(value + "s");
+                    MouseHoldTimeInput.SetText(value + "s");
                 }
                 else
                 {
                     data.HoldTime = minDelay;
-                    HoldTimeInput.SetText(minDelay + "s");
+                    MouseHoldTimeInput.SetText(minDelay + "s");
                 }
             });
         }
 
-
-        void OnHoldTimeEndEdit(string str)
-        {
-
-
-            RefreshDrawPanel();
-        }
 
 
         #endregion
@@ -615,6 +630,8 @@ namespace Script.UI.Panel.Auto
                     UpdateEventOperPanel();
                 });
 
+                EventNameInput.UseKeywordTips(null,null);
+
                 UpdateEventOperPanel();
             }
             else
@@ -630,6 +647,12 @@ namespace Script.UI.Panel.Auto
                 {
                     UpdateEventOperPanel();
                 });
+
+
+
+                var datas = _scriptData.Edit_TriggerNodes;
+                EventNameInput.UseKeywordTips(TipsComp
+                , (search) => { return AutoDataUIConfig.GetEventMatchList(search, datas); });
 
                 UpdateEventOperPanel();
             }
@@ -713,7 +736,7 @@ namespace Script.UI.Panel.Auto
         {
             if (_nodeType == NodeType.TemplateMatchOper)
                 OnClickTemplateMatchDebug();
-            if (_nodeType == NodeType.MapCapture)
+            if (_nodeType == NodeType.MapCapture || _nodeType == NodeType.MapPathFinding)
                 OnClickMapCaptureDebug();
         }
 
@@ -749,7 +772,7 @@ namespace Script.UI.Panel.Auto
 
         void OnClickYellowBtn()
         {
-            if (_nodeType == NodeType.MapCapture)
+            if (_nodeType == NodeType.MapCapture || _nodeType == NodeType.MapPathFinding)
             {
                 var data = _data as MapCaptureNode;
                 var mapData = MapDataManager.Inst.Get(data.MapId);
@@ -798,6 +821,47 @@ namespace Script.UI.Panel.Auto
                 var pos = Utils.GetPos(tipsCompRectT, targetR, offset, true);
                 tipsCompRectT.anchoredPosition = pos;
             }
+        }
+
+
+        #endregion
+
+
+        #region MapPathFinding
+
+        void RefreshMapPathFindingPanel()
+        {
+            var data = _data as MapPathFindingNode;
+
+
+            MapPFIdInput.SetData(data.MapId, str =>
+            {
+                str = str.Replace(" ", "");
+                data.MapId = str;
+                MapPFIdInput.SetText(data.MapId);          // 可能会格式化
+            });
+            MapPFXAxisInput.SetData(data._XAxisVar, str =>
+            {
+                str = str.Replace(" ", "");
+                data._XAxisVar = str;
+                MapPFXAxisInput.SetText(data._XAxisVar);
+            });
+            MapPFYAxisInput.SetData(data._YAxisVar, str =>
+            {
+                str = str.Replace(" ", "");
+                data._YAxisVar = str;
+                MapPFYAxisInput.SetText(data._YAxisVar);
+            });
+
+            MapPFTypeBox.SetData(AutoDataUIConfig.GetMapPFTypeNameList(), (index) =>
+            {
+                data.SearchMode = (PathFindingType)index;
+            }, TipsComp);
+            MapPFTypeBox.SetCurIndex(AutoDataUIConfig.MapPFTypes.IndexOf(data.SearchMode));
+
+
+            YellowBtn.GetComponentInChildren<Text>().text = "准确率";
+            GreenBtn.GetComponentInChildren<Text>().text = "debug";
         }
 
 
