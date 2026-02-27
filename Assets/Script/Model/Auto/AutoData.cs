@@ -939,7 +939,7 @@ namespace Script.Model.Auto
                 }
             };
 
-            DU.RunWithTimer(action, $"AssignOperNode Action 10000次 ", 2);
+            DU.RunWithTimer(action, $"{Id} Action 10000次 ", 2);
         }
         public override void Copy(BaseNodeData source)
         {
