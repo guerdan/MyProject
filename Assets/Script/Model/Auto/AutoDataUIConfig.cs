@@ -45,7 +45,6 @@ namespace Script.Model.Auto
             {
                 list.Add(NodeTypeNames[type]);
             }
-
             return list;
         }
 
@@ -188,6 +187,32 @@ namespace Script.Model.Auto
         public static bool IsLegalKeyboardName(string name)
         {
             return KeyboardName2Enum.ContainsKey(name);
+        }
+
+
+        public static List<KeyBoardOperType> KeyboardOperTypes = new List<KeyBoardOperType>()
+        {
+            KeyBoardOperType.FullPress,
+            KeyBoardOperType.KeyDown,
+            KeyBoardOperType.KeyUp,
+        };
+
+        public static Dictionary<KeyBoardOperType, string> KeyboardOperTypeNames = new Dictionary<KeyBoardOperType, string>()
+        {
+            { KeyBoardOperType.FullPress, "敲键" },
+            { KeyBoardOperType.KeyDown, "只按下" },
+            { KeyBoardOperType.KeyUp, "只抬起" },
+
+        };
+
+        public static List<string> GetKeyboardOperTypeNameList()
+        {
+            var list = new List<string>();
+            foreach (var type in KeyboardOperTypes)
+            {
+                list.Add(KeyboardOperTypeNames[type]);
+            }
+            return list;
         }
 
 
@@ -340,10 +365,20 @@ namespace Script.Model.Auto
             var matches = _tokenizeRegex.Matches(expression);
 
             var temp = expression;
+            int index = -1;
+
             foreach (System.Text.RegularExpressions.Match match in matches)
             {
-                var s = match.Value;
-                var index = temp.IndexOf(s);
+                var oper = match.Value;
+                index = temp.IndexOf(oper, index + 1);
+
+                // 如果"-"后面是数字, 则跳过
+                if (oper == "-" && index < temp.Length - 1)
+                {
+                    var next_char = temp[index + 1];
+                    if (next_char >= '0' && next_char <= '9')
+                        continue;
+                }
 
                 if (index > 0)
                 {
@@ -351,9 +386,10 @@ namespace Script.Model.Auto
                     tokens.Add(front);   //操作数——常量或变量
                 }
 
-                tokens.Add(s);                              //运算符
+                tokens.Add(oper);                              //运算符
 
-                temp = temp.Substring(index + s.Length);    //即使传入temp.Length属于特殊情况不会报错，返回空串
+                temp = temp.Substring(index + oper.Length);    //即使传入temp.Length属于特殊情况不会报错，返回空串
+                index = -1;
             }
 
             if (temp.Length > 0)

@@ -52,6 +52,7 @@ namespace Script.UI.Panel.Auto
 
         [Header("键盘")]
         [SerializeField] private GameObject KeyboardOperGO;
+        [SerializeField] private SelectBoxComp KeyboardTypeBox;
         [SerializeField] private InputTextComp KeyboardInput;
         [SerializeField] private CheckBox KeyboardCheck;
         [SerializeField] private InputTextComp KeyboardHoldTimeInput;
@@ -91,8 +92,6 @@ namespace Script.UI.Panel.Auto
         DrawProcessPanel _drawPanel;
         AutoScriptData _scriptData;
 
-        RectTransform _target;
-
         void Awake()
         {
             UnfoldBtn.onClick.AddListener(OnFoldChangeBtnClick);
@@ -109,43 +108,13 @@ namespace Script.UI.Panel.Auto
             var dataList = list as List<object>;
             _data = dataList[0] as BaseNodeData;
             _nodeType = _data.NodeType;
-
-            _target = dataList[1] as RectTransform;
-            _drawPanel = dataList[2] as DrawProcessPanel;
+            _drawPanel = dataList[1] as DrawProcessPanel;
             _scriptData = _drawPanel._scriptData;
             TipsComp.gameObject.SetActive(false);
-
-            if (display)
-                CalPos();
 
             Refresh();
         }
 
-
-
-        // 目的是，显示在_target矩形的周围。优先级下方、右方、左方（界面的下方不合适）
-        void CalPos()
-        {
-            var selfR = (RectTransform)transform;
-            var target_size = _target.rect.size;
-            var pos = Utils.GetPos(selfR, _target, default);
-            bool is_bottom = pos.y - target_size.y / 2 - selfR.rect.height > -Screen.height / 2;
-            bool is_right = pos.x + target_size.x + selfR.rect.width < Screen.width / 2;
-            if (is_bottom)
-            {
-                pos.y = pos.y - target_size.y / 2 - selfR.rect.height / 2;
-            }
-            else if (is_right)
-            {
-                pos.x = pos.x + target_size.x / 2 + selfR.rect.width / 2;
-            }
-            else
-            {
-                pos.x = pos.x - target_size.x / 2 - selfR.rect.width / 2;
-            }
-
-            SetPos(pos);
-        }
 
         void Refresh()
         {
@@ -185,36 +154,7 @@ namespace Script.UI.Panel.Auto
 
             else if (_nodeType == NodeType.KeyBoardOper)
             {
-                var data = _data as KeyBoardOperNode;
-                Action<string> save_func = (str) =>
-                {
-                    data.Key = str;
-                    RefreshDrawPanel();
-                };
-
-                KeyboardInput.SetData(data.Key, save_func);
-                KeyboardInput.UseKeywordTips(TipsComp, AutoDataUIConfig.GetKeyboardMatchList);
-                KeyboardInput.UseCheckBox(KeyboardCheck, AutoDataUIConfig.IsLegalKeyboardName);
-                KeyboardHoldTimeInput.SetData(data.HoldTime + "s", (str) =>
-                           {
-                               if (str.EndsWith("s"))
-                               {
-                                   str = str.Substring(0, str.Length - 1);
-                               }
-                               bool isValid = float.TryParse(str, out float value);
-                               float minDelay = manager.GetNodeMinDalay(_nodeType);
-                               if (isValid && value >= minDelay)
-                               {
-                                   data.HoldTime = value;
-                                   KeyboardHoldTimeInput.SetText(value + "s");
-                               }
-                               else
-                               {
-                                   data.HoldTime = minDelay;
-                                   KeyboardHoldTimeInput.SetText(minDelay + "s");
-                               }
-                           });
-
+                RefreshKeyboardOperPanel();
             }
 
             else if (_nodeType == NodeType.AssignOper)
@@ -252,7 +192,7 @@ namespace Script.UI.Panel.Auto
             _nodeType = nodeType;
             //更新数据
             manager.DeleteNode(_scriptData, _data.Id);
-            _data = manager.CreateNode(_scriptData, nodeType, _data.Pos, _data.Id);
+            _data = manager.CreateNode(_scriptData, _data.CanvasId, _data.Pos, nodeType, _data.Id);
 
             Refresh();
             RefreshDrawPanel();
@@ -282,6 +222,13 @@ namespace Script.UI.Panel.Auto
                 _data.Delay = minDelay;
                 DelayInput.SetText(minDelay + "s");
             }
+
+            // 这里刷一下, 防止Delay小于holdtime
+            if (_data.NodeType == NodeType.MouseOper)
+                RefreshMouseOperPanel();
+            else if (_data.NodeType == NodeType.KeyBoardOper)
+                RefreshKeyboardOperPanel();
+
 
             RefreshDrawPanel();
         }
@@ -550,6 +497,8 @@ namespace Script.UI.Panel.Auto
         void RefreshMouseOperPanel()
         {
             var data = _data as MouseOperNode;
+            data.HoldTime = data.HoldTime;
+
             MouseOperTypeBox.SetData(AutoDataUIConfig.MouseClickTypes,
             (index) =>
             {
@@ -586,24 +535,14 @@ namespace Script.UI.Panel.Auto
                     return AutoDataUIConfig.ExpressionIsLegal(str);
                 });
 
-
             MouseHoldTimeInput.SetData(data.HoldTime + "s", (str) =>
             {
                 if (str.EndsWith("s"))
-                {
                     str = str.Substring(0, str.Length - 1);
-                }
-                bool isValid = float.TryParse(str, out float value);
-                float minDelay = manager.GetNodeMinDalay(_nodeType);
-                if (isValid && value >= minDelay)
+                if (float.TryParse(str, out float value))
                 {
                     data.HoldTime = value;
-                    MouseHoldTimeInput.SetText(value + "s");
-                }
-                else
-                {
-                    data.HoldTime = minDelay;
-                    MouseHoldTimeInput.SetText(minDelay + "s");
+                    MouseHoldTimeInput.SetText(data.HoldTime + "s");
                 }
             });
         }
@@ -611,6 +550,47 @@ namespace Script.UI.Panel.Auto
 
 
         #endregion
+
+        #region KeyboardOper
+        void RefreshKeyboardOperPanel()
+        {
+            var data = _data as KeyBoardOperNode;
+            data.HoldTime = data.HoldTime;
+
+
+            List<string> list = AutoDataUIConfig.GetKeyboardOperTypeNameList();
+            KeyboardTypeBox.SetData(list, (index) =>
+            {
+                data.Type = (KeyBoardOperType)index;
+                Utils.SetActive(KeyboardHoldTimeInput.transform.parent, data.Type == KeyBoardOperType.FullPress);
+            }, TipsComp);
+
+            KeyboardTypeBox.SetCurIndex((int)data.Type);
+
+            Action<string> save_func = (str) =>
+            {
+                data.Key = str;
+                RefreshDrawPanel();
+            };
+
+            KeyboardInput.SetData(data.Key, save_func);
+            KeyboardInput.UseKeywordTips(TipsComp, AutoDataUIConfig.GetKeyboardMatchList);
+            KeyboardInput.UseCheckBox(KeyboardCheck, AutoDataUIConfig.IsLegalKeyboardName);
+            KeyboardHoldTimeInput.SetData(data.HoldTime + "s", (str) =>
+            {
+                if (str.EndsWith("s"))
+                    str = str.Substring(0, str.Length - 1);
+                if (float.TryParse(str, out float value))
+                {
+                    data.HoldTime = value;
+                    KeyboardHoldTimeInput.SetText(data.HoldTime + "s");
+                }
+
+            });
+        }
+
+        #endregion
+
         #region  Trigger/Listen
         void RefreshEventOperPanel()
         {
@@ -619,29 +599,33 @@ namespace Script.UI.Panel.Auto
             {
 
                 var data = _data as TriggerEventNode;
-                EventNameInput.SetData(data.EventName, str =>
+                EventNameInput.SetData(AutoDataUIConfig.FormulaFormat(data.EventName),
+                str =>
                 {
                     str = str.Replace(" ", "");
                     data.EventName = str;
-                    EventNameInput.SetText(data.EventName); // 可能会格式化
+                    string format = AutoDataUIConfig.FormulaFormat(data.EventName);  //格式化
+                    EventNameInput.SetText(format); // 可能会格式化
                     RefreshDrawPanel();
                 }, str =>
                 {
                     UpdateEventOperPanel();
                 });
 
-                EventNameInput.UseKeywordTips(null,null);
+                EventNameInput.UseKeywordTips(null, null);
 
                 UpdateEventOperPanel();
             }
             else
             {
                 var data = _data as ListenEventNode;
-                EventNameInput.SetData(data.EventName, str =>
+                EventNameInput.SetData(AutoDataUIConfig.FormulaFormat(data.EventName),
+                str =>
                 {
                     str = str.Replace(" ", "");
                     data.EventName = str;
-                    EventNameInput.SetText(data.EventName); // 可能会格式化
+                    string format = AutoDataUIConfig.FormulaFormat(data.EventName);
+                    EventNameInput.SetText(format); // 可能会格式化
                     RefreshDrawPanel();
                 }, str =>
                 {
@@ -661,17 +645,27 @@ namespace Script.UI.Panel.Auto
         void UpdateEventOperPanel()
         {
             var text = EventNameInput.GetText();
-            bool isTrigger = _nodeType == NodeType.TriggerEvent;
-            if (isTrigger)
+            text = text.Replace(" ", "");
+            var tokens = AutoDataUIConfig.TokenizeFormat(text);
+            var result = 0;
+
+            if (tokens.Count > 0)
             {
-                var list = _scriptData.GetListenNodes(text);
-                EventNum.text = list.Count.ToString();
+                bool isTrigger = _nodeType == NodeType.TriggerEvent;
+                if (isTrigger)
+                {
+                    var list = _scriptData.GetListenNodes(tokens[0]);
+                    result = list.Count;
+                }
+                else
+                {
+                    var list = _scriptData.GetEditTriggerNodes(tokens[0]);
+                    result = list.Count;
+                }
             }
-            else
-            {
-                var list = _scriptData.GetEditTriggerNodes(text);
-                EventNum.text = list.Count.ToString();
-            }
+
+            EventNum.text = result.ToString();
+
         }
         #endregion
 
@@ -840,17 +834,17 @@ namespace Script.UI.Panel.Auto
                 data.MapId = str;
                 MapPFIdInput.SetText(data.MapId);          // 可能会格式化
             });
-            MapPFXAxisInput.SetData(data._XAxisVar, str =>
+            MapPFXAxisInput.SetData(data.XAxisVar, str =>
             {
                 str = str.Replace(" ", "");
-                data._XAxisVar = str;
-                MapPFXAxisInput.SetText(data._XAxisVar);
+                data.XAxisVar = str;
+                MapPFXAxisInput.SetText(data.XAxisVar);
             });
-            MapPFYAxisInput.SetData(data._YAxisVar, str =>
+            MapPFYAxisInput.SetData(data.YAxisVar, str =>
             {
                 str = str.Replace(" ", "");
-                data._YAxisVar = str;
-                MapPFYAxisInput.SetText(data._YAxisVar);
+                data.YAxisVar = str;
+                MapPFYAxisInput.SetText(data.YAxisVar);
             });
 
             MapPFTypeBox.SetData(AutoDataUIConfig.GetMapPFTypeNameList(), (index) =>

@@ -125,19 +125,38 @@ namespace Script.Model.Auto
         public string Name = "";                // 名称，与文件名保持一致。效果上：文件名会覆盖Name
         [JsonProperty("first_node")]
         public string FirstNode = "";
-        [JsonProperty("end_index")]
-        public int EndIndex = -1;
-        [JsonProperty("capture_end_index")]
-        public int CaptureEndIndex = -1;
-        [JsonProperty("list")]
+        [JsonProperty("list")]                  // 节点数据列表
         public List<BaseNodeData> List = new List<BaseNodeData>();
 
-        [JsonProperty("slots")]         // 固定槽点。
+        [JsonProperty("slots")]                 // 固定槽点。key = node_index, value = 固定槽点
         public Dictionary<string, int[]> Slots = new Dictionary<string, int[]>();
+        [JsonProperty("canvas")]                // 画布
+        public List<ScriptCanvasConfig> Canvas = new List<ScriptCanvasConfig>();
+
+
+        [JsonProperty("end_index")]
+        public int EndIndex = -1;
+        [JsonProperty("canvas_end_index")]
+        public int CanvasEndIndex = -1;
+        [JsonProperty("capture_end_index")]
+        public int CaptureEndIndex = -1;
+
 
         public static string IdStart = "script-";
     }
+    [Serializable]
+    public class ScriptCanvasConfig
+    {
+        [JsonProperty("id")]
+        public string Id;
+        [JsonProperty("name")]
+        public string Name;
 
+        [JsonIgnore]
+        public float UIWidth;
+        [JsonIgnore]
+        public string OldName;
+    }
 
     #endregion
     #region BaseNodeData
@@ -164,6 +183,8 @@ namespace Script.Model.Auto
         public string Name = "默认名";          // 名称
         [JsonProperty("description")]
         public string Description = "";         // 备注
+        [JsonProperty("canvas_id")]
+        public string CanvasId = "0";           // 所属画布，兼容的话就是"0"，是默认页
         [JsonProperty("pos")]
         public string Pos_Ser;                  // 序列化坐标
         /// <summary>
@@ -190,7 +211,7 @@ namespace Script.Model.Auto
         [JsonIgnore] public NodeType NodeType => _nodeType;
         [JsonIgnore] public List<string> LastNode = new List<string>();             // 可能的前置节点
         [JsonIgnore] public HashSet<string> LineIds = new HashSet<string>();        // 线段列表
-        [JsonIgnore] public Vector2 Pos;                             // 画布坐标
+        [JsonIgnore] public Vector2 Pos;                             // 画布坐标，坐标系—左上角为原点,X右,Y下
         [JsonIgnore] public int Index = 0;                           // 节点创建顺序
         [JsonIgnore] public string IndexStr;                         // Index的string类型
 
@@ -213,6 +234,7 @@ namespace Script.Model.Auto
             _scriptData = scriptData;
             Index = int.Parse(Id.Substring(5)); // id格式为node-0 / node-1 / ...
             IndexStr = $"{Index}";
+            _scriptData.Canvas2Node[CanvasId].Add(Id);
         }
 
         /// <summary>
@@ -227,15 +249,19 @@ namespace Script.Model.Auto
         /// <summary>
         /// 删除节点时调用OnDelete，作用：系统中还原注册
         /// </summary>
-        public virtual void OnDelete() { }
+        public virtual void OnDelete()
+        {
+            _scriptData.Canvas2Node[CanvasId].Remove(Id);
+        }
 
-        // 执行内容
+        // 执行内容前
         public virtual void BeforeAction() { }
         // 执行内容
         public virtual void Action() { }
-        // 执行内容
+        // 帧更新
         public virtual void Update() { }
-        // 执行结果判断方法
+
+        // 流出方向。
         public virtual bool GetResult()
         {
             return true;
@@ -586,20 +612,13 @@ namespace Script.Model.Auto
         [JsonProperty("click_pos")]
         public string ClickPos = "";            // 点击坐标
         [JsonProperty("hold_time")]
-        public float _holdTime;                 // 按压时长
+        private float _holdTime;                 // 按压时长
 
         [JsonIgnore]
         public float HoldTime
         {
             get { return _holdTime; }
-            set
-            {
-                // 必须比 Delay 小
-                if (value - Delay <= Utils.Epsilon)
-                {
-                    _holdTime = value;
-                }
-            }
+            set { _holdTime = value; CheckHoldTime(); }
         }
 
         bool _down = false;
@@ -651,7 +670,7 @@ namespace Script.Model.Auto
             var sourceObj = source as MouseOperNode;
             ClickType = sourceObj.ClickType;
             ClickPos = sourceObj.ClickPos;
-            _holdTime = sourceObj._holdTime;
+            HoldTime = sourceObj.HoldTime;
         }
 
         // 检查时机，执行鼠标按压
@@ -687,35 +706,43 @@ namespace Script.Model.Auto
             //     , x * 65535 / 1920, y * 65535 / 1080, 0, UIntPtr.Zero);
         }
 
-
+        public void CheckHoldTime()
+        {
+            _holdTime = Math.Clamp(_holdTime, 0.1f, Delay);
+        }
 
     }
 
     #endregion
 
     #region KeyBoardNode
+    public enum KeyBoardOperType
+    {
+        FullPress,              // 完整按, 要配置按压时长
+        KeyDown,                // 只按压
+        KeyUp,                  // 只松开
+    }
 
     public class KeyBoardOperNode : BaseNodeData
     {
+        [JsonProperty("type")]
+        public KeyBoardOperType Type = KeyBoardOperType.FullPress;
         [JsonProperty("key")]
         public string Key = "";
         [JsonProperty("hold_time")]
-        public float _holdTime;             // 按压时长
+        private float _holdTime;              // 按压时长
+
+
         [JsonIgnore]
         public float HoldTime
         {
             get { return _holdTime; }
-            set
-            {
-                // 必须比 Delay 小
-                if (value - Delay <= Utils.Epsilon)
-                {
-                    _holdTime = value;
-                }
-            }
+            set { _holdTime = value; CheckHoldTime(); }
         }
 
         bool _down = false;
+        bool _legal = false;
+        KeyboardEnum _key;
 
         public static KeyBoardOperNode CreateNew(AutoScriptData scriptData)
         {
@@ -723,7 +750,7 @@ namespace Script.Model.Auto
             node.Name = "键盘";
             node.Key = AutoDataUIConfig.GetKeyboardName(AutoDataUIConfig.DefaultKeyboardEnum);
             node.Delay = 0.5f;
-            node._holdTime = 0.1f;
+            node.HoldTime = 0.1f;
             return node;
         }
         public override void Init(AutoScriptData scriptData)
@@ -732,12 +759,31 @@ namespace Script.Model.Auto
             _nodeType = NodeType.KeyBoardOper;
         }
 
+        public override void Inflow()
+        {
+            base.Inflow();
+            _down = false;
+            _legal = AutoDataUIConfig.IsLegalKeyboardName(Key);
+            if (!_legal)
+                return;
+
+            _key = AutoDataUIConfig.KeyboardName2Enum[Key];
+
+            if (Type == KeyBoardOperType.FullPress)
+                CheckMouseDown();
+        }
+
         public override void Action()
         {
             base.Action();
-            var key = AutoDataUIConfig.KeyboardName2Enum[Key];
-            WU.keybd_event_packed(key, true);
-            WU.keybd_event_packed(key, false);
+
+            if (!_legal)
+                return;
+
+            if (Type == KeyBoardOperType.KeyDown)
+                WU.keybd_event_packed(_key, true);
+            else if (Type == KeyBoardOperType.KeyUp)
+                WU.keybd_event_packed(_key, false);
         }
 
         public override void Copy(BaseNodeData source)
@@ -745,26 +791,28 @@ namespace Script.Model.Auto
             base.Copy(source);
 
             var sourceObj = source as KeyBoardOperNode;
+            Type = sourceObj.Type;
             Key = sourceObj.Key;
+            HoldTime = sourceObj.HoldTime;
         }
 
-        public override void Inflow()
-        {
-            base.Inflow();
-            _down = false;
-            CheckMouseDown();
-        }
+
 
         public override void Update()
         {
             base.Update();
+            if (!_legal)
+                return;
+
+            if (Type != KeyBoardOperType.FullPress)
+                return;
+
             CheckMouseDown();
 
             // 检查时机，执行鼠标抬手
             if (Timer >= Delay)
             {
-                var key = AutoDataUIConfig.KeyboardName2Enum[Key];
-                WU.keybd_event_packed(key, false);
+                WU.keybd_event_packed(_key, false);
             }
         }
 
@@ -774,8 +822,7 @@ namespace Script.Model.Auto
             if (!_down && Timer >= Delay - HoldTime)
             {
                 _down = true;
-                var key = AutoDataUIConfig.KeyboardName2Enum[Key];
-                WU.keybd_event_packed(key, true);
+                WU.keybd_event_packed(_key, true);
 
                 // 为了防止Down与Up在同一帧，咱们手动给他延后一点
                 if (Timer >= Delay)
@@ -785,6 +832,14 @@ namespace Script.Model.Auto
             }
 
         }
+
+        public void CheckHoldTime()
+        {
+            _holdTime = Math.Clamp(_holdTime, 0.1f, Delay);
+        }
+
+
+
     }
     #endregion
 
@@ -856,6 +911,7 @@ namespace Script.Model.Auto
 
         public override void OnDelete()
         {
+            base.OnDelete();
             Formula = "";                   // 在编辑的统计系统中清除
         }
 
@@ -875,15 +931,15 @@ namespace Script.Model.Auto
             _scriptData.RunAssignFormula(VarName, Expression, VarType, InData);
 
             // 测试结果，大概是静态调用的500倍耗时。例子a = 1 比代码的a = 1 慢1000倍
-            // Action action = () =>
-            // {
-            //     for (int i = 0; i < 10000; i++)
-            //     {
-            //         _scriptData.RunFormula(VarName, Expression, VarType);
-            //     }
-            // };
+            Action action = () =>
+            {
+                for (int i = 0; i < 10000; i++)
+                {
+                    _scriptData.RunAssignFormula(VarName, Expression, VarType, InData);
+                }
+            };
 
-            // DU.RunWithTimer(action, $"AssignOperNode Action 10000次 ", 2);
+            DU.RunWithTimer(action, $"AssignOperNode Action 10000次 ", 2);
         }
         public override void Copy(BaseNodeData source)
         {
@@ -1046,18 +1102,14 @@ namespace Script.Model.Auto
     public class TriggerEventNode : BaseNodeData
     {
         [JsonProperty("event_name")]
-        public string _eventName = "";
+        private string _eventName = "";
         [JsonIgnore]
         public string EventName
-        {
-            get { return _eventName; }
-            set
-            {
-                _scriptData.RemoveEditTriggerNode(this);
-                _eventName = value;
-                _scriptData.AddEditTriggerNode(this);
-            }
-        }
+        { get { return _eventName; } set { SetEventName(value); } }
+
+        [JsonIgnore] public string EventNameParse = "";
+        [JsonIgnore] public bool IsCondition = false;
+
         public static TriggerEventNode CreateNew(AutoScriptData scriptData)
         {
             var node = new TriggerEventNode();
@@ -1075,13 +1127,17 @@ namespace Script.Model.Auto
 
         public override void OnDelete()
         {
+            base.OnDelete();
             EventName = "";                             // 在编辑的统计系统中删除
         }
 
         public override void Action()
         {
             base.Action();
-            _scriptData.TriggerEvent(_eventName, Id);
+            if (IsCondition)
+                _scriptData.RunAssignFormula(_eventName, FormulaVarType.Float, InData);
+
+            _scriptData.TriggerEvent(EventNameParse, Id);
         }
 
         public override void Copy(BaseNodeData source)
@@ -1091,27 +1147,39 @@ namespace Script.Model.Auto
             var sourceObj = source as TriggerEventNode;
             _eventName = sourceObj._eventName;
         }
+
+
+        void SetEventName(string value)
+        {
+            _scriptData.RemoveEditTriggerNode(EventNameParse, this);
+            _eventName = value;
+
+            if (_eventName == "")
+                return;
+            var tokens = AutoDataUIConfig.TokenizeFormat(_eventName);
+            EventNameParse = tokens[0];
+            IsCondition = tokens.Count > 1;
+            _scriptData.AddEditTriggerNode(EventNameParse, this);
+        }
     }
     #region ListenEventN
     /// <summary>
-    /// 不能流入,只能流出
-    /// 尝试 1.Inflow()后并在事件抛出时计时器才会开启
+    /// IsCondition = false时，直接触发
+    /// IsCondition = true时，1.条件满足时才能触发或流过，2.最多只有一个流
     /// </summary>
     public class ListenEventNode : BaseNodeData
     {
         [JsonProperty("event_name")]
         private string _eventName = "";
+
         [JsonIgnore]
         public string EventName
-        {
-            get { return _eventName; }
-            set
-            {
-                _scriptData.RemoveListenNode(this);
-                _eventName = value;
-                _scriptData.AddListenNode(this);
-            }
-        }
+        { get { return _eventName; } set { SetEventName(value); } }
+
+        [JsonIgnore] public string EventNameParse = "";
+        [JsonIgnore] public bool IsCondition = false;
+        bool IsEnable;              // 初始化放在Clear() , 初始true
+
         public static ListenEventNode CreateNew(AutoScriptData scriptData)
         {
             var node = new ListenEventNode();
@@ -1128,6 +1196,7 @@ namespace Script.Model.Auto
 
         public override void OnDelete()
         {
+            base.OnDelete();
             EventName = "";
         }
 
@@ -1138,6 +1207,60 @@ namespace Script.Model.Auto
 
             var sourceObj = source as ListenEventNode;
             _eventName = sourceObj._eventName;
+
+        }
+
+        public override void Clear()
+        {
+            base.Clear();
+            IsEnable = true;
+        }
+
+        public override void Inflow()
+        {
+            base.Inflow();
+
+            if (IsCondition)
+            {
+                IsEnable = !_scriptData.FormulaGetResultCondition(EventName);
+            }
+        }
+
+        public override bool GetResult()
+        {
+            if (IsCondition)
+                return _scriptData.FormulaGetResultCondition(EventName);
+            else
+                return true;
+        }
+
+        public bool CanTrigger()
+        {
+            if (Status == NodeStatus.In)
+            {
+                return false;
+            }
+            if (IsCondition)
+            {
+                // 从 "不满足条件"状态 => "满足条件"状态 才触发
+                var cur_condition = _scriptData.FormulaGetResultCondition(EventName);
+                return cur_condition && IsEnable;
+            }
+
+            return true;
+        }
+
+        void SetEventName(string value)
+        {
+            _scriptData.RemoveListenNode(EventNameParse, this);
+            _eventName = value;
+
+            if (_eventName == "")
+                return;
+            var tokens = AutoDataUIConfig.TokenizeFormat(_eventName);
+            EventNameParse = tokens[0];
+            IsCondition = tokens.Count > 1;
+            _scriptData.AddListenNode(EventNameParse, this);
         }
     }
 
@@ -1256,9 +1379,9 @@ namespace Script.Model.Auto
         [JsonProperty("map_id")]
         public string MapId = "";
         [JsonProperty("x_axis_var")]
-        public string _XAxisVar = "";
+        private string _XAxisVar = "";
         [JsonProperty("y_axis_var")]
-        public string _YAxisVar = "";
+        private string _YAxisVar = "";
         [JsonProperty("finding_mode")]
         public PathFindingType SearchMode;
 
@@ -1291,6 +1414,7 @@ namespace Script.Model.Auto
         }
         public override void OnDelete()
         {
+            base.OnDelete();
             XAxisVar = "";
             YAxisVar = "";
         }
@@ -1309,7 +1433,7 @@ namespace Script.Model.Auto
             int y_speed = 0;
             if (SearchMode == PathFindingType.ExploreFog)
             {
-                _mapData.FindNearestFog(true);
+                _mapData.FindNearestFog(false);
                 Vector2Int speed = _mapData.GetPFDirection();
                 x_speed = speed.x;
                 y_speed = speed.y;
@@ -1401,6 +1525,8 @@ namespace Script.Model.Auto
         public AutoScriptManager Manager;
         public Dictionary<string, BaseNodeData> NodeDatas = new Dictionary<string, BaseNodeData>();
         public Dictionary<string, BaseNodeData> ActiveNodes = new Dictionary<string, BaseNodeData>();
+        // key = canvas_id, value = node_id
+        public Dictionary<string, List<string>> Canvas2Node = new Dictionary<string, List<string>>();
         private Dictionary<string, List<ListenEventNode>> _listenNodes = new Dictionary<string, List<ListenEventNode>>();
 
         // 跟踪性，热点执行流。目前不智能，除非每个节点设置热点。
@@ -1418,12 +1544,24 @@ namespace Script.Model.Auto
             Config = config;
             Manager = manager;
 
-            NodeDatas = new Dictionary<string, BaseNodeData>();
-            for (int i = 0; i < Config.List.Count; i++)
+            if (Config.Canvas.Count == 0)         // 具备兼容
             {
-                var item = Config.List[i];
+                AddCanvas("默认");
+            }
+
+            foreach (var item in Config.Canvas)
+            {
+                Canvas2Node[item.Id] = new List<string>();
+            }
+
+            NodeDatas = new Dictionary<string, BaseNodeData>();
+            var node_list = Config.List;
+            for (int i = 0; i < node_list.Count; i++)
+            {
+                var item = node_list[i];
                 item.UnSerialize();
                 NodeDatas[item.Id] = item;
+
             }
 
             // 初始化每个节点的 LastNode, 要是Id对不上， 肯定是新加的代码有问题，排查
@@ -1448,10 +1586,38 @@ namespace Script.Model.Auto
 
         }
 
-        /// <summary>
-        /// pos:画布位置；id:如果为空则用顺延id来创建
-        /// </summary>
-        public BaseNodeData CreateNode(NodeType type, Vector2 pos, string id = null)
+        public int AddCanvas(string name = "")
+        {
+            Config.CanvasEndIndex++;
+            if (name == "")
+                name = Config.CanvasEndIndex == 0 ? "默认" : $"默认{Config.CanvasEndIndex}";
+
+            var cfg = new ScriptCanvasConfig() { Id = Config.CanvasEndIndex.ToString(), Name = name };
+            Config.Canvas.Add(cfg);
+            Canvas2Node[cfg.Id] = new List<string>();
+            return Config.Canvas.Count - 1;
+        }
+
+        public void DeleteCanvas(int index)
+        {
+            // 不能删空。
+            // 删画布，删画布内所有的节点。
+            var id = Config.Canvas[index].Id;
+            Config.Canvas.RemoveAt(index);
+            Canvas2Node.Remove(id);
+
+            foreach (var node in NodeDatas.Values.ToArray())
+            {
+                if (node.CanvasId == id)
+                {
+                    node.OnDelete();
+                    NodeDatas.Remove(node.Id);
+                }
+            }
+
+        }
+
+        public BaseNodeData CreateNodeRaw(NodeType type, string id = null)
         {
             BaseNodeData node = null;
             switch (type)
@@ -1498,32 +1664,49 @@ namespace Script.Model.Auto
                 id = BaseNodeData.IdStart + $"{Config.EndIndex}";
             }
             node.Id = id;
-            node.Pos = pos;
-
-            NodeDatas[id] = node;
 
             return node;
         }
 
-        public BaseNodeData CopyNode(string target_id, Vector2 pos)
+        /// <summary>
+        /// pos:画布位置；id:如果为空则用顺延id来创建
+        /// </summary>
+        public BaseNodeData CreateNode(string canvas_id, Vector2 pos, NodeType type, string id = null)
+        {
+            BaseNodeData node = CreateNodeRaw(type, id);
+
+            node.CanvasId = canvas_id;
+            node.Pos = pos;
+            NodeDatas[node.Id] = node;
+
+            node.Init(this);
+            node.AfterInit();
+
+            return node;
+        }
+
+        public BaseNodeData CopyNode(string canvas_id, Vector2 pos, string target_id)
         {
             if (!NodeDatas.ContainsKey(target_id)) return null;
             var source = NodeDatas[target_id];
-            var copy = CreateNode(source.NodeType, source.Pos + new Vector2(20, 20));
-            copy.Copy(source);
 
-            copy.Init(this);
-            copy.AfterInit();
-            copy.Pos = pos;
+            BaseNodeData node = CreateNodeRaw(source.NodeType, null);
 
-            return copy;
+            node.CanvasId = canvas_id;
+            node.Pos = pos;
+            NodeDatas[node.Id] = node;
+            node.Copy(source);
+
+            node.Init(this);
+            node.AfterInit();
+
+            return node;
         }
 
         public void DeleteNode(string id)
         {
             var node = NodeDatas[id];
             NodeDatas.Remove(id);
-
 
             node.OnDelete();
 
@@ -1621,7 +1804,8 @@ namespace Script.Model.Auto
                 {
                     _isError = true;
                     StopScript();
-                    AutoScriptManager.Inst.AddLog(ScriptLogType.Error, $"[DoUpdate]\n{e.Message}\n{e.StackTrace}");
+                    AutoScriptManager.Inst.AddLog(ScriptLogType.Error
+                        , $"[DoUpdate][node_id = {n.Id}]\n{e.Message}\n{e.StackTrace}");
                 }
             }
         }
@@ -1684,7 +1868,8 @@ namespace Script.Model.Auto
                 {
                     _isError = true;
                     StopScript();
-                    AutoScriptManager.Inst.AddLog(ScriptLogType.Error, $"[DoActionNode]\n{e.Message}\n{e.StackTrace}");
+                    AutoScriptManager.Inst.AddLog(ScriptLogType.Error
+                        , $"[DoActionNode][node_id = {n.Id}]\n{e.Message}\n{e.StackTrace}");
                 }
             });
 
@@ -1800,7 +1985,15 @@ namespace Script.Model.Auto
         {
             //_autoData.List用_nodeData重新序列化,其他字段不动
 
-            List<BaseNodeData> list = NodeDatas.Values.ToList();
+            List<BaseNodeData> list = new List<BaseNodeData>(NodeDatas.Count);
+
+            foreach (var node in NodeDatas.Values)      // 保个险
+            {
+                if (Canvas2Node.ContainsKey(node.CanvasId))
+                {
+                    list.Add(node);
+                }
+            }
             list.Sort((a, b) =>
             {
                 return a.Index.CompareTo(b.Index);
@@ -1832,14 +2025,14 @@ namespace Script.Model.Auto
         }
 
 
-        public void AddListenNode(ListenEventNode node)
+        public void AddListenNode(string event_name, ListenEventNode node)
         {
-            if (node.EventName == "") return;
+            if (event_name == "") return;
 
-            if (!_listenNodes.TryGetValue(node.EventName, out var list))
+            if (!_listenNodes.TryGetValue(event_name, out var list))
             {
                 list = new List<ListenEventNode>();
-                _listenNodes[node.EventName] = list;
+                _listenNodes[event_name] = list;
             }
             list.Add(node);
 
@@ -1859,10 +2052,10 @@ namespace Script.Model.Auto
             }
         }
 
-        public void RemoveListenNode(ListenEventNode node)
+        public void RemoveListenNode(string event_name, ListenEventNode node)
         {
-            if (node.EventName == "") return;
-            if (_listenNodes.TryGetValue(node.EventName, out var list))
+            if (event_name == "") return;
+            if (_listenNodes.TryGetValue(event_name, out var list))
             {
                 list.Remove(node);
             }
@@ -1875,16 +2068,15 @@ namespace Script.Model.Auto
             {
                 foreach (var next in list)
                 {
-                    if (next.Status == NodeStatus.Off)
+                    if (!next.CanTrigger()) continue;
+
+                    next.ExcuteLastNodeId = node_id;
+                    StartNode(next);
+                    if (next.CanAction)
                     {
-                        next.ExcuteLastNodeId = node_id;
-                        StartNode(next);
-                        if (next.CanAction)
-                        {
-                            next.BeforeAction();
-                            DoActionNode(next);
-                            TransferNode(next);
-                        }
+                        next.BeforeAction();
+                        DoActionNode(next);
+                        TransferNode(next);
                     }
                 }
             }
@@ -1901,27 +2093,27 @@ namespace Script.Model.Auto
 
 
 
-        public void AddEditTriggerNode(TriggerEventNode node)
+        public void AddEditTriggerNode(string event_name, TriggerEventNode node)
         {
-            if (node.EventName == "") return;
-            if (!Edit_TriggerNodes.TryGetValue(node.EventName, out var pair))
+            if (event_name == "") return;
+            if (!Edit_TriggerNodes.TryGetValue(event_name, out var pair))
             {
                 var list = new List<TriggerEventNode>();
-                pair = (list, node.EventName.ToLower());
-                Edit_TriggerNodes[node.EventName] = pair;
+                pair = (list, event_name.ToLower());
+                Edit_TriggerNodes[event_name] = pair;
             }
             pair.Item1.Add(node);
         }
 
-        public void RemoveEditTriggerNode(TriggerEventNode node)
+        public void RemoveEditTriggerNode(string event_name, TriggerEventNode node)
         {
-            if (node.EventName == "") return;
-            if (Edit_TriggerNodes.TryGetValue(node.EventName, out var pair))
+            if (event_name == "") return;
+            if (Edit_TriggerNodes.TryGetValue(event_name, out var pair))
             {
                 var list = pair.Item1;
                 list.Remove(node);
                 if (list.Count == 0)
-                    Edit_TriggerNodes.Remove(node.EventName);
+                    Edit_TriggerNodes.Remove(event_name);
             }
         }
 
@@ -2134,7 +2326,7 @@ namespace Script.Model.Auto
             // 重命名文件
             if (File.Exists(newPath))
             {
-                DU.LogError($"脚本重命名失败，文件已存在 {newPath}");
+                DU.LogError($"脚本重命名失败，文件已存在 {newPath}，防止不小心覆盖");
                 return;
             }
             File.Move(oldPath, newPath);
@@ -2494,17 +2686,15 @@ namespace Script.Model.Auto
             return scriptData.NodeDatas[id];
         }
 
-        public BaseNodeData CreateNode(AutoScriptData scriptData, NodeType type, Vector2 pos, string id = null)
+        public BaseNodeData CreateNode(AutoScriptData scriptData, string canvas_id, Vector2 pos, NodeType type, string id = null)
         {
-            var node = scriptData.CreateNode(type, pos, id);
-            node.Init(scriptData);
-            node.AfterInit();
-
+            var node = scriptData.CreateNode(canvas_id, pos, type, id);
             return node;
         }
-        public BaseNodeData CopyNode(AutoScriptData scriptData, string target_id, Vector2 pos)
+        public BaseNodeData CopyNode(AutoScriptData scriptData, string canvas_id, Vector2 pos, string target_id)
         {
-            return scriptData.CopyNode(target_id, pos);
+            var node = scriptData.CopyNode(canvas_id, pos, target_id);
+            return node;
         }
 
         public void DeleteNode(AutoScriptData scriptData, string id)

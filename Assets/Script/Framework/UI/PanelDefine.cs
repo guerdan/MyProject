@@ -38,7 +38,7 @@ namespace Script.Framework.UI
         PicMatchFloat,
         DrawProcessPanel,
         ProcessNodeInfoPanel,
-        EditNamePanel,
+        ConfirmPanel,
         ImageInfoPanel,
         ImageSourcePanel,
         ScriptManagerPanel,
@@ -184,9 +184,9 @@ namespace Script.Framework.UI
             },
 
             new PanelDefine{
-                Key = PanelEnum.EditNamePanel,
-                Name = "EditNamePanel",
-                Path = "Common/Prefabs/Panel/EditNamePanel",
+                Key = PanelEnum.ConfirmPanel,
+                Name = "ConfirmPanel",
+                Path = "Common/Prefabs/Panel/ConfirmPanel",
                 Type = UITypeEnum.PopUp,
                 RecycleType = UIRecycleTypeEnum.Normal,
                 InitPos = new Vector2(0, 0),

@@ -50,6 +50,7 @@ namespace Script.UI.Panel.Auto.DeskPet
 
         public void SetData(string scriptId, string nodeId, bool show_time)
         {
+            _scriptId = scriptId;
             Utils.SetActive(this, scriptId != null);
             if (scriptId == null)
                 return;
@@ -57,7 +58,6 @@ namespace Script.UI.Panel.Auto.DeskPet
             if (scriptId == _scriptId && nodeId == _nodeId)
                 return;
 
-            _scriptId = scriptId;
             _nodeId = nodeId;
 
 

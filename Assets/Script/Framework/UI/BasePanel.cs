@@ -49,10 +49,10 @@ namespace Script.Framework.UI
         protected GameObject _maskBgNode;
         private PanelDefine _panelDefine;
         private int _stackIndex;
+        private PanelRunConfig _runConfig;
 
         protected bool _animEnable = true;
         protected bool _useScaleAnim = true;
-
 
         public bool Display { get => display; }
         public PanelDefine PanelDefine { get => _panelDefine; set { _panelDefine = value; } }
@@ -62,19 +62,21 @@ namespace Script.Framework.UI
         public bool ShowMask { get => _panelDefine.ClickOutWinClose; }
         public bool AnimEnable { get => _animEnable && PanelDefine.Type != UITypeEnum.Full; }  //全屏式界面不提供默认动画，如需要自行实现
 
-        public virtual void SetConfig(BasePanelConfig config)
+        public virtual void SetConfig(PanelRunConfig config)
         {
+            _runConfig = config;
             _rectT = (RectTransform)transform;
-            if (config == null)
-                SetPos(PanelDefine.InitPos);
-            else
-                SetPos(config.WinPos);
 
         }
         public virtual void SetData(object data) { }
 
+
+
         public virtual void BeforeShow()
         {
+            // 设置位置
+            CalculatePos();
+
             _content = transform.Find("Content");
             display = true;
 
@@ -255,6 +257,43 @@ namespace Script.Framework.UI
             {
                 if (button == null) continue;
                 button.onClick.AddListener(Close);
+            }
+        }
+        public virtual void CalculatePos()
+        {
+            if (_runConfig == null)
+                SetPos(PanelDefine.InitPos);
+            else if (_runConfig.SetPosType == PanelSetPosType.Absolute)
+                SetPos(_runConfig.WinPos);
+            else if (_runConfig.SetPosType == PanelSetPosType.Reference)
+            {
+                // 基础是，弹窗的顶端在 PosTarget的中心。
+                var pos = Utils.GetPos(_rectT, _runConfig.PosTarget, _runConfig.PosOffset);
+                pos.y = pos.y - _rectT.rect.height / 2;
+                SetPos(pos);
+            }
+            else if (_runConfig.SetPosType == PanelSetPosType.ReferenceAndOptimal)
+            {
+                var target = _runConfig.PosTarget;
+                var selfR = (RectTransform)transform;
+                var target_size = target.rect.size;
+                var pos = Utils.GetPos(selfR, target, default);
+                bool is_bottom = pos.y - target_size.y / 2 - selfR.rect.height > -Screen.height / 2;
+                bool is_right = pos.x + target_size.x + selfR.rect.width < Screen.width / 2;
+                if (is_bottom)
+                {
+                    pos.y = pos.y - target_size.y / 2 - selfR.rect.height / 2;
+                }
+                else if (is_right)
+                {
+                    pos.x = pos.x + target_size.x / 2 + selfR.rect.width / 2;
+                }
+                else
+                {
+                    pos.x = pos.x - target_size.x / 2 - selfR.rect.width / 2;
+                }
+
+                SetPos(pos);
             }
         }
 

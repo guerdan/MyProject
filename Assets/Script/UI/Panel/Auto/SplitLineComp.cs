@@ -132,6 +132,11 @@ namespace Script.UI.Panel.Auto
 
         }
 
+        public void ScrollTo(Vector2 point)
+        {
+            scrollRect.normalizedPosition = point;
+        }
+
         /// <summary>
         /// ui坐标系转画布坐标系，或反转
         /// </summary>
@@ -169,7 +174,7 @@ namespace Script.UI.Panel.Auto
 
             // 中心点影响
             localPoint += new Vector2(0, _contentH);
-            
+
             return localPoint;
 
         }
@@ -194,7 +199,7 @@ namespace Script.UI.Panel.Auto
             }).SetEase(Ease.InOutExpo);
         }
 
-        public HashSet<string> GetInViewNodeIds()
+        public HashSet<string> GetInViewNodeIds(string canvas_id)
         {
             HashSet<string> ids = new HashSet<string>();
 
@@ -208,8 +213,11 @@ namespace Script.UI.Panel.Auto
             var y_min = pos_center.y - _viewH / 2 - uiH / 2;
             var y_max = pos_center.y + _viewH / 2 + uiH / 2;
 
-            foreach (var data in _panel._scriptData.NodeDatas.Values)
+            var nodeDic = _panel._scriptData.NodeDatas;
+            var list = _panel._scriptData.Canvas2Node[canvas_id];
+            foreach (var id in list)
             {
+                var data = nodeDic[id];
                 var pos = MapConvert(data.Pos);
                 if (pos.x >= x_min && pos.x <= x_max && pos.y >= y_min && pos.y <= y_max)
                 {

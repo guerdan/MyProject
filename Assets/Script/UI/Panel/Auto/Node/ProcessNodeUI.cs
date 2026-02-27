@@ -29,6 +29,7 @@ namespace Script.UI.Panel.Auto.Node
         public static readonly Color GreenColor;
         public static readonly Color WhiteColor;
         public static readonly Color RedBgColor;
+        public static readonly Color TextColor;
 
         static ProcessNodeUI()
         {
@@ -37,6 +38,7 @@ namespace Script.UI.Panel.Auto.Node
             GreenColor = Utils.ParseHtmlString("#4C7543");
             WhiteColor = Utils.ParseHtmlString("#FAF8F4");
             RedBgColor = Utils.ParseHtmlString("#EFEDE9");
+            TextColor = Utils.ParseHtmlString("#52344C");
         }
 
         [Header("通用")]
@@ -391,8 +393,14 @@ namespace Script.UI.Panel.Auto.Node
                 // 选中之后的点击，出详情
                 if (_doubleClick && !already)
                 {
-                    var datas = new List<object>() { _data, selfR, _panel };
-                    UIManager.Inst.ShowPanel(PanelEnum.ProcessNodeInfoPanel, datas);
+                    var datas = new List<object>() { _data, _panel };
+                    PanelRunConfig config = new PanelRunConfig
+                    {
+                        SetPosType = PanelSetPosType.ReferenceAndOptimal,
+                        PosTarget = selfR,
+                        // PosOffset = new Vector2(0, -30),
+                    };
+                    UIManager.Inst.ShowPanel(PanelEnum.ProcessNodeInfoPanel, datas, config);
                 }
             }
             else if (eventData.button == PointerEventData.InputButton.Right)
@@ -408,7 +416,6 @@ namespace Script.UI.Panel.Auto.Node
         {
             // DU.LogWarning("BeginDrag");
 
-
             _inDragging = true;
         }
 
@@ -422,7 +429,15 @@ namespace Script.UI.Panel.Auto.Node
 
             if (_dragStatus == ProcessNodeDragStatus.DragCard)
             {
-                _data.Pos = _panel.Map.MapConvert(canvas_point + _dragOffset);
+
+                var pos = _panel.Map.MapConvert(canvas_point + _dragOffset);
+                // 限制拖动范围
+                var w = selfR.rect.width;
+                var h = selfR.rect.height;
+                pos.x = Math.Clamp(pos.x, 0 + w / 2, _panel.CanvasCfg.W - w / 2);
+                pos.y = Math.Clamp(pos.y, 0 + h / 2, _panel.CanvasCfg.H - h / 2);
+
+                _data.Pos = pos;
                 SetPos();
                 RefreshRelativeLine();
 
@@ -566,12 +581,12 @@ namespace Script.UI.Panel.Auto.Node
                 if (_data.NodeType == NodeType.TriggerEvent)
                 {
                     var data = _data as TriggerEventNode;
-                    match_list = _scriptData.GetListenNodes(data.EventName).ConvertAll(m => m as BaseNodeData);
+                    match_list = _scriptData.GetListenNodes(data.EventNameParse).ConvertAll(m => m as BaseNodeData);
                 }
                 else if (_data.NodeType == NodeType.ListenEvent)
                 {
                     var data = _data as ListenEventNode;
-                    match_list = _scriptData.GetEditTriggerNodes(data.EventName).ConvertAll(m => m as BaseNodeData);
+                    match_list = _scriptData.GetEditTriggerNodes(data.EventNameParse).ConvertAll(m => m as BaseNodeData);
                 }
 
 

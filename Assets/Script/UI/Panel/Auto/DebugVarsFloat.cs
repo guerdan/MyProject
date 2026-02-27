@@ -30,7 +30,7 @@ namespace Script.UI.Panel.Auto
 
         string _script_id;
         AutoScriptData _script_data;
-        List<VarInfo> _allLogs;
+        Dictionary<FormulaVarType, List<VarInfo>> _allLogs;
         List<VarInfo> _curLogs = new List<VarInfo>();
         FormulaVarType _select_type;
 
@@ -72,35 +72,43 @@ namespace Script.UI.Panel.Auto
         {
             Dictionary<string, FormulaVarInfo> refs = _script_data.GetInEditVarRef();
 
-            _allLogs = new List<VarInfo>(refs.Count);
+            _allLogs = new Dictionary<FormulaVarType, List<VarInfo>>();
+            var types = new FormulaVarType[] { FormulaVarType.Float, FormulaVarType.Vector2, FormulaVarType.Vector4 };
 
-            foreach (var pair in refs)
-            {
-                var var_name = pair.Key;
-                var var_info = pair.Value;
-                var var_type = var_info.Type;
-                if (var_type != FormulaVarType.Undefined && var_name != "")
-                {
-                    VarInfo info = new VarInfo(var_name, var_type);
-                    _allLogs.Add(info);
-                }
-            }
 
             List<int> nums = new List<int>();
-            for (int i = 0; i < 3; i++)
+            foreach (var type in types)
             {
-                var num = 0;
-                FormulaVarType type = (FormulaVarType)(i + 1);
-                for (int j = 0; j < _allLogs.Count; j++)
+                var list = new List<VarInfo>();
+
+                foreach (var pair in refs)
                 {
-                    if (_allLogs[j].VarType == type)
-                        num++;
+                    var var_name = pair.Key;
+                    var var_info = pair.Value;
+                    var var_type = var_info.Type;
+                    if (var_type == type && var_name != "")
+                    {
+                        VarInfo info = new VarInfo(var_name, var_type);
+                        list.Add(info);
+                    }
                 }
 
-                nums.Add(num);
+                if (type == FormulaVarType.Float)
+                {
+                    foreach (var pair in _script_data.Edit_TriggerNodes)
+                    {
+                        VarInfo info = new VarInfo(pair.Key, FormulaVarType.Float);
+                        list.Add(info);
+                    }
+                }
+
+                list.Sort((a, b) => a.VarName.CompareTo(b.VarName));
+                _allLogs[type] = list;
+                nums.Add(list.Count);
             }
 
             TabComp.SetNum(nums);
+
         }
 
 
@@ -112,18 +120,14 @@ namespace Script.UI.Panel.Auto
 
         void Refresh()
         {
+
             // DU.LogWarning("Refresh");
-            _curLogs.Clear();
-            for (int j = 0; j < _allLogs.Count; j++)
+            _curLogs = _allLogs[_select_type];
+            for (int j = 0; j < _curLogs.Count; j++)
             {
-                var info = _allLogs[j];
-                if (info.VarType == _select_type)
-                {
-                    _curLogs.Add(info);
-                    CheckChange(info);
-                }
+                var info = _curLogs[j];
+                CheckChange(info);
             }
-            _curLogs.Sort((a,b)=> a.VarName.CompareTo(b.VarName));
 
             LogListComp.ReloadData(_curLogs.Count, false);
         }
@@ -152,7 +156,7 @@ namespace Script.UI.Panel.Auto
             if (var_type == FormulaVarType.Float)
             {
                 var newVal = _script_data.GetFloatVarValue(var_name);
-                if (newVal != info.ValueF)
+                if (info.TextWidth == -1 || newVal != info.ValueF)
                 {
                     var text = "";
                     if (info.isBool)
@@ -160,7 +164,7 @@ namespace Script.UI.Panel.Auto
                     else
                         text = $"{var_name} = {DU.FloatFormat(newVal)}";
 
-                    var width = SceneTool.Inst.GetTextPreferWidth(textUI_fontSize, text)/2 + 16;
+                    var width = SceneTool.Inst.GetTextPreferWidth(textUI_fontSize, text) / 2 + 16;
                     info.ValueF = newVal;
                     info.Text = text;
 
@@ -172,10 +176,10 @@ namespace Script.UI.Panel.Auto
             else if (var_type == FormulaVarType.Vector2)
             {
                 var newVal = _script_data.GetV2VarValue(var_name);
-                if (newVal != info.ValueV2)
+                if (info.TextWidth == -1 || newVal != info.ValueV2)
                 {
                     var text = $"{var_name} = ({DU.FloatFormat(newVal.x)},{DU.FloatFormat(newVal.y)})";
-                    var width = SceneTool.Inst.GetTextPreferWidth(textUI_fontSize, text)/2 + 16;
+                    var width = SceneTool.Inst.GetTextPreferWidth(textUI_fontSize, text) / 2 + 16;
                     info.ValueV2 = newVal;
                     info.Text = text;
                     info.TextWidth = width;
@@ -184,10 +188,10 @@ namespace Script.UI.Panel.Auto
             else if (var_type == FormulaVarType.Vector4)
             {
                 var newVal = _script_data.GetV4VarValue(var_name);
-                if (newVal != info.ValueV4)
+                if (info.TextWidth == -1 || newVal != info.ValueV4)
                 {
                     var text = $"{var_name} = ({DU.FloatFormat(newVal.x)},{DU.FloatFormat(newVal.y)},{DU.FloatFormat(newVal.z)},{DU.FloatFormat(newVal.w)})";
-                    var width = SceneTool.Inst.GetTextPreferWidth(textUI_fontSize, text)/2 + 16;
+                    var width = SceneTool.Inst.GetTextPreferWidth(textUI_fontSize, text) / 2 + 16;
                     info.ValueV4 = newVal;
                     info.Text = text;
                     info.TextWidth = width;
@@ -217,9 +221,9 @@ namespace Script.UI.Panel.Auto
             public string VarName;              // 变量名
             public FormulaVarType VarType;      // 变量类型
             public bool isBool;
-            public float ValueF = -1;                       // 值
-            public Vector2 ValueV2 = new Vector2(-1, -1);   // 值
-            public Vector4 ValueV4 = new Vector4(-1, -1);   // 值
+            public float ValueF;                // 值
+            public Vector2 ValueV2;             // 值
+            public Vector4 ValueV4;             // 值
 
             public string Text;                 // 文本
             public float TextWidth = -1;             // UI文本宽度

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -274,7 +275,7 @@ namespace Script.UI.Panel.Auto
             else if (option == Options.FindNearestFogFollowing)
             {
                 size = new Vector2Int(200, 200);
-                mapData.FindNearestFog(true);
+                mapData.FindNearestFog(false);
                 pixels = mapData.GetImageToNearestFogFollowing(size.x, size.y, out var start_pos);
                 line_offset = new Vector2Int(-(start_pos.x % 5), -(start_pos.y % 5));
 
@@ -406,6 +407,8 @@ namespace Script.UI.Panel.Auto
 
                 _mapData.PrintResult();
             }
+
+
         }
 
         #endregion
@@ -491,152 +494,10 @@ namespace Script.UI.Panel.Auto
             // if (!float.TryParse(arr[2], out float b)) return;
             // var target = new Color32((byte)r, (byte)g, (byte)b, 255);
 
-            var color_set = 1;
-
-            Color32 min_1th = default;
-            Color32 max_1th = default;
-            Vector2Int B_to_G_1th = default;
-            Color32 min_2th = default;
-            Color32 max_2th = default;
-            Color32 min_3th = default;
-            Color32 max_3th = default;
-            Vector2Int B_to_G_3th = default;
-
-            if (color_set == 1)
-            {
-                // 第1版  颜色偏蓝   
-                //
-                // 1类边界
-                min_1th = new Color32(110, 110, 150, 255);
-                max_1th = new Color32(145, 145, 195, 255);
-                B_to_G_1th = new Vector2Int(30, 60);
-                // 2类边界
-                min_2th = new Color32(86, 88, 90, 255);
-                max_2th = max_1th;
-                // 1类迷雾
-                min_3th = new Color32(0, 130, 170, 255);
-                max_3th = new Color32(90, 142, 192, 255);
-                B_to_G_3th = new Vector2Int(38, 55);
-            }
-            else
-            {
-                // 第2版 偏白
-                //
-                min_1th = new Color32(117, 123, 128, 255);
-                max_1th = new Color32(173, 165, 180, 255);
-                B_to_G_1th = new Vector2Int(30, 60);
-                min_2th = new Color32(86, 88, 90, 255);
-                max_2th = max_1th;
-                min_3th = new Color32(65, 120, 135, 255);
-                max_3th = new Color32(100, 140, 170, 255);
-                B_to_G_3th = new Vector2Int(5, 30);
-            }
 
             // 数据源
-            // 在托管与非托管之间共享的内存。没有维护开销
-            var pixs = _leftTex.GetPixelData<Color32>(0);
-
-            var x_start = 2;
-            var x_end = _imgW + 2;
-            var y_start = 2;
-            var y_end = _imgH + 2;
-            //colorData中，0-未定义,1-空地,2和5-边界，10和11-迷雾
-            int[,] colorData = new int[_imgW + 4, _imgH + 4];
-
-            // var fit_one_list = new List<Vector2Int>();
-            var first_list = new List<Vector2Int>();
-
-            var fog_constant = new Vector2Int[]{
-                new Vector2Int(-2,0),new Vector2Int(-1,0),new Vector2Int(1,0),new Vector2Int(2,0),
-                new Vector2Int(-1,1),new Vector2Int(0,1),new Vector2Int(1,1),
-                new Vector2Int(-1,-1),new Vector2Int(0,-1),new Vector2Int(1,-1),
-                new Vector2Int(0,2),new Vector2Int(0,-2),
-            };
-
-
-            DU.RunWithTimer(() =>
-            {
-                DU.RunWithTimer(() =>
-                {
-                    // 先处理迷雾
-                    for (int i = y_start; i < y_end; i++)
-                        for (int j = x_start; j < x_end; j++)
-                        {
-                            int index = (i - 2) * _imgW + j - 2;
-                            var color = pixs[index];
-                            byte r = color.r;
-                            byte g = color.g;
-                            byte b = color.b;
-
-                            if (r <= 3 && g <= 3 && b <= 3) // 文字描边
-                                colorData[j, i] = 0;
-
-                            else if (r < 50 && g < 50 && b < 50) // 空地
-                                colorData[j, i] = 1;
-
-                            else if (Between(color, min_3th, max_3th)
-                                && b - g >= B_to_G_3th.x && b - g <= B_to_G_3th.y)
-                            {
-                                // fog_first_list.Add(new Vector2Int(j, i));
-                                colorData[j, i] = 10;
-                                // max_r = color.r > max_r ? color.r : max_r;
-
-                                foreach (var offset in fog_constant)
-                                {
-                                    int px = j + offset.x;
-                                    int py = i + offset.y;
-                                    var data = colorData[px, py];
-                                    if (data != 10)
-                                        colorData[px, py] = 11;
-                                }
-                            }
-                        }
-
-
-                    // 再处理边界
-                    for (int i = y_start; i < y_end; i++)
-                        for (int j = x_start; j < x_end; j++)
-                        {
-                            int index = (i - 2) * _imgW + j - 2;
-                            var color = pixs[index];
-                            byte r = color.r;
-                            byte g = color.g;
-                            byte b = color.b;
-                            if (colorData[j, i] != 0)
-                                continue;
-
-                            if (Between(color, min_1th, max_1th)
-                                && b - g >= B_to_G_1th.x && b - g <= B_to_G_1th.y)
-                            {
-                                first_list.Add(new Vector2Int(j, i));
-                                colorData[j, i] = 2;
-                            }
-                            else if (Between(color, min_2th, max_2th))
-                            {
-                                colorData[j, i] = 3;
-                            }
-                        }
-
-
-
-                }, "Condition check");
-
-                Traversal(colorData, first_list);
-
-
-            }, "GenerateMap");
-
-
-            var temp = new int[_imgW, _imgH];
-
-            for (int i = y_start; i < y_end; i++)
-                for (int j = x_start; j < x_end; j++)
-                    if (colorData[j, i] == 3)
-                        temp[j - 2, i - 2] = 0;
-                    else
-                        temp[j - 2, i - 2] = colorData[j, i];
-
-            colorData = temp;
+            var pixs = LeftImage.GetColor32(out _, out _);
+            var colorData = MapData.ColorToData(pixs);
 
 
             Texture2D texture = new Texture2D(_imgW, _imgH, TextureFormat.RGBA32, false);
@@ -648,17 +509,17 @@ namespace Script.UI.Panel.Auto
                 {
                     int index = i * _imgW + j;
                     var data = colorData[j, i];
-                    if (data == 0)
+                    if (data == PixType.Undefined)                      // 未定义
                         pixels[index] = new Color32(128, 128, 128, 255);
-                    if (data == 1)          // 空地
+                    if (data == PixType.Empty)                          // 空地
                         pixels[index] = new Color32(0, 0, 0, 255);
-                    else if (data == 2)     // 边界     
+                    else if (data == PixType.ObstacleEdge)              // 边界     
                         pixels[index] = new Color32(255, 255, 255, 255);
-                    else if (data == 5)     // 若边界                
+                    else if (data == PixType.ObstacleEdgeTemp)          // 候选边界                
                         pixels[index] = new Color32(255, 0, 0, 255);
-                    else if (data == 10)    // 迷雾
+                    else if (data == PixType.Fog)                       // 迷雾
                         pixels[index] = new Color32(0, 0, 255, 255);
-                    else if (data == 11)    // 弱迷雾
+                    else if (data == PixType.FogArea)                   // 候选迷雾
                         pixels[index] = new Color32(0, 0, 180, 255);
 
                 }
@@ -825,13 +686,12 @@ namespace Script.UI.Panel.Auto
         {
 
             // FilterPixel();
-            SplitBagCell();
+            // SplitBagCell();
 
             //  比较下谁执快
-            // TestExecutionTime.Inst.Test7();
-            // TestExecutionTime.Inst.Test8();
-            // TestExecutionTime.Inst.Test9();
+            TestExecutionTime.Inst.Test13();
         }
+
 
         int _index;
         int _max_index;
@@ -854,8 +714,8 @@ namespace Script.UI.Panel.Auto
             // var dir = @"D:\unityProject\MyProject\Assets\StreamingAssets\SmallMap\小地图_22";
 
             // _index = 1; _max_index = 40; _debug_dir = @"Assets\StreamingAssets\SmallMap\Map-22";
-            _index = 31; _max_index = 111; _debug_dir = @"D:\unityProject\MyProject\TestResource\0.2间隔";
-            // _index = 1; _max_index = 14; _debug_dir = @"D:\unityProject\MyProject\TestResource\Map-23";
+            // _index = 31; _max_index = 111; _debug_dir = @"D:\unityProject\MyProject\TestResource\0.2间隔";
+            _index = 1; _max_index = 48; _debug_dir = @"D:\unityProject\MyProject\TestResource\Map-23";
 
             // for (_index = 31; _index <= 111; _index++)
             // {

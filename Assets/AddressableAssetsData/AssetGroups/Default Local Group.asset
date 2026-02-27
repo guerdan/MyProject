@@ -16,15 +16,7 @@ MonoBehaviour:
   m_Data:
     m_SerializedData: []
   m_GUID: fda94d65ed226e44eafa83a121cbb0f8
-  m_SerializeEntries:
-  - m_GUID: 877c8e48257f20740a1a3cdf3a27beb2
-    m_Address: Auto/Prefabs/DebugMessageFloat
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-  - m_GUID: 8eae15ec6a60e40479bc1b43d8498207
-    m_Address: Auto/Prefabs/DebugVarsFloat
-    m_ReadOnly: 0
-    m_SerializedLabels: []
+  m_SerializeEntries: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 461c0bb45d0c65047b0497b6d6fed90a, type: 2}
   m_SchemaSet:

@@ -165,17 +165,22 @@ namespace Script.UI.Panel.Auto
                 Utils.OpenDrawProcessPanel(id);
             };
 
-            EditNamePanelParam param = new EditNamePanelParam
+            ConfirmPanelParam param = new ConfirmPanelParam
             {
-                Target = CreateBtn.GetComponent<RectTransform>(),
-                Offset = new Vector2(0, -30),
+                Type = ConfirmPanelType.EditInput,
                 PanelTitle = "创建脚本",
                 Region0Title = "脚本名",
                 Region0Text = "",
                 OnConfirm = OnConfirm,
             };
+            PanelRunConfig config = new PanelRunConfig
+            {
+                SetPosType = PanelSetPosType.Reference,
+                PosTarget = CreateBtn.GetComponent<RectTransform>(),
+                PosOffset = new Vector2(0, -30),
+            };
 
-            UIManager.Inst.ShowPanel(PanelEnum.EditNamePanel, param);
+            UIManager.Inst.ShowPanel(PanelEnum.ConfirmPanel, param, config);
         }
 
         void OnDisable()

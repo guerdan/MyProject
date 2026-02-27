@@ -11,7 +11,7 @@ namespace Script.Framework.UI
     public interface IUIManager
     {
         // 打开一个界面
-        void ShowPanel(PanelEnum panelEnum, object data, BasePanelConfig config = null);
+        void ShowPanel(PanelEnum panelEnum, object data, PanelRunConfig config = null);
         // 关掉层级中最上一个界面
         void PopPanel(int layer = 0);
         // 关闭指定界面
@@ -48,7 +48,7 @@ namespace Script.Framework.UI
         }
 
         // 打开一个界面
-        public void ShowPanel(PanelEnum panelKey, object data, BasePanelConfig config = null)
+        public void ShowPanel(PanelEnum panelKey, object data, PanelRunConfig config = null)
         {
             PanelDefine define = PanelUtil.PanelDefineDic[panelKey];
             if (define == null)
@@ -109,7 +109,7 @@ namespace Script.Framework.UI
             }
         }
         private BasePanelWait AddPanelStackWaits(BasePanel panel, object data, int layer, PanelDefine define
-                                                , BasePanelConfig config)
+                                                , PanelRunConfig config)
         {
             var wait = new BasePanelWait(panel, data, define, config);
             if (!_panelStackWaits.TryGetValue(layer, out var list))
@@ -139,7 +139,7 @@ namespace Script.Framework.UI
                 wait.Panel.PanelDefine = wait.PanelDefine;
                 wait.Panel.StackIndex = UISceneMixin.Inst.GetPanelCount(layer);
                 wait.Panel.gameObject.SetActive(true);
-                wait.Panel.SetConfig(wait.Config);
+                wait.Panel.SetConfig(wait.RunConfig);
                 wait.Panel.SetData(wait.Data);
 
                 var last = UISceneMixin.Inst.PeekPanel(layer);
@@ -277,20 +277,30 @@ namespace Script.Framework.UI
     {
         public BasePanel Panel;
         public object Data;
-        public BasePanelConfig Config;
+        public PanelRunConfig RunConfig;
         public PanelDefine PanelDefine;
-        public BasePanelWait(BasePanel panel, object data, PanelDefine panelDefine, BasePanelConfig config)
+        public BasePanelWait(BasePanel panel, object data, PanelDefine panelDefine, PanelRunConfig runConfig)
         {
             Panel = panel;
             Data = data;
             PanelDefine = panelDefine;
-            Config = config;
+            this.RunConfig = runConfig;
         }
     }
 
-    public class BasePanelConfig
+    public class PanelRunConfig
     {
-        public Vector2 WinPos;
+        public PanelSetPosType SetPosType = PanelSetPosType.Absolute;
+        public Vector2 WinPos;                      // 绝对位置
 
+        public RectTransform PosTarget;             // 参照点，固定取(0.5,0.5)点
+        public Vector2 PosOffset;                   // 参照点偏移
+    }
+
+    public enum PanelSetPosType
+    {
+        Absolute,                       // 绝对位置
+        Reference,                      // 根据参照物决定位置
+        ReferenceAndOptimal,            // 目的是，显示在_target矩形的周围。优先级下方、右方、左方（界面的下方不合适）
     }
 }

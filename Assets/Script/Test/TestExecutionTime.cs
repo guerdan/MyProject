@@ -404,13 +404,13 @@ namespace Script.Test
 
 
         // 1. 访问栈上声明字段 = 访问对象字段 (联级访问与次数成正比)
-        // 2. 调用方法(只算壳) = 10倍 访问字段
+        // 2. 调用方法(只算壳)50ms = 10倍 访问字段3.5ms
         // 3. List等高封装数据结构的Count是属性,属性是方法。int[]是基础列表，Length是字段。
         public void Test9()
         {
             var list = new int[1000000];
             var list1 = new List<int>();
-            for (int i = 0; i < 10000000; i++)   
+            for (int i = 0; i < 10000000; i++)
             {
                 list1.Add(0);
             }
@@ -421,26 +421,44 @@ namespace Script.Test
 
             DU.RunWithTimer(() =>
             {
-                for (int i = 0; i < 10000000; i++)    // 42ms 
+                for (int i = 0; i < 1000000; i++)    // 42ms 
                 {
                     var k = a.b.a;
+                    k = a.b.a;
+                    k = a.b.a;
+                    k = a.b.a;
+                    k = a.b.a;
+                    k = a.b.a;
+                    k = a.b.a;
+                    k = a.b.a;
+                    k = a.b.a;
+                    k = a.b.a;
                 }
             }, $"暂存对象字段，再访问");
 
             DU.RunWithTimer(() =>
             {
-                for (int i = 0; i < 10000000; i++)    // 36ms 
+                for (int i = 0; i < 1000000; i++)    // 36ms 
                 {
                     var a = b;
+                    a = b;
+                    a = b;
+                    a = b;
+                    a = b;
+                    a = b;
+                    a = b;
+                    a = b;
+                    a = b;
+                    a = b;
                 }
             }, $"访问栈对象");
-            DU.RunWithTimer(() =>
-            {
-                for (int i = 0; i < 10000000; i++)    // 36ms 
-                {
-                    var a = 20;
-                }
-            }, $"访问栈对象");
+            // DU.RunWithTimer(() =>
+            // {
+            //     for (int i = 0; i < 10000000; i++)    // 36ms 
+            //     {
+            //         var a = 20;
+            //     }
+            // }, $"访问栈对象");
 
             DU.RunWithTimer(() =>
            {
@@ -454,7 +472,7 @@ namespace Script.Test
                 for (int i = 0; i < list1.Count; i++)    // 88ms 
                 {
                 }
-            }, $"对象访问");
+            }, $"对象方法");
 
         }
 
@@ -466,7 +484,198 @@ namespace Script.Test
         {
             return 10000000;
         }
+
+        // 测试查string字典的耗时。 int字典比string字典要快一些。int = 8次空方法 string = 13次空方法
+        public void Test10()
+        {
+            Dictionary<string, string> dic = new Dictionary<string, string>();
+            dic["2"] = "3";
+            dic["3"] = "3";
+            dic["4"] = "3";
+            dic["5"] = "3";
+            dic["6"] = "3";
+            Dictionary<int, string> int_dic = new Dictionary<int, string>();
+            int_dic[2] = "3";
+            int_dic[3] = "3";
+            int_dic[4] = "3";
+            int_dic[5] = "3";
+            int_dic[6] = "3";
+
+            List<string> list = new List<string>() { "2", "2", "2", "2", "2", "2", "2", "2", "2", "2" };
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)    // 30ms 
+                {
+                }
+            }, $"空");
+
+            //     DU.RunWithTimer(() =>
+            //    {
+            //        for (int i = 0; i < 10000000; i++)    // 1100ms
+            //        {
+            //            var k = dic.TryGetValue("2", out _);
+            //        }
+            //    }, $"查string字典 Try");
+
+            //     DU.RunWithTimer(() =>
+            //    {
+            //        for (int i = 0; i < 10000000; i++)    //800ms
+            //        {
+            //            var k = dic["2"];
+            //        }
+            //    }, $"查string字典 []");
+            DU.RunWithTimer(() =>
+           {
+               for (int i = 0; i < 10000000; i++)    // 800ms
+               {
+                   var k = int_dic.TryGetValue(2, out _);
+               }
+           }, $"查int字典 Try");
+
+            DU.RunWithTimer(() =>
+           {
+               for (int i = 0; i < 10000000; i++)    //500ms
+               {
+                   var k = int_dic[2];
+               }
+           }, $"查int字典 []");
+
+            //     DU.RunWithTimer(() =>
+            //    {
+            //        for (int i = 0; i < 10000000; i++)    //8000ms
+            //        {
+            //            var k = list.IndexOf("3");
+            //        }
+            //    }, $"查string list");
+        }
+        /// <summary>
+        /// 测试截图性能,
+        /// 1. 全屏截图一次 33ms      范围缩10倍——耗时缩2倍
+        /// </summary>
+        public void Test11()
+        {
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 1; i++)    //
+                {
+                    using (var bitmap = WU.CaptureWindow(new CVRect(0, 0, 1980, 1080)))
+                    {
+                    }
+
+                    // var tex = new Texture2D(Screen.width, Screen.height, TextureFormat.RGB24, false);
+                    // tex.ReadPixels(new UnityEngine.Rect(0, 0, Screen.width, Screen.height), 0, 0);
+                    // tex.Apply();
+                }
+            }, $"截图");
+
+        }
+
+
+        /// <summary>
+        /// 封装栈比原生数组要慢6倍
+        /// 原生数组 17ms
+        /// 封装栈 push 100ms, pop 100ms
+        /// </summary>n
+        public void Test12()
+        {
+            int[] stackR = new int[10000000];
+            Stack<int> stack = new Stack<int>();
+
+            int stackR_count = 0;
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 1000000; i++)
+                {
+                    stackR[stackR_count++] = i;     //17ms
+                    stackR[stackR_count++] = i;
+                    stackR[stackR_count++] = i;
+                    stackR[stackR_count++] = i;
+                    stackR[stackR_count++] = i;
+                    stackR[stackR_count++] = i;
+                    stackR[stackR_count++] = i;
+                    stackR[stackR_count++] = i;
+                    stackR[stackR_count++] = i;
+                    stackR[stackR_count++] = i;
+                }
+            }, $"原生数组");
+
+            for (int i = 0; i < 10000000; i++)
+            {
+                stack.Push(i);
+            }
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 1000000; i++)
+                {
+                    // stack.Push(i);                      //100ms
+                    stack.Pop();                      //100ms
+                    stack.Pop();
+                    stack.Pop();
+                    stack.Pop();
+                    stack.Pop();
+                    stack.Pop();
+                    stack.Pop();
+                    stack.Pop();
+                    stack.Pop();
+                    stack.Pop();
+                }
+            }, $"封装栈");
+
+        }
+
+        /// <summary>
+        /// 研究拆装箱 与 字符串字典的性能
+        /// 
+        /// 结论是：10000000次循环
+        /// 1. 装箱 1000ms
+        /// 2. 字符串字典取值 1200ms
+        /// 3. 取对象的类型 2700ms
+        /// </summary>
+        public void Test13()
+        {
+            object obj = 10000000;
+            int obj_i = (int)obj;
+
+            Dictionary<string, object> dic = new Dictionary<string, object>();
+            dic["a"] = 10000000;
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 1000000; i++)
+                {
+                    int a = (int)obj;     // 20ms
+                }
+            }, $"拆箱");
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 1000000; i++)
+                {
+                    object a = obj_i;     // 1000ms
+                }
+            }, $"装箱");
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 1000000; i++)
+                {
+                    object a = dic["a"];     // 1200ms
+                }
+            }, $"字符串字典取值");
+
+             DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 1000000; i++)
+                {
+                    string n = obj.GetType().Name;    // 2700ms
+                }
+            }, $"取对象的类型");
+
+        }
     }
+
 
     public struct StructT
     {

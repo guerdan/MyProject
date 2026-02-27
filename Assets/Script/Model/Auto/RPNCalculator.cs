@@ -129,17 +129,24 @@ namespace Script.Model.Auto
             // 大括号包含的内容不解析，整个方法变量当成一个整体，留着后续去处理。实现方法变量内嵌套运算符
             var temp = expression;
             int index = -1;
+            // -1 * -1 ,要解决-后面跟数字，把它作为操作数
             foreach (System.Text.RegularExpressions.Match match in matches)
             {
                 var oper = match.Value;
-                index = temp.IndexOf(oper, index + 1);          //一定能找到
-
-                // 实现嵌套方法
-                var front = temp.Substring(0, index);
-                if (!CheckBracket(front))
+                index = temp.IndexOf(oper, index + 1);          //找到它的位置
+                // 如果"-"后面是数字, 则跳过
+                if (oper == "-" && index < temp.Length - 1)
                 {
-                    continue;
+                    var next_char = temp[index + 1];
+                    if (next_char >= '0' && next_char <= '9')
+                        continue;
                 }
+
+
+                // 实现方法的嵌套
+                var front = temp.Substring(0, index);
+                if (!CheckMethodBracket(front))
+                    continue;
 
                 tokens.Add(front);                              //操作数——常量或变量
                 tokens.Add(oper);                              //运算符
@@ -155,7 +162,7 @@ namespace Script.Model.Auto
             return tokens;
         }
 
-        public static bool CheckBracket(string expression)
+        public static bool CheckMethodBracket(string expression)
         {
             int balance = 0;
             foreach (char c in expression)
@@ -192,7 +199,10 @@ namespace Script.Model.Auto
             param_list = result.Item2;
         }
 
-        // Add{1,Add{1,1}}  "{}"内的","不能分割
+        /// <summary>
+        /// 解析方法的参数。嵌套情况是一层层解析
+        /// Add{1,Add{1,1}}  解决"{}"内的","不能分割
+        /// </summary>
         public static (string, string[]) ParseMethodParam(string source)
         {
             // method_name = "Add";
@@ -553,10 +563,10 @@ namespace Script.Model.Auto
         }
 
         static System.Text.RegularExpressions.Regex _conditionRegex =
-        new System.Text.RegularExpressions.Regex(@"(==|!=|>|<|>=|<=)");
+        new System.Text.RegularExpressions.Regex(@"(==|!=|>=|<=|>|<)");
 
         /// <summary>
-        /// 分隔 操作符 与 左右表达式
+        /// 分隔 操作符And左右表达式
         /// </summary>
         public static void ConditionParseCompareOper(string formula, out string oper, out string left, out string right)
         {

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using Script.Model.Auto;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -26,7 +27,9 @@ namespace Script.Util
         }
         public static void LogError(object msg)
         {
-            Debug.LogError(msg.ToString());
+            var log = msg.ToString();
+            Debug.LogError(log);
+            AutoScriptManager.Inst.AddLog(ScriptLogType.Error, log);
         }
 
         /// <summary>

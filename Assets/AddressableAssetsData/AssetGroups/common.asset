@@ -34,7 +34,7 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
   - m_GUID: c56fc2e9f8bed0147945d06804bc256f
-    m_Address: Common/Prefabs/Panel/EditNamePanel
+    m_Address: Common/Prefabs/Panel/ConfirmPanel
     m_ReadOnly: 0
     m_SerializedLabels: []
   - m_GUID: 8b8a98a24de26044585bf56266e52729

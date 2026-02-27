@@ -44,7 +44,7 @@ namespace Script.UI.Panel.Auto.Node
         protected void Awake()
         {
             base.Awake();
-           
+
         }
 
         public override void RefreshContent()
@@ -73,7 +73,7 @@ namespace Script.UI.Panel.Auto.Node
             else if (_data is TriggerEventNode)
             {
                 TriggerEventNode data = _data as TriggerEventNode;
-                Formula.text = data.EventName;
+                Formula.text = AutoDataUIConfig.FormulaFormat(data.EventName);
                 ShowType(true);
                 // ShowIsCondition(false);
                 TypeText.text = "触发";
@@ -85,7 +85,7 @@ namespace Script.UI.Panel.Auto.Node
             else if (_data is ListenEventNode)
             {
                 ListenEventNode data = _data as ListenEventNode;
-                Formula.text = data.EventName;
+                Formula.text = AutoDataUIConfig.FormulaFormat(data.EventName);
                 ShowType(true);
                 // ShowIsCondition(false);
                 TypeText.text = "监听";
@@ -135,7 +135,7 @@ namespace Script.UI.Panel.Auto.Node
         //     }
         // }
 
-        
+
 
     }
 }

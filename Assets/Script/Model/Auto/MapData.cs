@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using OpenCvSharp;
 using Script.Util;
 using UnityEngine;
+
 
 namespace Script.Model.Auto
 {
@@ -95,6 +95,7 @@ namespace Script.Model.Auto
         Vector2Int[] _EdgeTraversal_list2 = new Vector2Int[800];        //方法内部复用
 
         Vector2Int[] _stack = new Vector2Int[40000];                    //方法内部复用
+        static Vector2Int[] _stack_static = new Vector2Int[40000];      //方法内部复用
 
         List<Vector2Int> _reusedList1 = new List<Vector2Int>();         //方法内部复用
         List<Vector2Int> _reusedList2 = new List<Vector2Int>();         //方法内部复用
@@ -222,11 +223,22 @@ namespace Script.Model.Auto
 
         #region ColorToData
 
+        static Vector2Int[] fog_constant = new Vector2Int[]{
+                new Vector2Int(-2,0),new Vector2Int(-1,0),new Vector2Int(1,0),new Vector2Int(2,0),
+                new Vector2Int(-1,1),new Vector2Int(0,1),new Vector2Int(1,1),
+                new Vector2Int(-1,-1),new Vector2Int(0,-1),new Vector2Int(1,-1),
+                new Vector2Int(0,2),new Vector2Int(0,-2),
+            };
+
         /// <summary>
-        /// 处理 ,2-“边界”，4-“迷雾边界”
+        /// 拍摄图 => 地图数据, 核心
         /// </summary>
-        PixType[,] ColorToData(Color32[] pixels)
+        public static PixType[,] ColorToData(Color32[] pixels)
         {
+            int color_set = 0;
+            int rectW = 200;
+            int rectH = 200;
+
             Color32 min_1th = default;
             Color32 max_1th = default;
             Vector2Int B_to_G_1th = default;
@@ -266,37 +278,112 @@ namespace Script.Model.Auto
                 B_to_G_3th = new Vector2Int(5, 30);
             }
 
+            var tag_c = new Color32(200, 200, 200, 255);
+            var check_c = new Color32(3, 3, 3, 255);
 
-
-            PixType[,] colorData = new PixType[_rectW + 4, _rectH + 4]; // 200 * 200 
+            PixType[,] colorData = new PixType[rectW + 4, rectH + 4]; // 200 * 200 
 
             var x_start = 2;
-            var x_end = _rectW + 2;
+            var x_end = rectW + 2;
             var y_start = 2;
-            var y_end = _rectH + 2;
-
+            var y_end = rectH + 2;
             var first_list = new List<Vector2Int>();
-            var fog_constant = new Vector2Int[]{
-                new Vector2Int(-2,0),new Vector2Int(-1,0),new Vector2Int(1,0),new Vector2Int(2,0),
-                new Vector2Int(-1,1),new Vector2Int(0,1),new Vector2Int(1,1),
-                new Vector2Int(-1,-1),new Vector2Int(0,-1),new Vector2Int(1,-1),
-                new Vector2Int(0,2),new Vector2Int(0,-2),
-            };
+
 
             // DU.RunWithTimer(() =>
             //     {
 
-            // 先处理迷雾
+            // 1. 先处理装备条的遮挡, 不计算r通道， 因为容易被地图带火焰场景干扰
+
+            for (int y = rectH - 1; y >= 0; y--)
+                for (int x = 0; x < rectW; x++)
+                {
+                    var color = pixels[y * rectW + x];
+                    byte r = color.r;
+                    byte g = color.g;
+                    byte b = color.b;
+                    if (g <= check_c.g && b <= check_c.b
+                        && g != tag_c.g && b != tag_c.b)             // 文字框
+                    {
+                        int max_x = x;
+                        int min_x = x;
+
+                        var tx = x;
+                        while (true)
+                        {
+                            if (tx >= rectW)
+                                break;
+
+                            var has_black = false;
+                            for (int dy = 0; dy < 26; dy++)
+                            {
+                                if (y - dy < 0)
+                                    break;
+                                var c1 = pixels[(y - dy) * rectW + tx];
+                                if (c1.g <= check_c.g && c1.b <= check_c.b)
+                                    has_black = true;
+                            }
+                            if (has_black)
+                                max_x = tx;
+                            else
+                                break;
+
+                            tx++;
+                        }
+                        tx = x - 1;
+                        while (true)
+                        {
+                            if (tx < 0)
+                                break;
+
+                            var has_black = false;
+                            for (int dy = 0; dy < 26; dy++)
+                            {
+                                if (y - dy < 0)
+                                    break;
+                                var c1 = pixels[(y - dy) * rectW + tx];
+                                if (c1.g <= check_c.g && c1.b <= check_c.b)
+                                    has_black = true;
+                            }
+                            if (has_black)
+                                min_x = tx;
+                            else
+                                break;
+
+                            tx--;
+                        }
+
+                        // 写入结果
+                        if (max_x - min_x >= 30)
+                        {
+                            for (int fx = min_x; fx <= max_x; fx++)
+                                for (int dy = 0; dy < 26; dy++)
+                                {
+                                    if (y - dy < 0)
+                                        break;
+                                    pixels[(y - dy) * rectW + fx] = tag_c;
+                                }
+                        }
+
+                        // 优化，加速
+                        x = max_x;
+
+                    }
+                }
+
+
+
+            // 2. 先处理迷雾
             for (int i = y_start; i < y_end; i++)
                 for (int j = x_start; j < x_end; j++)
                 {
-                    int index = (i - 2) * _rectW + j - 2;
+                    int index = (i - 2) * rectW + j - 2;
                     var color = pixels[index];
                     byte r = color.r;
                     byte g = color.g;
                     byte b = color.b;
 
-                    if (r == 0 && g == 0 && b == 0) // 文字描边
+                    if (r <= 3 && g <= 3 && b <= 3) // 文字描边
                         colorData[j, i] = PixType.Undefined;
 
                     else if (r < 50 && g < 50 && b < 50 && colorData[j, i] != PixType.FogArea) // 空地
@@ -324,7 +411,7 @@ namespace Script.Model.Auto
             for (int i = y_start; i < y_end; i++)
                 for (int j = x_start; j < x_end; j++)
                 {
-                    int index = (i - 2) * _rectW + j - 2;
+                    int index = (i - 2) * rectW + j - 2;
                     var color = pixels[index];
                     byte r = color.r;
                     byte g = color.g;
@@ -351,7 +438,7 @@ namespace Script.Model.Auto
             ColorToDataTraversal(colorData, first_list);
 
 
-            var temp = new PixType[_rectW, _rectH];
+            var temp = new PixType[rectW, rectH];
             for (int i = y_start; i < y_end; i++)
                 for (int j = x_start; j < x_end; j++)
                     if (colorData[j, i] != PixType.ObstacleEdgeTemp)
@@ -368,17 +455,17 @@ namespace Script.Model.Auto
         /// 递归,发散型递归。感觉用栈可以实现非递归
         /// 猜想优化点：将colorData扩展为[w+1,h+1]，边缘设置为0，这样就不用每次都判断边界了
         /// </summary>
-        void ColorToDataTraversal(PixType[,] colorData, List<Vector2Int> first_list)
+        public static void ColorToDataTraversal(PixType[,] colorData, List<Vector2Int> first_list)
         {
             var count = 0;
             foreach (var pos in first_list)
             {
-                _stack[count++] = pos;
+                _stack_static[count++] = pos;
             }
 
             while (count > 0)
             {
-                var pop = _stack[--count];
+                var pop = _stack_static[--count];
                 int x = pop.x;
                 int y = pop.y;
                 if (colorData[x, y] == PixType.ObstacleEdgeTemp)
@@ -393,7 +480,7 @@ namespace Script.Model.Auto
                     if (colorData[px, py] == PixType.ObstacleEdgeTemp)
                     {
                         colorData[px, py] = PixType.ObstacleEdge;
-                        _stack[count++] = new Vector2Int(px, py);
+                        _stack_static[count++] = new Vector2Int(px, py);
                     }
 
                 }
@@ -582,7 +669,7 @@ namespace Script.Model.Auto
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] // 告诉编译器要内联
-        bool Between(Color32 val, Color32 min, Color32 max)
+        public static bool Between(Color32 val, Color32 min, Color32 max)
         {
             return val.r >= min.r && val.g >= min.g && val.b >= min.b
                 && val.r <= max.r && val.g <= max.g && val.b <= max.b;
@@ -1157,7 +1244,7 @@ namespace Script.Model.Auto
             StartAStarBigGridAbs(GetPlayerPosEmpty(), p);
         }
 
-
+        // 这时地图UI视角
         public void StartAStarBigGrid(Vector2Int start, Vector2Int target)
         {
             var offset = new Vector2Int(_xRange.x, _yRange.x);
@@ -1498,41 +1585,51 @@ namespace Script.Model.Auto
 
         /// <summary>
         /// 找最近迷雾。
-        /// refresh: 每次调用是否都重新(用当前位置)A星寻路
+        /// refresh: 每次调用是否都重新(用当前位置)找最近的迷雾
         /// </summary>
-        public void FindNearestFog(bool refresh)
+        public void FindNearestFog(bool refresh_target)
         {
             if (_findFogResult == PathFindingResult.NoTarget)
                 return;
 
+            Vector2Int target = Utils.DefaultV2I;
             // 查看上个迷雾消失没
             if (_findFogPath != null)
             {
                 var path = _findFogPath.Path;
                 var cell = path[path.Count - 1].Cell;
-                if (cell == null || !cell.HasFog)
+                if (cell.HasFog)
                 {
-                    _findFogPath = null;
+                    target = new Vector2Int(cell.x * 5, cell.y * 5);
                 }
             }
 
-            // 寻找最近迷雾
-            if (refresh || _findFogPath == null)
+
+            var start_pos = GetPlayerPosEmpty();
+            if (start_pos == Utils.DefaultV2I)
             {
-                var start_pos = GetPlayerPosEmpty();
-                if (start_pos == Utils.DefaultV2I)
-                {
-                    _findFogResult = PathFindingResult.StartPosFail;
-                    return;
-                }
+                _findFogResult = PathFindingResult.StartPosFail;
+                return;
+            }
+
+            // 寻找最近迷雾 或 继续找上个迷雾
+            if (refresh_target || target == Utils.DefaultV2I)
+            {
                 _findFogPath = _gridData.StartFindFog(start_pos);
             }
-
+            else
+            {
+                _findFogPath = _gridData.StartAStar(start_pos, target);
+                // 寻不到就重新定目标
+                if (_findFogPath == null)              
+                    _findFogPath = _gridData.StartFindFog(start_pos);
+            }
 
             if (_findFogPath == null)
                 _findFogResult = PathFindingResult.NoTarget;
             else
                 _findFogResult = PathFindingResult.Success;
+
         }
 
         /// <summary>
@@ -1546,8 +1643,6 @@ namespace Script.Model.Auto
 
             SmallCellFinder finder = new SmallCellFinder();
             var Path = _findFogPath.Path;
-
-            // 如果重合了就出error, 看来真得优化一下了。
 
             var node0 = Path[0];
             var path0 = node0.GetPixPath(this, finder);
@@ -2300,7 +2395,7 @@ namespace Script.Model.Auto
                 if (undefined_num + empty_num + obstacle_edge_num < 5)
                     return false;
 
-
+                // 因为要确定死所有CheckFull偏保守，而GuessType()偏激进
                 if (undefined_num >= empty_num && undefined_num >= obstacle_edge_num)
                     type = PixType.Undefined;
                 else if (obstacle_edge_num >= empty_num)

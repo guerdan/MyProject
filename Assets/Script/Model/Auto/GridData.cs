@@ -20,7 +20,7 @@ namespace Script.Model.Auto
     // 需要额外的废弃边界优化吗？不需要，大格子寻路可以搞，但是其总耗时不高
     public class GridData
     {
-        public readonly float Finding_ObstacleFactor = 1.25f;
+        public readonly float Finding_ObstacleFactor = 1.2f;
         public int BuildCellTimes = 0;
         public int MultiEmptyCellCount = 0;
         public int ObstacleFill2EmptyCount = 0;

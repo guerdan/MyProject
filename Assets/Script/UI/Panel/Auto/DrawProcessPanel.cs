@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Script.Framework;
 using Script.Framework.UI;
 using Script.Model.Auto;
 using Script.UI.Components;
@@ -61,7 +62,12 @@ namespace Script.UI.Panel.Auto
         [SerializeField] public Transform TopLayer;         //顶层
         [SerializeField] public Transform RecycleLayer;     //回收层，放delete后的缓存
         [SerializeField] private DrawProcessBtnBar BtnBar;
-        [SerializeField] public KeywordTipsComp TipsComp;  //提示词组件
+        [SerializeField] public KeywordTipsComp TipsComp;       //提示词组件
+
+        [SerializeField] private VirtualListComp CanvasTabListComp;   //页签列表
+        [SerializeField] private GameObject CanvasTabPrefab;          //页签
+        [SerializeField] private Button AddCanvasBtn;
+        [SerializeField] private Button DeleteCanvasBtn;
 
 
         [Header("各式节点预制件")]
@@ -87,11 +93,13 @@ namespace Script.UI.Panel.Auto
 
         [NonSerialized] public CanvasConfig CanvasCfg;
         [NonSerialized] public string MouseHoverId;                         // 鼠标悬浮的节点
+        [NonSerialized] public bool HoldCtrl;                               // 长按Ctrl键状态
         [NonSerialized] public string _id;                                  // 脚本id
         [NonSerialized] public AutoScriptData _scriptData;                  // 脚本运行时数据
-        [NonSerialized] public bool HoldCtrl;                               // 长按Ctrl键状态
+        [NonSerialized] public int _canvas_index;                           // 当前画布
 
-
+        List<ScriptCanvasConfig> _canvas_list;
+        float CanvasTabPrefab_height;
         SPool _templateMatchNodeUIPool;
         SPool _mouseNodeUIPool;
         SPool _assignNodeUIPool;
@@ -122,7 +130,9 @@ namespace Script.UI.Panel.Auto
 
         void Awake()
         {
-            TitleEditBtn.onClick.AddListener(OnTitleEditBtnClick);
+            TitleEditBtn.onClick.AddListener(OnClickTitleEditBtn);
+            AddCanvasBtn.onClick.AddListener(OnClickAddCanvasBtn);
+            DeleteCanvasBtn.onClick.AddListener(OnClickDeleteCanvasBtn);
             ScrollRect.onValueChanged.AddListener(OnScrolling);
 
             //初始化预制件
@@ -141,6 +151,13 @@ namespace Script.UI.Panel.Auto
             _mouseNodeUIPool = new SPool(MouseNodePre, 0, "M_NodeUI", RecycleLayer);
             _assignNodeUIPool = new SPool(AssignNodePre, 0, "A_NodeUI", RecycleLayer);
             _mapCaptureNodeUIPool = new SPool(MapNodePre, 0, "Map_NodeUI", RecycleLayer);
+
+            CanvasTabPrefab.SetActive(false);
+            CanvasTabListComp.OnGetItemSize = GetItemSize;
+            CanvasTabListComp.OnGetItemTemplate = (int index) => CanvasTabPrefab;
+            CanvasTabListComp.OnUpdateItem = UpdateItem;
+
+            CanvasTabPrefab_height = CanvasTabPrefab.GetComponent<RectTransform>().rect.height;
         }
 
         public override void SetData(object data)
@@ -150,6 +167,8 @@ namespace Script.UI.Panel.Auto
             _id = data as string;
             LastOpenId = _id;
             _scriptData = manager.GetScriptData(_id);
+            _canvas_list = _scriptData.Config.Canvas;
+            _canvas_index = 0;
             _lastSaveTime = DateTime.Now;
             Init();
         }
@@ -162,14 +181,20 @@ namespace Script.UI.Panel.Auto
             CanvasCfg = new CanvasConfig(4000, 4000);
             Map.SetData(this, 300);  //绘制栅格
             BtnBar.SetData(this);
+            Title.text = $"{_scriptData.Config.Name}";
+            IdText.text = $"id: {_scriptData.Config.Id}";
+
+            RefreshCanvasTab();
 
             Clear();
-
             //生成流程的节点
             OnScrolling(ScrollRect.normalizedPosition);
+        }
 
-            Title.text = $"绘制面板：{_scriptData.Config.Name}";
-            IdText.text = $"id: {_scriptData.Config.Id}";
+        void RefreshCanvasTab()
+        {
+            var canvas_list = _scriptData.Config.Canvas;
+            CanvasTabListComp.ReloadData(canvas_list.Count, false);
         }
         // 全删
         void Clear()
@@ -194,8 +219,7 @@ namespace Script.UI.Panel.Auto
             _nodeUIGate2SlotCache.Clear();
         }
 
-
-        void OnTitleEditBtnClick()
+        void OnClickTitleEditBtn()
         {
             Action<string, string> OnConfirm = (string name, string _) =>
             {
@@ -203,18 +227,24 @@ namespace Script.UI.Panel.Auto
                 Title.text = $"绘制面板：{_scriptData.Config.Name}";
             };
 
-            EditNamePanelParam param = new EditNamePanelParam
+            ConfirmPanelParam param = new ConfirmPanelParam
             {
-                Target = Title.rectTransform,
-                Offset = new Vector2(0, -30),
+                Type = ConfirmPanelType.EditInput,
                 PanelTitle = "重命名脚本",
                 Region0Title = "脚本名",
                 Region0Text = _scriptData.Config.Name,
                 OnConfirm = OnConfirm,
             };
 
-            UIManager.Inst.ShowPanel(PanelEnum.EditNamePanel, param);
+            PanelRunConfig config = new PanelRunConfig
+            {
+                SetPosType = PanelSetPosType.Reference,
+                PosTarget = Title.rectTransform,
+                PosOffset = new Vector2(0, -30),
+            };
+            UIManager.Inst.ShowPanel(PanelEnum.ConfirmPanel, param, config);
         }
+
         void OnScrolling(Vector2 pos)
         {
             SyncData();
@@ -272,7 +302,7 @@ namespace Script.UI.Panel.Auto
             if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.V))
             {
                 if (_copyId != null && _copyId.StartsWith(BaseNodeData.IdStart))
-                    CopyNode(_copyId);
+                    PasteNode(_copyId);
             }
 
         }
@@ -283,7 +313,8 @@ namespace Script.UI.Panel.Auto
         // 完全同步节点(id对应的方案)，完全同步线段
         public void SyncData()
         {
-            HashSet<string> node_ids = Map.GetInViewNodeIds();
+            var canvas_id = _scriptData.Config.Canvas[_canvas_index].Id;
+            HashSet<string> node_ids = Map.GetInViewNodeIds(canvas_id);
             HashSet<string> lines_ids = new HashSet<string>();
             // 增节点的相关线段都要刷新
             HashSet<string> lines_need_refresh_ids = new HashSet<string>();
@@ -375,18 +406,20 @@ namespace Script.UI.Panel.Auto
         public void CreateNewNode()
         {
             var pos = Map.MapConvert(Map.GetCenter());
-            var data = manager.CreateNode(_scriptData, NodeType.TemplateMatchOper, pos);
+            var canvas_data = _canvas_list[_canvas_index];
+            var data = manager.CreateNode(_scriptData, canvas_data.Id, pos, NodeType.TemplateMatchOper);
             SyncData();
 
             // 确保新节点在最上层
             if (_nodeUIMap.TryGetValue(data.Id, out var new_ui))
                 new_ui.transform.SetAsLastSibling();
         }
-        // 创建新节点功能
-        public void CopyNode(string id)
+        // 复制粘贴功能
+        public void PasteNode(string id)
         {
             var pos = Map.MapConvert(Map.GetMousePos());
-            var data = manager.CopyNode(_scriptData, id, pos);
+            var canvas_data = _canvas_list[_canvas_index];
+            var data = manager.CopyNode(_scriptData, canvas_data.Id, pos, id);
             SyncData();
 
             // 确保新节点在最上层
@@ -438,7 +471,7 @@ namespace Script.UI.Panel.Auto
                     pool = _mouseNodeUIPool;
                     prefab = MouseNodePre;
                     break;
-             
+
 
                 case NodeType.AssignOper:
                 case NodeType.ConditionOper:
@@ -832,16 +865,18 @@ namespace Script.UI.Panel.Auto
                 case NodeType.MapCapture:
                 case NodeType.WaitOper:
                 case NodeType.TriggerEvent:
+                case NodeType.ListenEvent:
                 case NodeType.StopScript:
                     in_has = true;
                     out_true_has = true;
                     out_false_has = false;
                     break;
-                case NodeType.ListenEvent:
-                    in_has = false;
-                    out_true_has = true;
-                    out_false_has = false;
-                    break;
+
+                // case NodeType.ListenEvent:
+                //     in_has = false;
+                //     out_true_has = true;
+                //     out_false_has = false;
+                //     break;
                 default:
                     in_has = false;
                     out_true_has = false;
@@ -850,6 +885,147 @@ namespace Script.UI.Panel.Auto
             }
         }
         #endregion
+
+        #region CanvasTabs
+
+        Vector2 GetItemSize(int index)
+        {
+            var data = _canvas_list[index];
+            if (data.UIWidth == 0 || data.OldName != data.Name)
+            {
+                var text_width = SceneTool.Inst.GetTextPreferWidth(36, data.Name);
+                data.UIWidth = text_width / 2 + 11;
+                data.OldName = data.Name;
+            }
+            return new Vector2(data.UIWidth, CanvasTabPrefab_height);
+
+        }
+
+        void UpdateItem(GameObject item, int index)
+        {
+            var data = _canvas_list[index];
+
+            var rectT = item.GetComponent<RectTransform>();
+            rectT.sizeDelta = new Vector2(data.UIWidth, CanvasTabPrefab_height);   //高度
+
+            bool is_selected = index == _canvas_index;
+            var imageUI = item.transform.GetChild(0).GetComponent<Image>();
+            var textUI = item.transform.GetChild(1).GetComponent<Text>();
+            item.GetComponentInChildren<Text>().text = data.Name;               //内容
+
+            var white = Utils.ParseHtmlString("#fffcf9");
+            imageUI.color = is_selected ? white : ProcessNodeUI.TextColor;
+            textUI.color = is_selected ? white : ProcessNodeUI.TextColor;
+
+            var btn = item.GetComponent<ExButton>();
+            btn.onClick.RemoveAllListeners();
+            btn.onClick.AddListener(() => OnClickCanvasTab(index));
+            btn.onClickRight.RemoveAllListeners();
+            btn.onClickRight.AddListener(() => OnClickRightCanvasTab(index, rectT));
+        }
+
+        void OnClickCanvasTab(int index)
+        {
+            _canvas_index = index;
+            RefreshCanvasTab();
+            Map.ScrollTo(new Vector2(0, 1));
+            SyncData();
+        }
+
+        void OnClickAddCanvasBtn()
+        {
+            _canvas_index = _scriptData.AddCanvas();
+            RefreshCanvasTab();
+            Map.ScrollTo(new Vector2(0, 1));
+            SyncData();
+        }
+        void OnClickDeleteCanvasBtn()
+        {
+            if (!_scriptData.IsEnd)         // 需要终止脚本，才能编辑
+                return;
+
+            if (_canvas_list.Count < 1)     // 至少留一个
+                return;
+
+            // 弹个确认弹窗
+            Action<string, string> OnConfirm = (string _, string _) =>
+            {
+                _scriptData.DeleteCanvas(_canvas_index);
+
+                // _canvas_index不变。如果超引用范围则-1
+                if (_canvas_index > _canvas_list.Count - 1)
+                    _canvas_index = _canvas_list.Count - 1;
+
+                RefreshCanvasTab();
+                Map.ScrollTo(new Vector2(0, 1));
+                SyncData();
+            };
+
+            ConfirmPanelParam param = new ConfirmPanelParam
+            {
+                Type = ConfirmPanelType.Confirm,
+                PanelTitle = "提示",
+                Content = "确定要删除此画布吗？（将删除此画布的全部节点）",
+                OnConfirm = OnConfirm,
+            };
+
+            PanelRunConfig config = new PanelRunConfig
+            {
+                SetPosType = PanelSetPosType.Reference,
+                PosTarget = DeleteCanvasBtn.GetComponent<RectTransform>(),
+                PosOffset = new Vector2(0, -30),
+            };
+            UIManager.Inst.ShowPanel(PanelEnum.ConfirmPanel, param, config);
+
+        }
+
+        void OnClickRightCanvasTab(int tab_index, RectTransform selfR)
+        {
+            TipsComp.gameObject.SetActive(true);
+
+            var options = new List<string>() { "重命名" };
+            TipsComp.SetData(options, (option) => OnClickCanvasTabOption(option, tab_index, selfR));
+
+            // 设置位置
+            var tipsCompRectT = TipsComp.GetComponent<RectTransform>();
+            tipsCompRectT.SetParent(Content, false);
+            var pos = Utils.GetPos(tipsCompRectT, selfR, default);
+            pos = pos + new Vector2(-selfR.rect.width / 2, -selfR.rect.height / 2 - 5);
+
+            tipsCompRectT.anchoredPosition = pos;
+        }
+
+        void OnClickCanvasTabOption(int option, int tab_index, RectTransform selfR)
+        {
+            var canvas_data = _canvas_list[tab_index];
+            if (option == 0)
+            {
+                Action<string, string> OnConfirm = (string input1, string _) =>
+                {
+                    canvas_data.Name = input1;
+                    RefreshCanvasTab();
+                };
+                ConfirmPanelParam param = new ConfirmPanelParam
+                {
+                    Type = ConfirmPanelType.EditInput,
+                    PanelTitle = "重命名",
+                    Region0Title = "画布名",
+                    Region0Text = canvas_data.Name,
+                    OnConfirm = OnConfirm,
+                };
+
+                PanelRunConfig config = new PanelRunConfig
+                {
+                    SetPosType = PanelSetPosType.Reference,
+                    PosTarget = selfR.GetComponent<RectTransform>(),
+                    PosOffset = new Vector2(0, -30),
+                };
+                UIManager.Inst.ShowPanel(PanelEnum.ConfirmPanel, param, config);
+            }
+        }
+
+        #endregion
+
         #region Others
         void OnDisable()
         {

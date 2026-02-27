@@ -74,6 +74,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 44103b33ac4780a45b08d752db379a72, type: 3}
   - {fileID: 21300000, guid: 6c14038394084794d91244e488743bc4, type: 3}
   - {fileID: 21300000, guid: 765bdda359c52984c804e2f37a5f4178, type: 3}
+  - {fileID: 21300000, guid: 7e491fb3e742cb84cb5989308ef16323, type: 3}
   - {fileID: 21300000, guid: 6f5f91c3c1fb61a48b3936eb810176a1, type: 3}
   - {fileID: 21300000, guid: 374c4404ef9d2904f81c7247876b5ec1, type: 3}
   - {fileID: 21300000, guid: 367d5214049147349aa5017340d60396, type: 3}
@@ -113,6 +114,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 689279a807c1c494aa7099a71b789d79, type: 3}
   - {fileID: 21300000, guid: 70534fc8594c1264cba542d68ccf51e9, type: 3}
   - {fileID: 21300000, guid: 2ab725e8fbd667d429cd106440bad9f7, type: 3}
+  - {fileID: 21300000, guid: b3e41119bdf7d544b8547e181b4203bb, type: 3}
   - {fileID: 21300000, guid: 24299739c6ef7f442b1471c1ff2fbd2b, type: 3}
   - {fileID: 21300000, guid: 634d1a4986c28d9469d12212bdac38d9, type: 3}
   - {fileID: 21300000, guid: ba8d94a9b9c03bd47a977f2662db81d5, type: 3}
@@ -161,6 +163,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 4e1d026f5dfb1074c9aad965725b583e, type: 3}
   - {fileID: 21300000, guid: c109b18f8d11fdc44999ce6857a4adf0, type: 3}
   - {fileID: 21300000, guid: 3c75628fc2b1b1f40aa10dac3a32ad64, type: 3}
+  - {fileID: 21300000, guid: 291e23af0f98d9a42a8cdee2f2fdc3d7, type: 3}
   - {fileID: 21300000, guid: 149061effeb8d9c47994f4a7006f4d28, type: 3}
   - {fileID: 21300000, guid: 8dff6dff9b4baa04cafe56d77d588ff4, type: 3}
   m_PackedSpriteNamesToIndex:
@@ -188,6 +191,7 @@ SpriteAtlas:
   - folder_add
   - s1_close
   - white_square_10px
+  - icon_delete
   - s1_tab_unable
   - tab_hero_active
   - settings
@@ -207,7 +211,7 @@ SpriteAtlas:
   - folder_transparent
   - button_red
   - b_stop1
-  - frame1_white
+  - b_wooden_white
   - menus_arrow
   - b_restart
   - frame
@@ -219,7 +223,7 @@ SpriteAtlas:
   - frame_bg1
   - dot_line_12px
   - hero_yxjb_close_bg
-  - edit
+  - icon_edit
   - icon_loading_progress
   - rank_icon_log
   - Cartoon_buttons_3_white
@@ -227,6 +231,7 @@ SpriteAtlas:
   - button_yellow
   - ui_outline
   - bg_wooden_title
+  - icon_add
   - rank_icon_reward
   - b_stop
   - bg_shitou2_bottom
@@ -245,7 +250,7 @@ SpriteAtlas:
   - button_yellow
   - bg_shitou3
   - select_frame
-  - frame1
+  - b_wooden
   - icon_pvp_rank1 1
   - Cartoon_buttons_3
   - bg_color_hero_bottom
@@ -275,6 +280,7 @@ SpriteAtlas:
   - line
   - select_true
   - mouse_left
+  - bg_page
   - button_green
   - bg_pvp_myrank
   m_RenderDataMap: {}

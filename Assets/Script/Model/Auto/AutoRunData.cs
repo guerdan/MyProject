@@ -53,7 +53,7 @@ namespace Script.Model.Auto
         private Dictionary<string, Vector2> _v2Vars = new Dictionary<string, Vector2>();
         // 存储运行中的Vector4变量
         private Dictionary<string, Vector4> _v4Vars = new Dictionary<string, Vector4>();
-        // 存储运行中的所有变量
+        // 存储运行中的所有变量。是真正工作的
         private Dictionary<string, object> _allVars = new Dictionary<string, object>();
 
 
@@ -62,10 +62,22 @@ namespace Script.Model.Auto
         private Dictionary<string, FormulaVarInfo> _inEditVarRef = new Dictionary<string, FormulaVarInfo>();
 
 
-        
+
+        public void RunAssignFormula(string formula, FormulaVarType type, object inData)
+        {
+            var equal_index = formula.IndexOf("=");
+            if (equal_index < 0)
+                return;
+            var VarName = formula.Substring(0, equal_index);
+            var Expression = formula.Substring(equal_index + 1);
+            RunAssignFormula(VarName, Expression, type, inData);
+        }
+
+
         /// <summary>
-        /// 赋值语句。必须指定类型。在UI侧第一次赋值变量需指定类型，后面就可自动
+        /// 赋值语句。必须指定类型。在UI侧第一次赋值变量需指定类型，后面就可自动提示
         /// 影响运行变量的
+        /// 变量名、值公式、变量类型
         /// </summary>
         public void RunAssignFormula(string var_name, string expression, FormulaVarType type, object inData)
         {
@@ -114,9 +126,12 @@ namespace Script.Model.Auto
         }
 
 
+        /// <summary>
+        /// 变量名、值、变量类型
+        /// </summary>
         public void RunAssign(string var_name, FormulaVarType type, float f = 0, Vector2 v2 = default, Vector4 v4 = default)
         {
-            bool is_debug = true;
+            bool is_debug = false;
             switch (type)
             {
                 case FormulaVarType.Float:
@@ -231,9 +246,11 @@ namespace Script.Model.Auto
 
         /// <summary>
         /// 不存在的变量。我们考虑赋值和使用时机对不上的情况。不存在的变量就返回默认值。
-        /// 方法变量。设计为：由"{"，"}"包裹。方法变量与方法变量不嵌套。目前不能包含运算符,定义方法不能重载
+        /// 方法变量。设计为：由"{"，"}"包裹。支持方法参数内含运算符、方法变量。不支持方法重载
         /// 成员变量。设计为：可嵌套。支持：Vector2/Vector4
         /// 值变量。
+        /// 
+        /// 优化空间：对于方法参数不断嵌套运算符、方法变量的情况，可以暂存运算顺序与RPN结果，减少字典查找与解析字符操作
         /// </summary>
         public float OperandResolver(string operand)
         {
@@ -423,7 +440,7 @@ namespace Script.Model.Auto
         #region Condition (float)
         public bool FormulaGetResultCondition(string formula)
         {
-            var list = RPNCalculator.GetRPN(formula);
+            var list = RPNCalculator.GetRPN(formula, true);
             var result = RPNCalculator.EvaluateRPNForCondition(list, OperandResolverCondition);
             return result;
         }
@@ -468,6 +485,17 @@ namespace Script.Model.Auto
             _v4Vars.Clear();
             _allVars.Clear();
         }
+
+        public void GetAllVarsDic(out Dictionary<string, float> floatVars, out Dictionary<string, Vector2> v2Vars, 
+                                out Dictionary<string, Vector4> v4Vars, out Dictionary<string, object> allVars)
+        {
+            floatVars = _floatVars;
+            v2Vars = _v2Vars;
+            v4Vars = _v4Vars;
+            allVars = _allVars;
+        }
+
+
         #endregion
     }
 }

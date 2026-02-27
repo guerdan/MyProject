@@ -48,6 +48,7 @@
     <Compile Include="Assets\Script\UI\Panel\Auto\DeskPet\DeskPetMain.cs" />
     <Compile Include="Assets\Script\Util\PathUtil.cs" />
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\TimedDestroy.cs" />
+    <Compile Include="Assets\Script\UI\Components\ExButton.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\DeskPet\DeskPetNodeIcon.cs" />
     <Compile Include="Assets\Script\Framework\UI\PanelDefine.cs" />
     <Compile Include="Assets\Script\Util\OpenFileByWin32.cs" />
@@ -111,7 +112,7 @@
     <Compile Include="Assets\Script\UI\Panel\Auto\DrawProcessBtnBar.cs" />
     <Compile Include="Assets\Script\Render\OutlineRender\CameraDepthRender.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\ProcessDebugPanel.cs" />
-    <Compile Include="Assets\Script\UI\Panel\Auto\EditNamePanel.cs" />
+    <Compile Include="Assets\Script\UI\Panel\Auto\ConfirmPanel.cs" />
     <Compile Include="Assets\Script\Render\GPUSkinning\GPUSkinningSample.cs" />
     <Compile Include="Assets\Script\UI\Components\MenuComp.cs" />
     <Compile Include="Assets\Script\Framework\GameTimer.cs" />
@@ -205,7 +206,6 @@
     <None Include="Assets\AssetBundles\Lua\LuaSummary.txt" />
     <None Include="Assets\AssetBundles\Lua\Folder2\test4.lua.txt" />
     <None Include="Assets\Packages\OpenCvSharp4.4.10.0.20241108\lib\netstandard2.1\OpenCvSharp.xml" />
-    <None Include="Assets\AddressableAssetsData\link.xml" />
     <None Include="Assets\AssetBundles\Lua\Folder2\test15.lua.txt" />
     <None Include="Assets\Render Style\Line\Shaders\OutlineHelper.cginc" />
     <None Include="Assets\Script\Render\GPUSkinning\VertexAnim_Improved.shader" />

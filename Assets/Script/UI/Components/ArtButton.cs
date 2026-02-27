@@ -14,14 +14,14 @@ namespace Script.UI.Components
     [RequireComponent(typeof(Button))]
     public class ArtButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
     {
-        public float TargetScale = 0.85f;
-        public float ScalingDuration = 0.1f;
-
-        public float ClickRegionMultiple = 1f;
+        [SerializeField] private float TargetScale = 0.85f;
+        [SerializeField] private float ScalingDuration = 0.1f;
+        [SerializeField] private float ClickRegionMultiple = 1f;
 
         private RectTransform rect;
         private Image image;
-        private Vector2 originalSize;
+        private float start_scale;
+        private Vector2 start_size;
         private Tween touchStartTween;
         private Tween touchEndTween;
 
@@ -30,7 +30,8 @@ namespace Script.UI.Components
         {
             rect = GetComponent<RectTransform>();
             image = GetComponent<Image>();
-            originalSize = rect.sizeDelta;
+            start_scale = rect.localScale.x;
+            start_size = rect.sizeDelta;
             var button = GetComponent<Button>();
             button.transition = Selectable.Transition.None;
             FillRaycastRegion();
@@ -41,9 +42,9 @@ namespace Script.UI.Components
         {
             // DU.LogWarning("OnPointerDown");
             Reset();
-            float scale = 1;
+            float scale = start_scale;
             rect.localScale = new Vector3(scale, scale, scale);
-            touchStartTween = DOTween.To(() => scale, x => { scale = x; }, TargetScale, ScalingDuration).OnUpdate(() =>
+            touchStartTween = DOTween.To(() => scale, x => { scale = x; }, TargetScale * start_scale, ScalingDuration).OnUpdate(() =>
             {
                 FillRaycastRegion();
                 rect.localScale = new Vector3(scale, scale, scale);
@@ -55,9 +56,9 @@ namespace Script.UI.Components
         {
             // DU.LogWarning("OnPointerUp");
             Reset();
-            float scale = TargetScale;
+            float scale = TargetScale * start_scale;
             rect.localScale = new Vector3(scale, scale, scale);
-            touchEndTween = DOTween.To(() => scale, x => { scale = x; }, 1, ScalingDuration).OnUpdate(() =>
+            touchEndTween = DOTween.To(() => scale, x => { scale = x; }, start_scale, ScalingDuration).OnUpdate(() =>
             {
                 FillRaycastRegion();
                 rect.localScale = new Vector3(scale, scale, scale);
@@ -69,7 +70,7 @@ namespace Script.UI.Components
         {
             if (image == null) return;
             var scale = transform.localScale.x;
-            var delta = originalSize * (ClickRegionMultiple - scale);
+            var delta = start_size * (ClickRegionMultiple - scale);
             var pivot = rect.pivot;
             //左 下 右 上
             image.raycastPadding = new Vector4(

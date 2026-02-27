@@ -55,8 +55,6 @@ namespace Script.UI.Panel.Auto.DeskPet
             }, this);
         }
 
-
-
         public override void SetData(object data)
         {
 
@@ -210,14 +208,14 @@ namespace Script.UI.Panel.Auto.DeskPet
 
         void OpenDebugMessageFloat()
         {
-            var config = new BasePanelConfig();
+            var config = new PanelRunConfig();
             Vector2 screenPoint = Utils.GetScreenPos(_rectT);
             config.WinPos = screenPoint + new Vector2(100, 100);
             UIManager.Inst.ShowPanel(PanelEnum.DebugMessageFloat, null, config);
         }
         void OpenDebugVarsFloat()
         {
-            var config = new BasePanelConfig();
+            var config = new PanelRunConfig();
             Vector2 screenPoint = Utils.GetScreenPos(_rectT);
             config.WinPos = screenPoint + new Vector2(100, 100);
             UIManager.Inst.ShowPanel(PanelEnum.DebugVarsFloat, _script_id, config);

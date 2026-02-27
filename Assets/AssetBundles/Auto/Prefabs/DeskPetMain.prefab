@@ -656,7 +656,7 @@ MonoBehaviour:
   NodeName: {fileID: 8094432098305903705}
   NodeIcon: {fileID: 8259936059916816256}
   NodeCountDown: {fileID: 5973309344451224226}
-  RunBtn: {fileID: 5085530206532379735}
+  RunBtn: {fileID: 713203907462006261}
   ErrorIcon: {fileID: 8498730327044212150}
   LastNodeName: {fileID: 996799292639632136}
   LastNodeIcon: {fileID: 1719355757756197830}
@@ -901,10 +901,10 @@ GameObject:
   - component: {fileID: 1716990055215818671}
   - component: {fileID: 8979321744136960106}
   - component: {fileID: 6769342691029866592}
-  - component: {fileID: 5085530206532379735}
-  - component: {fileID: 2273164653987846012}
+  - component: {fileID: 713203907462006261}
+  - component: {fileID: 4778395460584087642}
   m_Layer: 5
-  m_Name: B_Start
+  m_Name: B_Run
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -971,7 +971,7 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &5085530206532379735
+--- !u!114 &713203907462006261
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -980,7 +980,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 8128083006901386348}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Script: {fileID: 11500000, guid: 495ae82cad6f33b45b38d95a28357a66, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Navigation:
@@ -1015,7 +1015,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &2273164653987846012
+--- !u!114 &4778395460584087642
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1381,6 +1381,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 6036105165054410345}
     m_Modifications:
+    - target: {fileID: 199353688786730575, guid: f5968bb5d6937d145a9ce8fed5c607a4, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 495019106287785100, guid: f5968bb5d6937d145a9ce8fed5c607a4, type: 3}
       propertyPath: m_IsActive
       value: 0
