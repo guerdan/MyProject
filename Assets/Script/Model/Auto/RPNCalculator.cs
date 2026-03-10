@@ -1,11 +1,150 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 
 namespace Script.Model.Auto
 {
+    public enum RPN_TokenType
+    {
+        Undefined,                  // 未定义
+        OperatorAdd,                // 加
+        OperatorSub,                // 减
+        OperatorMul,                // 乘
+        OperatorDvi,                // 除
+        OperatorOr,                 // 或
+        OperatorAnd,                // 与
+        Float,                      // 浮点数
+        String,                     // 字符串
+        Formula,                    // 公式
+        Variable,                   // 变量
+        MethodVar,                  // 变量—调用方法取得
+        FieldVar,                   // 变量—访问字段取得
+        ArrayVar,                   // 变量—访问数组取得
+    }
 
+    #region TokenInfo
+    public struct RPN_TokenInfo
+    {
+        public string RawStr;
+        public RPN_TokenType Type;
+        public RPN_TokenParam Param;
+
+        public RPN_TokenInfo(string token)
+        {
+            RawStr = token;
+            Param = null;
+
+            if (token == "+")
+                Type = RPN_TokenType.OperatorAdd;
+            else if (token == "-")
+                Type = RPN_TokenType.OperatorSub;
+            else if (token == "*")
+                Type = RPN_TokenType.OperatorMul;
+            else if (token == "/")
+                Type = RPN_TokenType.OperatorDvi;
+            else if (token == "||")
+                Type = RPN_TokenType.OperatorOr;
+            else if (token == "&&")
+                Type = RPN_TokenType.OperatorAnd;
+            else
+            {
+                bool isFloat = float.TryParse(token, out var f);
+                if (isFloat)
+                {
+                    Type = RPN_TokenType.Float;
+                    Param = new RPN_TokenParam();
+                    Param.F = f;
+                }
+                else if (token.IndexOf("{") > -1)
+                {
+                    Type = RPN_TokenType.MethodVar;
+
+                    RPNCalculator.ParseMethodVar(token, out var method_id, out var method_name, out var paras);
+                    Param = new RPN_TokenParam();
+                    Param.MethodID = method_id;
+                    Param.Str = method_name;
+                    Param.Params = new RPN_TokenInfo[paras.Length];      // 方法的多个参数
+                    for (int i = 0; i < paras.Length; i++)
+                    {
+                        Param.Params[i] = ParseParam(paras[i]);   // 方法参数
+                    }
+                }
+                else if (token.IndexOf("[") > -1)
+                {
+                    Type = RPN_TokenType.ArrayVar;
+                    Param = new RPN_TokenParam();
+                    RPNCalculator.ParseArrayVar(token, out var var_name, out var num);
+                    Param.Str = var_name;
+                    Param.F = num;
+                }
+                else if (token[0] == '\"')
+                {
+                    Type = RPN_TokenType.String;
+                    Param = new RPN_TokenParam();
+                    Param.Str = token.Substring(1, token.Length - 2);
+                }
+                else if (token.IndexOf(".") > -1)
+                {
+                    Type = RPN_TokenType.FieldVar;
+                    Param = new RPN_TokenParam();
+                    Param.Strs = token.Split('.');      // 对象字段访问列表
+                }
+                else
+                    Type = RPN_TokenType.Variable;
+            }
+        }
+
+        public static RPN_TokenInfo ParseParam(string token)
+        {
+            RPN_TokenInfo result = default;
+            result.RawStr = token;
+
+            if (token[0] == '\"')
+            {
+                result.Type = RPN_TokenType.String;
+                result.Param = new RPN_TokenParam();
+                result.Param.Str = token.Substring(1, token.Length - 2);
+            }
+            else if (float.TryParse(token, out var f))
+            {
+                result.Type = RPN_TokenType.Float;
+                result.Param = new RPN_TokenParam();
+                result.Param.F = f;
+            }
+            else
+                result.Type = RPN_TokenType.Formula;
+
+           
+            return result;
+        }
+
+        public static RPN_TokenInfo ParseVar(string token)
+        {
+            RPN_TokenInfo result = default;
+            result.Type = RPN_TokenType.Variable;
+            result.RawStr = token;
+            return result;
+        }
+
+
+    }
+
+
+    public class RPN_TokenParam
+    {
+        public float F;                     // FloatValue / ArrayIndex
+        public string Str;                  // ArrayName  / MethodName(for debug)
+        public string[] Strs;               // FieldAccessList
+
+        public MethodID MethodID;               // MethodName 
+        public RPN_TokenInfo[] Params;          // MethodParams 
+
+    }
+    #endregion
+
+    #region RPNCalculator
     /// <summary>
     /// 逆波兰表达式接口
     /// todo
@@ -26,30 +165,31 @@ namespace Script.Model.Auto
         };
 
         // 缓存解析的结果
-        static Dictionary<string, List<string>> _cache = new Dictionary<string, List<string>>();
+        static Dictionary<string, RPN_TokenInfo[]> _cache = new Dictionary<string, RPN_TokenInfo[]>();
         // 缓存方法解析的结果
-        static Dictionary<string, (string, string[])> _methodCache = new Dictionary<string, (string, string[])>();
-        // 缓存浮点数解析的结果
-        static Dictionary<string, float> _floatCache = new Dictionary<string, float>();
-        // 缓存访问字段解析的结果
-        static Dictionary<string, string[]> _accessCache = new Dictionary<string, string[]>();
+        static Dictionary<string, (MethodID, string[])> InEdit_MethodCache = new Dictionary<string, (MethodID, string[])>();
+
+        static float[] _methodFList = new float[1000];              //方法内部复用
+        static Vector2[] _methodV2List = new Vector2[1000];         //方法内部复用
+        static Vector4[] _methodV4List = new Vector4[1000];         //方法内部复用
+        static bool[] _methodBoolList = new bool[1000];             //方法内部复用
+
 
         public static void Clear()
         {
             _cache.Clear();
-            _methodCache.Clear();
-            _floatCache.Clear();
-            _accessCache.Clear();
+            InEdit_MethodCache.Clear();
+
         }
 
         /// <summary>
         /// 获取逆波兰表达式
         /// </summary>
-        public static List<string> GetRPN(string expression, bool isCondition = false)
+        public static RPN_TokenInfo[] GetRPN(string expression, bool isCondition = false)
         {
             if (!_cache.TryGetValue(expression, out var result))
             {
-                List<string> rpn = InfixToRPN(expression, isCondition);
+                RPN_TokenInfo[] rpn = InfixToRPN(expression, isCondition);
                 _cache[expression] = rpn;
                 result = rpn;
             }
@@ -60,7 +200,7 @@ namespace Script.Model.Auto
 
         static Stack<string> operatorStack_I = new Stack<string>();   //优化-复用
         // 将中缀表达式转换为逆波兰表达式
-        public static List<string> InfixToRPN(string expression, bool isCondition = false)
+        public static RPN_TokenInfo[] InfixToRPN(string expression, bool isCondition = false)
         {
             List<string> outputQueue = new List<string>();
             operatorStack_I.Clear();
@@ -113,7 +253,13 @@ namespace Script.Model.Auto
                 outputQueue.Add(operatorStack_I.Pop());
             }
 
-            return outputQueue;
+            RPN_TokenInfo[] result = new RPN_TokenInfo[outputQueue.Count];
+            for (int i = 0; i < outputQueue.Count; i++)
+            {
+                result[i] = new RPN_TokenInfo(outputQueue[i]);
+            }
+
+            return result;
         }
 
         static System.Text.RegularExpressions.Regex _regex =
@@ -187,12 +333,13 @@ namespace Script.Model.Auto
         /// <summary>
         /// 获取逆波兰表达式
         /// </summary>
-        public static void GetMethodParseResult(string expression, out string method_name, out string[] param_list)
+        public static void GetMethodParseResult(string expression, out MethodID method_name, out string[] param_list)
         {
-            if (!_methodCache.TryGetValue(expression, out var result))
+            if (!InEdit_MethodCache.TryGetValue(expression, out var result))
             {
-                result = ParseMethodParam(expression);
-                _methodCache[expression] = result;
+                ParseMethodVar(expression, out var methodID, out _, out var paras);
+                result = (methodID, paras);
+                InEdit_MethodCache[expression] = result;
             }
 
             method_name = result.Item1;
@@ -203,7 +350,8 @@ namespace Script.Model.Auto
         /// 解析方法的参数。嵌套情况是一层层解析
         /// Add{1,Add{1,1}}  解决"{}"内的","不能分割
         /// </summary>
-        public static (string, string[]) ParseMethodParam(string source)
+        public static void ParseMethodVar(string source, out MethodID method_id,
+                                        out string method_name, out string[] paras)
         {
             // method_name = "Add";
             // param_list = new string[2] { "1", "1" };
@@ -212,7 +360,7 @@ namespace Script.Model.Auto
             // 优化。反括号一定在末尾
             // var back = source.LastIndexOf("}");
             var back = source.Length - 1;
-            var method_name = source.Substring(0, front);
+            method_name = source.Substring(0, front);
             var expression = source.Substring(front + 1, back - front - 1);
 
             var result = new List<string>();
@@ -235,204 +383,174 @@ namespace Script.Model.Auto
             if (pre < len)
                 result.Add(expression.Substring(pre, len - pre));
 
-            var param_list = result.ToArray();
-            return (method_name, param_list);
+            method_id = MethodParseUtil.ParseMethod(method_name);
+            paras = result.ToArray();
         }
 
-        public static bool IsFloat(string expression, out float result)
+        public static void ParseArrayVar(string token, out string var_name, out int num)
         {
-            if (_floatCache.TryGetValue(expression, out result))
-            {
-                return true;
-            }
-
-            bool isFloat = float.TryParse(expression, out result);
-            if (isFloat)
-            {
-                _floatCache[expression] = result;
-            }
-
-            return isFloat;
+            var index = token.IndexOf("[");
+            var_name = token.Substring(0, index);
+            var array_index_str = token.Substring(index + 1, token.Length - index - 2);
+            num = int.Parse(array_index_str);
         }
-
-        public static string[] GetAccessParse(string expression)
-        {
-            if (!_accessCache.TryGetValue(expression, out var result))
-            {
-                result = expression.Split('.');
-                _accessCache[expression] = result;
-            }
-
-            return result;
-        }
-
-
 
 
         #region EvaluateRPN
 
-        static Stack<float> _stack_EvaluateRPN = new Stack<float>();   //优化，快3ms
         /// <summary>
         /// float类型,计算逆波兰表达式的值
         /// </summary>
-        public static float EvaluateRPN(List<string> rpn, Func<string, float> operandResolver)
+        public static float EvaluateRPN(RPN_TokenInfo[] rpn, Func<RPN_TokenInfo, float> operandResolver)
         {
-            Stack<float> stack = _stack_EvaluateRPN;
-            stack.Clear();
+            float[] stack = _methodFList;    //换原生数组
+            int count = 0;
 
             foreach (var token in rpn)
-            {
-                if (IsOperator(token))
+                switch (token.Type)          // switch速度也是慢了，可能项太多
                 {
-                    float b = stack.Pop();
-                    float a = stack.Pop();
-                    switch (token)
-                    {
-                        case "+":
-                            stack.Push(a + b);
-                            break;
-                        case "-":
-                            stack.Push(a - b);
-                            break;
-                        case "*":
-                            stack.Push(a * b);
-                            break;
-                        case "/":
-                            stack.Push(a / b);
-                            break;
-                    }
+                    case RPN_TokenType.OperatorAdd:
+                        {
+                            float b = stack[--count];
+                            float a = stack[--count];
+                            stack[count++] = a + b;
+                        }
+                        break;
+                    case RPN_TokenType.OperatorSub:
+                        {
+
+                            float b = stack[--count];
+                            float a = stack[--count];
+                            stack[count++] = a - b;
+                        }
+                        break;
+                    case RPN_TokenType.OperatorMul:
+                        {
+                            float b = stack[--count];
+                            float a = stack[--count];
+                            stack[count++] = a * b;
+                        }
+                        break;
+                    case RPN_TokenType.OperatorDvi:
+                        {
+                            float b = stack[--count];
+                            float a = stack[--count];
+                            stack[count++] = a / b;
+                        }
+                        break;
+                    case RPN_TokenType.Float:
+                        {
+                            stack[count++] = token.Param.F;
+                        }
+                        break;
+                    case RPN_TokenType.Variable:
+                    case RPN_TokenType.MethodVar:
+                    case RPN_TokenType.FieldVar:
+                    case RPN_TokenType.ArrayVar:
+                        {
+                            float result = operandResolver(token);
+                            stack[count++] = result;
+                        }
+                        break;
                 }
-                else
-                {
-                    //处理操作数
-                    bool isFloat = IsFloat(token, out var number);
-                    if (isFloat)
-                    {
-                        stack.Push(number);
-                    }
-                    else
-                    {
-                        float result = operandResolver(token);
-                        stack.Push(result);
-                    }
-                }
-            }
-            if (stack.Count == 0)
+
+            if (count == 0)
                 return 0;
 
-            return stack.Pop();
+            return stack[--count];
         }
 
 
         /// <summary>
         /// Vector2类型,计算逆波兰表达式的值
         /// </summary>
-        public static Vector2 EvaluateRPNForVector2(List<string> rpn, Func<string, Vector2> operandResolver)
+        public static Vector2 EvaluateRPNForVector2(RPN_TokenInfo[] rpn, Func<RPN_TokenInfo, Vector2> operandResolver)
         {
-            Stack<Vector2> stack = new Stack<Vector2>();
+            Vector2[] stack = _methodV2List;
+            int count = 0;
 
             foreach (var token in rpn)
             {
-                if (IsOperator(token))
+                switch (token.Type)
                 {
-                    Vector2 b = stack.Pop();
-                    Vector2 a = stack.Pop();
-                    switch (token)
-                    {
-                        case "+":
-                            stack.Push(a + b);
-                            break;
-                        case "-":
-                            stack.Push(a - b);
-                            break;
-                    }
-                }
-                else
-                {
-                    if (operandResolver == null)       //有问题就返回0
-                        return Vector2.zero;
+                    case RPN_TokenType.OperatorAdd:
+                        {
+                            Vector2 b = stack[--count];
+                            Vector2 a = stack[--count];
+                            stack[count++] = a + b;
+                        }
+                        break;
+                    case RPN_TokenType.OperatorSub:
+                        {
+                            Vector2 b = stack[--count];
+                            Vector2 a = stack[--count];
+                            stack[count++] = a - b;
+                        }
+                        break;
+                    case RPN_TokenType.Variable:
+                    case RPN_TokenType.MethodVar:
+                    case RPN_TokenType.ArrayVar:
+                        {
+                            if (operandResolver == null)
+                                return Vector2.zero;
 
-                    Vector2 result = operandResolver(token);
-                    stack.Push(result);
+                            Vector2 result = operandResolver(token);
+                            stack[count++] = result;
+                        }
+                        break;
                 }
             }
-            if (stack.Count == 0)
+            if (count == 0)
                 return Vector2.zero;
 
-            return stack.Pop();
+            return stack[--count];
         }
 
 
-        /// <summary>
-        /// Vector3类型,计算逆波兰表达式的值
-        /// </summary>
-        public static Vector3 EvaluateRPNForVector3(List<string> rpn, Func<string, Vector3> operandResolver)
-        {
-            Stack<Vector3> stack = new Stack<Vector3>();
 
-            foreach (var token in rpn)
-            {
-                if (IsOperator(token))
-                {
-                    Vector3 b = stack.Pop();
-                    Vector3 a = stack.Pop();
-                    switch (token)
-                    {
-                        case "+":
-                            stack.Push(a + b);
-                            break;
-                        case "-":
-                            stack.Push(a - b);
-                            break;
-
-                    }
-                }
-                else
-                {
-                    Vector3 result = operandResolver(token);
-                    stack.Push(result);
-                }
-            }
-            if (stack.Count == 0)
-                return Vector3.zero;
-
-            return stack.Pop();
-        }
 
         /// <summary>
         /// Vector4类型,计算逆波兰表达式的值
         /// </summary>
-        public static Vector4 EvaluateRPNForVector4(List<string> rpn, Func<string, Vector4> operandResolver)
+        public static Vector4 EvaluateRPNForVector4(RPN_TokenInfo[] rpn,
+                                                    Func<RPN_TokenInfo, Vector4> operandResolver)
         {
-            Stack<Vector4> stack = new Stack<Vector4>();
+            Vector4[] stack = _methodV4List;
+            int count = 0;
 
             foreach (var token in rpn)
             {
-                if (IsOperator(token))
+                switch (token.Type)
                 {
-                    Vector4 b = stack.Pop();
-                    Vector4 a = stack.Pop();
-                    switch (token)
-                    {
-                        case "+":
-                            stack.Push(a + b);
-                            break;
-                        case "-":
-                            stack.Push(a - b);
-                            break;
+                    case RPN_TokenType.OperatorAdd:
+                        {
+                            Vector4 b = stack[--count];
+                            Vector4 a = stack[--count];
+                            stack[count++] = a + b;
+                        }
+                        break;
+                    case RPN_TokenType.OperatorSub:
+                        {
+                            Vector4 b = stack[--count];
+                            Vector4 a = stack[--count];
+                            stack[count++] = a - b;
+                        }
+                        break;
+                    case RPN_TokenType.Variable:
+                    case RPN_TokenType.MethodVar:
+                    case RPN_TokenType.ArrayVar:
+                        {
+                            Vector4 result = operandResolver(token);
+                            stack[count++] = result;
+                        }
+                        break;
+                }
 
-                    }
-                }
-                else
-                {
-                    Vector4 result = operandResolver(token);
-                    stack.Push(result);
-                }
             }
-            if (stack.Count == 0)
+            if (count == 0)
                 return Vector4.zero;
 
-            return stack.Pop();
+            return stack[--count];
         }
 
         #endregion
@@ -530,36 +648,41 @@ namespace Script.Model.Auto
         /// <summary>
         /// float类型,计算逆波兰表达式的值
         /// </summary>
-        public static bool EvaluateRPNForCondition(List<string> rpn, Func<string, bool> operandResolver)
+        public static bool EvaluateRPNForCondition(RPN_TokenInfo[] rpn, Func<string, bool> operandResolver)
         {
-            Stack<bool> stack = new Stack<bool>();
+            bool[] stack = _methodBoolList;
+            int count = 0;
 
             foreach (var token in rpn)
             {
-                if (IsOperator(token))
+                switch (token.Type)
                 {
-                    bool b = stack.Pop();
-                    bool a = stack.Pop();
-                    switch (token)
-                    {
-                        case "&&":
-                            stack.Push(a && b);
-                            break;
-                        case "||":
-                            stack.Push(a || b);
-                            break;
-                    }
-                }
-                else
-                {
-                    bool result = operandResolver(token);
-                    stack.Push(result);
+                    case RPN_TokenType.OperatorAnd:
+                        {
+                            bool b = stack[--count];
+                            bool a = stack[--count];
+                            stack[count++] = a && b;
+                        }
+                        break;
+                    case RPN_TokenType.OperatorOr:
+                        {
+                            bool b = stack[--count];
+                            bool a = stack[--count];
+                            stack[count++] = a || b;
+                        }
+                        break;
+                    case RPN_TokenType.Variable:
+                        {
+                            bool result = operandResolver(token.RawStr);
+                            stack[count++] = result;
+                        }
+                        break;
                 }
             }
-            if (stack.Count == 0)
+            if (count == 0)
                 return false;
 
-            return stack.Pop();
+            return stack[--count];
         }
 
         static System.Text.RegularExpressions.Regex _conditionRegex =
@@ -585,4 +708,5 @@ namespace Script.Model.Auto
         }
         #endregion
     }
+    #endregion
 }

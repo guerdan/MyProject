@@ -420,15 +420,7 @@ namespace Script.UI.Panel.Auto
             var data = _data as AssignOperNode;
             var text = AssignInput.GetText();
             text = text.Replace(" ", "");
-            bool isLegal = false;
-
-            var equal_index = text.IndexOf("=");
-            if (equal_index > 0)
-            {
-                var varNameLower = text.Substring(0, equal_index);
-                var expression = text.Substring(equal_index + 1);
-                isLegal = _scriptData.CheckFormula(varNameLower, expression, data.VarType);
-            }
+            bool isLegal =  _scriptData.CheckFormulaLegal(text, data.VarType);
 
             AssignInput.ValidCheck.SetData(isLegal);
             bool has = TryGetVarInfo(text, out var info);
@@ -443,16 +435,16 @@ namespace Script.UI.Panel.Auto
             }
         }
         // 文本到info
-        public bool TryGetVarInfo(string text, out FormulaVarInfo info)
+        public bool TryGetVarInfo(string text, out FormulaVarInfo_Edit info)
         {
             var i = text.IndexOf("=");
             if (i < 0)
             {
-                info = new FormulaVarInfo();
+                info = new FormulaVarInfo_Edit();
                 return false;
             }
             var varName = text.Substring(0, i).Trim();
-            bool has = _scriptData.GetFormulaVarInfo(varName, out info);
+            bool has = _scriptData.GetFormulaVarInfo_Edit(varName, out info);
             return has;
         }
         #endregion
@@ -487,7 +479,7 @@ namespace Script.UI.Panel.Auto
         bool RefreshConditionCheckBox(string str)
         {
             str = str.Replace(" ", "");
-            bool isLegal = AutoDataUIConfig.ConditionIsLegal(str);
+            bool isLegal = _scriptData.CheckConditionLegal(str);
             return isLegal;
         }
 

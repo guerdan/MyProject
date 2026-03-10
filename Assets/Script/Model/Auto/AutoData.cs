@@ -219,9 +219,9 @@ namespace Script.Model.Auto
         [JsonIgnore] public NodeStatus Status = NodeStatus.Off;      // 节点状态。In表示流程处在此节点，否则就是Off
         [JsonIgnore] public float Timer = 0;                         // 内部计时器.In时开始累加，直到 Delay执行一次内容
         [JsonIgnore] public float ExcuteTimes = 0;                   // 执行过多少次
-        [JsonIgnore] public string ExcuteLastNodeId;                  // 运行时，上个节点id
-        [JsonIgnore] public object InData;                           // 输入数据。由上个节点传入 
-        [JsonIgnore] public object OutData;                          // 输出数据。传出给下个节点  
+        [JsonIgnore] public string ExcuteLastNodeId;                 // 运行时，上个节点id
+        [JsonIgnore] public FormulaVarInfo InData;                   // 输入数据。由上个节点传入 
+        [JsonIgnore] public FormulaVarInfo OutData;                  // 输出数据。传出给下个节点  
         [JsonIgnore] public bool CanAction => Timer >= Delay;        // 是否可以执行内容了 
 
         #endregion
@@ -279,8 +279,8 @@ namespace Script.Model.Auto
             Timer = 0;
             ExcuteTimes = 0;
             ExcuteLastNodeId = null;
-            InData = null;
-            OutData = null;
+            InData = default;
+            OutData = default;
         }
 
 
@@ -506,7 +506,7 @@ namespace Script.Model.Auto
                 {
                     _result.Sort((a, b) => b.Score.CompareTo(a.Score));
                     var r = _result[0];
-                    OutData = r.Rect.ToVector4();
+                    OutData = new FormulaVarInfo(FormulaVarType.Vector4, r.Rect.ToVector4());
 
                     Meet_min_score = Mathf.Min(Meet_min_score, r.Score);
                 }
@@ -522,7 +522,7 @@ namespace Script.Model.Auto
                 {
                     temp.Add(item.Rect.ToVector4());
                 }
-                OutData = temp;
+                OutData = new FormulaVarInfo(FormulaVarType.ListVector4, temp);
             }
 
             // UI 展示
@@ -854,29 +854,28 @@ namespace Script.Model.Auto
         [JsonProperty("var_type")]
         private string _varTypeStr = "";
 
+        // _varTypeStr 得出 _varTypeEnum 得出 VarType
+        private FormulaVarType _varTypeEnum;
+
         [JsonIgnore]
         public string Formula
-        { get { return _formula; } set { SetVarRef(ref _formula, value); } }
+        {
+            get { return _formula; }
+            set { SetVarRef(ref _formula, value, ref _varTypeEnum, _varTypeEnum); }
+        }
 
         [JsonIgnore]
         public FormulaVarType VarType
         {
             get { return _varTypeEnum; }
-            set
-            {
-                _scriptData.DeleteVarRef(VarName, VarType, this);
-                _varTypeEnum = value;
-                CheckLegal();
-                _scriptData.AddVarRef(VarName, VarType, this);
-            }
+            set { SetVarRef(ref _formula, _formula, ref _varTypeEnum, value); }
         }
 
-        [JsonIgnore] public bool IsLegal = false;
         [JsonIgnore] public string VarName = "";
-        [JsonIgnore] public string Expression = "";
 
-        FormulaVarType _varTypeEnum;
-
+        [JsonIgnore] public bool IsTernary = false;                         // 是否为三元表达式
+        [JsonIgnore] public string[] TernaryExpressions = new string[3];    // 三元表达式
+        [JsonIgnore] public bool IsLegal = false;
 
         public static AssignOperNode CreateNew(AutoScriptData scriptData)
         {
@@ -904,9 +903,7 @@ namespace Script.Model.Auto
         {
             base.Init(scriptData);
             _nodeType = NodeType.AssignOper;
-
-            Refresh();
-            Formula = _formula;             // 在编辑的统计系统中新增
+            Formula = _formula;             // 在编辑的统计系统中初始化
         }
 
         public override void OnDelete()
@@ -915,11 +912,6 @@ namespace Script.Model.Auto
             Formula = "";                   // 在编辑的统计系统中清除
         }
 
-        public override void AfterInit()
-        {
-            base.AfterInit();
-            CheckLegal();
-        }
 
         public override void Action()
         {
@@ -927,19 +919,27 @@ namespace Script.Model.Auto
 
             if (VarName == "") return;
 
-            // 赋值操作
-            _scriptData.RunAssignFormula(VarName, Expression, VarType, InData);
-
-            // 测试结果，大概是静态调用的500倍耗时。例子a = 1 比代码的a = 1 慢1000倍
-            Action action = () =>
+            if (IsTernary)
             {
-                for (int i = 0; i < 10000; i++)
-                {
-                    _scriptData.RunAssignFormula(VarName, Expression, VarType, InData);
-                }
-            };
+                // 先判断操作
+                if (_scriptData.FormulaGetResultCondition(TernaryExpressions[0]))
+                    _scriptData.RunAssignFormula(TernaryExpressions[1], VarType, InData);
+                else
+                    _scriptData.RunAssignFormula(TernaryExpressions[2], VarType, InData);
+            }
+            else
+            {
+                // 赋值操作
+                _scriptData.RunAssignFormula(Formula, VarType, InData);
+            }
 
-            DU.RunWithTimer(action, $"{Id} Action 10000次 ", 2);
+
+            // 测试结果大概是静态调用的1000倍耗时。例如 脚本a = 1 比代码的a = 1 慢1000倍
+            // DU.RunWithTimer(() =>
+            // {
+            //     for (int i = 0; i < 10000; i++)
+            //         _scriptData.RunAssignFormula(Formula, VarType, InData);
+            // }, $"{Id} Action 10000次 ", 2);
         }
         public override void Copy(BaseNodeData source)
         {
@@ -949,35 +949,51 @@ namespace Script.Model.Auto
             _varTypeEnum = sourceObj._varTypeEnum;
         }
 
+        // 高度封装，让赋值插入到中间。
+        void SetVarRef(ref string formula, string formula_value,
+            ref FormulaVarType type, FormulaVarType type_value)
+        {
+            _scriptData.DeleteVarRef(VarName, VarType, this);
+            formula = formula_value;
+            type = type_value;
+            Refresh();
+            _scriptData.AddVarRef(VarName, VarType, this);
+        }
 
+        /// <summary>
+        /// 先得出 VarName/ Expression/ 三元表达式
+        /// 再得出 IsLegal
+        /// </summary>
         public void Refresh()
         {
             var equal_index = Formula.IndexOf("=");
-            if (equal_index > 0)
+            var left_str = "";
+            if (equal_index > -1)
             {
                 VarName = Formula.Substring(0, equal_index);
-                Expression = Formula.Substring(equal_index + 1);
+                left_str = Formula.Substring(equal_index + 1);
             }
             else
             {
                 VarName = "";
-                Expression = "";
             }
-        }
 
-        void CheckLegal()
-        {
-            IsLegal = _scriptData.CheckFormula(VarName, Expression, VarType);
-        }
+            // Expression 可以为三元表达式
+            // "?"与":"作为分隔符。
+            // 
+            var index1 = left_str.IndexOf("?");
+            var index2 = left_str.IndexOf(":");
+            IsTernary = index1 > -1 && index2 > -1;
+            if (IsTernary)
+            {
+                IsTernary = true;
+                TernaryExpressions[0] = left_str.Substring(0, index1);
+                TernaryExpressions[1] = $"{VarName}={left_str.Substring(index1 + 1, index2 - index1 - 1)}";
+                TernaryExpressions[2] = $"{VarName}={left_str.Substring(index2 + 1)}";
+            }
 
-        // 高封装。 field:字段 | value:值
-        void SetVarRef(ref string field, string value)
-        {
-            _scriptData.DeleteVarRef(VarName, VarType, this);
-            field = value;
-            Refresh();
-            CheckLegal();
-            _scriptData.AddVarRef(VarName, VarType, this);
+
+            IsLegal = _scriptData.CheckFormulaLegal(Formula, VarType);
         }
 
     }
@@ -987,6 +1003,7 @@ namespace Script.Model.Auto
 
 
     /// <summary>
+    /// 1. 普通条件语句; 2.For循环语句：赋值+条件+赋值——例如i=0;i<10;i=i+1
     /// 条件判断-节点，两个浮点数表达式比较大小
     /// 先用 "&&| ||"分隔成多个ConditionCell，再对ConditionCell计算
     /// &&与||有优先顺序吗
@@ -1000,17 +1017,12 @@ namespace Script.Model.Auto
         public string Formula
         {
             get { return _formula; }
-            set
-            {
-                _formula = value;
-                // RPNCalculator.ParseConditionFormula(_formula, out Oper, out LeftExp, out RightExp);
-                CheckLegal();
-
-            }
+            set { _formula = value; Refresh(); }
         }
 
+        [JsonIgnore] public bool IsFor = false;                             // 是否为for循环表达式
+        [JsonIgnore] public string[] ForExpressions = new string[3];    // for循环的三个表达式
         [JsonIgnore] public bool IsLegal = false;
-        [JsonIgnore] public string Oper = "";
 
         private bool _result = false;
 
@@ -1027,21 +1039,23 @@ namespace Script.Model.Auto
         {
             base.Init(scriptData);
             _nodeType = NodeType.ConditionOper;
+            Formula = _formula;
         }
 
-
-        public void CheckLegal()
-        {
-            // var left_legal = AutoDataUIConfig.ExpressionIsLegal(LeftExp);
-            // var right_legal = AutoDataUIConfig.ExpressionIsLegal(RightExp);
-
-            // IsLegal = left_legal && right_legal;
-        }
 
         public override void Action()
         {
             base.Action();
-            _result = _scriptData.FormulaGetResultCondition(Formula);
+
+            if (IsFor)
+            {
+                // For循环语句：赋值+条件+赋值——例如i=0;i<10;i=i+1
+                
+            }
+            else
+            {
+                _result = _scriptData.FormulaGetResultCondition(Formula);
+            }
         }
 
         public override bool GetResult()
@@ -1054,6 +1068,19 @@ namespace Script.Model.Auto
             base.Copy(source);
             var sourceObj = source as ConditionOperNode;
             _formula = sourceObj._formula;
+        }
+
+        private void Refresh()
+        {
+            var index0 = _formula.IndexOf(";");
+            IsFor = index0 > -1;
+            if (IsFor)
+            {
+                // 以";"分隔。0/2是赋值表达式，1是条件表达式
+                ForExpressions = _formula.Split(";");
+            }
+
+            IsLegal = _scriptData.CheckConditionLegal(_formula);
         }
     }
 
@@ -1448,8 +1475,8 @@ namespace Script.Model.Auto
 
             }
 
-            _scriptData.RunAssign(_XAxisVar, FormulaVarType.Float, f: x_speed);
-            _scriptData.RunAssign(_YAxisVar, FormulaVarType.Float, f: y_speed);
+            _scriptData.RunAssign(_XAxisVar, FormulaVarType.Float, x_speed);
+            _scriptData.RunAssign(_YAxisVar, FormulaVarType.Float, y_speed);
         }
 
 
@@ -1517,13 +1544,16 @@ namespace Script.Model.Auto
 
         public bool IsRunning => _running;
         public bool IsEnd => _isEnd;
-        public bool IsError => _isError;
+        public bool IsError => _error_count > 0;
+        public int ErrorCount => _error_count;
         // 仅编辑模式下展示。 dic<event_name, (list<node>, lower_name)>
         public Dictionary<string, (List<TriggerEventNode>, string)> Edit_TriggerNodes
             = new Dictionary<string, (List<TriggerEventNode>, string)>();
         public AutoScriptConfig Config;
         public AutoScriptManager Manager;
         public Dictionary<string, BaseNodeData> NodeDatas = new Dictionary<string, BaseNodeData>();
+
+        // 如何确保Node的顺序
         public Dictionary<string, BaseNodeData> ActiveNodes = new Dictionary<string, BaseNodeData>();
         // key = canvas_id, value = node_id
         public Dictionary<string, List<string>> Canvas2Node = new Dictionary<string, List<string>>();
@@ -1537,7 +1567,7 @@ namespace Script.Model.Auto
         // (_running = false && _isEnd = true)表示结束
         private bool _running = false;      // 是否暂停   
         private bool _isEnd = true;         // 是否结束   
-        private bool _isError = false;         // 是否有报错   
+        private int _error_count = 0;       // 累计报错数   
 
         public AutoScriptData(AutoScriptConfig config, AutoScriptManager manager)
         {
@@ -1802,10 +1832,9 @@ namespace Script.Model.Auto
                 try { n.Update(); }
                 catch (Exception e)
                 {
-                    _isError = true;
+                    _error_count++;
                     StopScript();
-                    AutoScriptManager.Inst.AddLog(ScriptLogType.Error
-                        , $"[DoUpdate][node_id = {n.Id}]\n{e.Message}\n{e.StackTrace}");
+                    DU.LogError($"[DoActionNode][node_id = {n.Id}]\n{e.Message}\n{e.StackTrace}");
                 }
             }
         }
@@ -1866,10 +1895,9 @@ namespace Script.Model.Auto
                 try { n.Action(); }
                 catch (Exception e)
                 {
-                    _isError = true;
+                    _error_count++;
                     StopScript();
-                    AutoScriptManager.Inst.AddLog(ScriptLogType.Error
-                        , $"[DoActionNode][node_id = {n.Id}]\n{e.Message}\n{e.StackTrace}");
+                    DU.LogError($"[DoActionNode][node_id = {n.Id}]\n{e.Message}\n{e.StackTrace}");
                 }
             });
 
@@ -1889,7 +1917,7 @@ namespace Script.Model.Auto
 
             _running = true;
             _isEnd = false;
-            _isError = false;
+            _error_count = 0;
 
             //如果起点被删了，修改Config.FirstNode
             if (Config.FirstNode == "" || !NodeDatas.ContainsKey(Config.FirstNode))
@@ -1954,6 +1982,9 @@ namespace Script.Model.Auto
         /// </summary>
         public void TransferNode(BaseNodeData node)
         {
+            if (!_running)          //停止
+                return;
+
             bool is_hot = HotSpotNodeId == node.Id || HotSpotNodeId == null;
 
             node.Outflow();
@@ -2130,8 +2161,8 @@ namespace Script.Model.Auto
         // >=1ms 才会被记录时间
         public void Record(string message, double ms, bool print = true)
         {
-            if (print)
-                DU.Log($"[{message}] 耗时{ms}ms  帧时刻{Time.frameCount}");
+            // if (print)
+            //     DU.Log($"[{message}] 耗时{ms}ms  帧时刻{Time.frameCount}");
 
             if (!RunTimeDic.TryGetValue(message, out var tuple))
             {
@@ -2278,17 +2309,24 @@ namespace Script.Model.Auto
             // 让FrameCapture获取最新的帧截屏
             ClearFrameCapture();
 
-            // Node执行Update
+            List<AutoScriptData> running_scripts = new List<AutoScriptData>();
+
             foreach (var script in _scriptDatas.Values)
+                if (script.IsRunning)
+                    running_scripts.Add(script);
+
+
+            // Node执行Update
+            foreach (var script in running_scripts)
                 script.DoUpdate(deltaTime);
             // 预更新
-            foreach (var script in _scriptDatas.Values)
+            foreach (var script in running_scripts)
                 script.BeforeAction(deltaTime);
             // 按需把AutoScriptData.Update切分成两个部分，因为中间要统计截图的范围
             _frameCaptureRegion = CalculateFrameCaptureRegion();
 
             // 更新, 主要执行Action
-            foreach (var script in _scriptDatas.Values)
+            foreach (var script in running_scripts)
             {
                 script.DoAction(deltaTime);
             }

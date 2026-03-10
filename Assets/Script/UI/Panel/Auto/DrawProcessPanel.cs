@@ -70,6 +70,9 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private Button DeleteCanvasBtn;
 
 
+        [SerializeField] public Text ErrorText;                 //报错提示
+
+
         [Header("各式节点预制件")]
         [SerializeField] public GameObject TemplateMatchPre;    //模版匹配节点
         [SerializeField] public GameObject MouseNodePre;        //鼠标节点
@@ -189,6 +192,7 @@ namespace Script.UI.Panel.Auto
             Clear();
             //生成流程的节点
             OnScrolling(ScrollRect.normalizedPosition);
+            RefreshError();
         }
 
         void RefreshCanvasTab()
@@ -1052,6 +1056,16 @@ namespace Script.UI.Panel.Auto
         {
             base.Close();
             Utils.OpenDeskPet();
+        }
+
+
+        public void RefreshError()
+        {
+            var error_count = _scriptData.ErrorCount;
+            bool is_error = error_count > 0;
+            ErrorText.transform.parent.gameObject.SetActive(is_error);
+            if (is_error)
+                ErrorText.text = error_count.ToString();
         }
 
         #endregion

@@ -156,7 +156,7 @@
     <Compile Include="Assets\Script\Util\Draft.cs" />
     <Compile Include="Assets\Script\Framework\Web\WebUtil.cs" />
     <Compile Include="Assets\Script\UI\Components\KeywordTipsItem.cs" />
-    <Compile Include="Assets\Script\Model\Auto\AutoRunDataFormula.cs" />
+    <Compile Include="Assets\Script\Model\Auto\AutoRunDataDefine.cs" />
     <Compile Include="Assets\Script\Framework\Root.cs" />
     <Compile Include="Assets\Script\UI\Components\InputTextProComp.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\LogPrintPanel.cs" />

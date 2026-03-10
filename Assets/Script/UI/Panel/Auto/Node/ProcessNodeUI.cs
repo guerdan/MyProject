@@ -17,7 +17,7 @@ namespace Script.UI.Panel.Auto.Node
         DragCard,       // 拖拽卡片
         DrawLineTrue,   // 拖拽true线
         DrawLineFalse,  // 拖拽false线
-        DragCircleIn, // 拖拽true圈圈
+        DragCircleIn,   // 拖拽in圈圈
         DragCircleTrue, // 拖拽true圈圈
         DragCircleFalse,// 拖拽false圈圈
     }

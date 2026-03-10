@@ -20,7 +20,7 @@ namespace Script.UI.Panel.Auto.Node
 
         static AssignNodeUI()
         {
-            TypeTextColor1 = Utils.ParseHtmlString("#FFF7DC");
+            TypeTextColor1 = Utils.ParseHtmlString("#FFFFFF");
             TypeBgColor1 = Utils.ParseHtmlString("#F1BA02");
             TypeLineColor1 = Utils.ParseHtmlString("#E0AB00");
 
@@ -55,7 +55,6 @@ namespace Script.UI.Panel.Auto.Node
                 AssignOperNode data = _data as AssignOperNode;
                 Formula.text = AutoDataUIConfig.FormulaFormat(data.Formula);
                 ShowType(false);
-                // ShowIsCondition(false);
             }
 
             else if (_data is ConditionOperNode)
@@ -63,8 +62,7 @@ namespace Script.UI.Panel.Auto.Node
                 ConditionOperNode data = _data as ConditionOperNode;
                 Formula.text = AutoDataUIConfig.FormulaFormat(data.Formula);
                 ShowType(true);
-                // ShowIsCondition(true);
-                TypeText.text = "条件";
+                TypeText.text = data.IsFor ? "For" : "条件";
                 TypeText.color = TypeTextColor1;
                 TypeBg.color = TypeBgColor1;
                 TypeLine.color = TypeLineColor1;
@@ -75,7 +73,6 @@ namespace Script.UI.Panel.Auto.Node
                 TriggerEventNode data = _data as TriggerEventNode;
                 Formula.text = AutoDataUIConfig.FormulaFormat(data.EventName);
                 ShowType(true);
-                // ShowIsCondition(false);
                 TypeText.text = "触发";
                 TypeText.color = TypeTextColor2;
                 TypeBg.color = TypeBgColor2;
@@ -87,7 +84,6 @@ namespace Script.UI.Panel.Auto.Node
                 ListenEventNode data = _data as ListenEventNode;
                 Formula.text = AutoDataUIConfig.FormulaFormat(data.EventName);
                 ShowType(true);
-                // ShowIsCondition(false);
                 TypeText.text = "监听";
                 TypeText.color = TypeTextColor3;
                 TypeBg.color = TypeBgColor3;

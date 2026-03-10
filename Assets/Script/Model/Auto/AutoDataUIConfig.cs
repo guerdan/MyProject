@@ -238,6 +238,9 @@ namespace Script.Model.Auto
             FormulaVarType.Float,
             FormulaVarType.Vector2,
             FormulaVarType.Vector4,
+            FormulaVarType.ListFloat,
+            FormulaVarType.ListVector2,
+            FormulaVarType.ListVector4,
         };
 
         public static Dictionary<string, FormulaVarType> VarName2Type = new Dictionary<string, FormulaVarType>()
@@ -246,6 +249,9 @@ namespace Script.Model.Auto
             { "float", FormulaVarType.Float },
             { "vector2", FormulaVarType.Vector2 },
             { "vector4", FormulaVarType.Vector4 },
+            { "float[]", FormulaVarType.ListFloat },
+            { "vector2[]", FormulaVarType.ListVector2 },
+            { "vector4[]", FormulaVarType.ListVector4 },
         };
 
         private static Dictionary<FormulaVarType, string> _varType2Name;
@@ -314,7 +320,7 @@ namespace Script.Model.Auto
         static HashSet<string> _symbols = new HashSet<string>()
         {
             "+", "-", "*", "/", "=", ",","(",")", "==", "!=", ">", "<", ">=", "<=", "&&", "||"
-            ,".","{","}"
+            ,".","{","}",":","?",";"
         };
         static HashSet<string> _operators = new HashSet<string>()
         {
@@ -357,7 +363,7 @@ namespace Script.Model.Auto
         }
 
         static System.Text.RegularExpressions.Regex _tokenizeRegex =
-            new System.Text.RegularExpressions.Regex(@">=|<=|==|!=|&&|\|\||[+\-*/()=,><.\{\}]");
+            new System.Text.RegularExpressions.Regex(@">=|<=|==|!=|&&|\|\||[+\-*/()=,><.\{\}:\?;]");
         // 将表达式字符串分割成 运算符与操作数。一次性全部完成
         public static List<string> TokenizeFormat(string expression)
         {
@@ -404,7 +410,7 @@ namespace Script.Model.Auto
         #region Other
         // 搜索匹配的变量名
         // 要求: 小写变量名能搜出来大写的变量名
-        public static List<string> GetAssignMatchList(string search, Dictionary<string, FormulaVarInfo> varRef)
+        public static List<string> GetAssignMatchList(string search, Dictionary<string, FormulaVarInfo_Edit> varRef)
         {
             List<string> r = new List<string>();
             if (string.IsNullOrEmpty(search))
@@ -498,7 +504,7 @@ namespace Script.Model.Auto
                 {
                     if (token.IndexOf("}") < 0) return false; // 不完整
                     // 方法变量
-                    RPNCalculator.GetMethodParseResult(token, out string method_name, out string[] param_list);
+                    RPNCalculator.GetMethodParseResult(token, out _, out string[] param_list);
                     foreach (var param in param_list)
                     {
                         if (!ExpressionIsLegal(param))

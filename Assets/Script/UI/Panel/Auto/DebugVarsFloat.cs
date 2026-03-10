@@ -18,7 +18,6 @@ namespace Script.UI.Panel.Auto
         public AutoScriptManager Manager = AutoScriptManager.Inst;
 
         [SerializeField] private PageTabComp TabComp;
-        [SerializeField] private GameObject[] TabNums;
         [SerializeField] private VirtualListComp LogListComp;
         [SerializeField] private GameObject itemPrefab;
         int textUI_fontSize;
@@ -70,7 +69,7 @@ namespace Script.UI.Panel.Auto
 
         void Init()
         {
-            Dictionary<string, FormulaVarInfo> refs = _script_data.GetInEditVarRef();
+            Dictionary<string, FormulaVarInfo_Edit> refs = _script_data.GetInEditVarRef();
 
             _allLogs = new Dictionary<FormulaVarType, List<VarInfo>>();
             var types = new FormulaVarType[] { FormulaVarType.Float, FormulaVarType.Vector2, FormulaVarType.Vector4 };
@@ -155,7 +154,8 @@ namespace Script.UI.Panel.Auto
             var var_type = info.VarType;
             if (var_type == FormulaVarType.Float)
             {
-                var newVal = _script_data.GetFloatVarValue(var_name);
+                var data = _script_data.GetVarValue(var_name);
+                var newVal = data.Type == FormulaVarType.Undefined ? 0 : (float)data.Value;
                 if (info.TextWidth == -1 || newVal != info.ValueF)
                 {
                     var text = "";
@@ -175,7 +175,8 @@ namespace Script.UI.Panel.Auto
             }
             else if (var_type == FormulaVarType.Vector2)
             {
-                var newVal = _script_data.GetV2VarValue(var_name);
+                var data = _script_data.GetVarValue(var_name);
+                var newVal = data.Type == FormulaVarType.Undefined ? default : (Vector2)data.Value;
                 if (info.TextWidth == -1 || newVal != info.ValueV2)
                 {
                     var text = $"{var_name} = ({DU.FloatFormat(newVal.x)},{DU.FloatFormat(newVal.y)})";
@@ -187,7 +188,8 @@ namespace Script.UI.Panel.Auto
             }
             else if (var_type == FormulaVarType.Vector4)
             {
-                var newVal = _script_data.GetV4VarValue(var_name);
+                var data = _script_data.GetVarValue(var_name);
+                var newVal = data.Type == FormulaVarType.Undefined ? default : (Vector4)data.Value;
                 if (info.TextWidth == -1 || newVal != info.ValueV4)
                 {
                     var text = $"{var_name} = ({DU.FloatFormat(newVal.x)},{DU.FloatFormat(newVal.y)},{DU.FloatFormat(newVal.z)},{DU.FloatFormat(newVal.w)})";

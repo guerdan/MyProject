@@ -689,7 +689,7 @@ namespace Script.UI.Panel.Auto
             // SplitBagCell();
 
             //  比较下谁执快
-            TestExecutionTime.Inst.Test13();
+            TestExecutionTime.Inst.Test();
         }
 
 

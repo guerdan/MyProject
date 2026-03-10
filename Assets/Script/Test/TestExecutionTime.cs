@@ -17,14 +17,21 @@ namespace Script.Test
         public static TestExecutionTime Inst
         { get { if (_inst == null) _inst = new TestExecutionTime(); return _inst; } }
 
-
-
+        /// <summary>
+        /// 比较操作
+        /// 
+        /// 结论：
+        /// int比较-3ms
+        /// 枚举比较-3ms
+        /// 字符串比较-至少160ms
+        /// 
+        /// </summary>
         public void Test()
         {
-            //结论，三种比较几乎一样耗时。
+            //
             DU.RunWithTimer(() =>
             {
-                for (int i = 0; i < 10000000; i++)
+                for (int i = 0; i < 10000000; i++)      //30ms
                 {
                     var a = (i & (1 << 5)) != 0;
                 }
@@ -34,7 +41,7 @@ namespace Script.Test
             DU.RunWithTimer(() =>
             {
                 var b = BigCellType.AllEmpty;
-                for (int i = 0; i < 10000000; i++)
+                for (int i = 0; i < 10000000; i++)      //30ms
                 {
                     var a = b == BigCellType.HasObstacle;
                 }
@@ -43,13 +50,39 @@ namespace Script.Test
             DU.RunWithTimer(() =>
             {
                 var b = 2;
-                for (int i = 0; i < 10000000; i++)
+                for (int i = 0; i < 10000000; i++)      //30ms
                 {
                     var a = b == 3;
                 }
             }, "数字比较");
 
+            string str = "aasdaxzczxvsdfqwqwcxzvadfadwqqwaasdaxzczxvsdfqwkkkklll";
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)      //160ms
+                {
+                    var a = str == "aasdaxzczxvsdfqwqwcxzvadfadwqqwaasdaxzczxvsdfqwqwcxzvadfadwqqw";
+                }
+            }, "字符串比较");
 
+            ClassA a = new ClassA();
+            ClassA b = new ClassA();
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)      //30ms
+                {
+                    var ab = a == b;
+                }
+            }, "引用比较");
+
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)      //30ms
+                {
+                    float a = i;
+                    int b = (int)a;
+                }
+            }, "浮点整型互转");
         }
         Vector2Int forTest1_a;
         int forTest1_b;
@@ -137,7 +170,7 @@ namespace Script.Test
         // 结论是：
         // 访问字段：如果对象已经取到栈上，那么相当于有个副本了并几乎一样。
         //          如果对象不在栈上，就多了取到栈上的耗时。
-        // new操作：Class 970ms, Struct 36ms  ;30倍;  回收没估算
+        // new操作：Class-970ms, Struct-10ms, Action-10ms
         // 赋空值差不多一样
         public void Test2()
         {
@@ -145,10 +178,10 @@ namespace Script.Test
             ClassA obj = new ClassA();
             StructA stru = new StructA();
 
-            var map = new ClassA[1, 1];
-            map[0, 0] = obj;
-            var map1 = new StructA[1, 1];
-            map1[0, 0] = stru;
+            // var map = new ClassA[1, 1];
+            // map[0, 0] = obj;
+            // var map1 = new StructA[1, 1];
+            // map1[0, 0] = stru;
 
             DU.RunWithTimer(() =>
            {
@@ -159,51 +192,29 @@ namespace Script.Test
 
             DU.RunWithTimer(() =>
            {
-               for (int i = 0; i < 10000000; i++)   //
+               for (int i = 0; i < 10000000; i++)   //970ms
                {
-                   var b = map[0, 0].a;
+                   var b = new ClassA();
                }
-           }, "访问字段-Class");
+           }, "创建 Class");
 
             DU.RunWithTimer(() =>
             {
-                for (int i = 0; i < 10000000; i++)  //
+                for (int i = 0; i < 10000000; i++)  //36ms
                 {
-                    var b = map1[0, 0].a;
+                    StructA b = new StructA();
                 }
-            }, "访问字段-Struct");
+            }, "创建 Struct");
 
-            //     DU.RunWithTimer(() =>
-            //    {
-            //        for (int i = 0; i < 10000000; i++)   //970ms
-            //        {
-            //            var b = new ClassA();
-            //        }
-            //    }, "赋值-Class");
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)  //36ms  在栈上创建方法对象
+                {
+                    Action b = () => { var a = 2; };
+                }
+            }, "创建 方法对象");
 
-            //     DU.RunWithTimer(() =>
-            //     {
-            //         for (int i = 0; i < 10000000; i++)  //36ms
-            //         {
-            //             StructA b = new StructA();
-            //         }
-            //     }, "赋值-Struct");
 
-            //     DU.RunWithTimer(() =>
-            //    {
-            //        for (int i = 0; i < 10000000; i++)
-            //        {
-            //            ClassA b = null;
-            //        }
-            //    }, "赋空-Class");
-
-            //     DU.RunWithTimer(() =>
-            //     {
-            //         for (int i = 0; i < 10000000; i++)  //34
-            //         {
-            //             StructA b = default;
-            //         }
-            //     }, "赋空-Struct");
         }
 
         public void Test3()
@@ -485,7 +496,14 @@ namespace Script.Test
             return 10000000;
         }
 
-        // 测试查string字典的耗时。 int字典比string字典要快一些。int = 8次空方法 string = 13次空方法
+        // 
+        //  int字典比string字典要快一些。int = 8次空方法 string = 13次空方法
+        /// <summary>
+        /// 测试查字典的耗时。
+        /// 
+        /// string字典-1100ms
+        /// int字典-500ms
+        /// </summary>
         public void Test10()
         {
             Dictionary<string, string> dic = new Dictionary<string, string>();
@@ -510,21 +528,21 @@ namespace Script.Test
                 }
             }, $"空");
 
-            //     DU.RunWithTimer(() =>
-            //    {
-            //        for (int i = 0; i < 10000000; i++)    // 1100ms
-            //        {
-            //            var k = dic.TryGetValue("2", out _);
-            //        }
-            //    }, $"查string字典 Try");
+            DU.RunWithTimer(() =>
+           {
+               for (int i = 0; i < 10000000; i++)    // 1800ms
+               {
+                   var k = dic.TryGetValue("2", out _);
+               }
+           }, $"查string字典 Try");
 
-            //     DU.RunWithTimer(() =>
-            //    {
-            //        for (int i = 0; i < 10000000; i++)    //800ms
-            //        {
-            //            var k = dic["2"];
-            //        }
-            //    }, $"查string字典 []");
+            DU.RunWithTimer(() =>
+           {
+               for (int i = 0; i < 10000000; i++)    //1200ms
+               {
+                   var k = dic["2"];
+               }
+           }, $"查string字典 []");
             DU.RunWithTimer(() =>
            {
                for (int i = 0; i < 10000000; i++)    // 800ms
@@ -630,7 +648,7 @@ namespace Script.Test
         /// 
         /// 结论是：10000000次循环
         /// 1. 装箱 1000ms
-        /// 2. 字符串字典取值 1200ms
+        /// 2. 字符串字典取值 至少1200ms，本质上是用字符串每个字母算hash值。所以越长越耗时
         /// 3. 取对象的类型 2700ms
         /// </summary>
         public void Test13()
@@ -639,41 +657,86 @@ namespace Script.Test
             int obj_i = (int)obj;
 
             Dictionary<string, object> dic = new Dictionary<string, object>();
-            dic["a"] = 10000000;
+            string key = "akkjinbvyugiukjbkvbhuvufhbkbkbkhakkjinbvyugiukjbkvbhuvufhbkbkbkhakkjinbvyugiukjbkvbhuvufhbkbkbkhakkjinbvyugiukjbkvbhuvufhbkbkbkh";
+            dic[key] = 10000000;
+
+            // DU.RunWithTimer(() =>
+            // {
+            //     for (int i = 0; i < 1000000; i++)
+            //     {
+            //         int a = (int)obj;     // 20ms
+            //     }
+            // }, $"拆箱");
+
+            // DU.RunWithTimer(() =>
+            // {
+            //     for (int i = 0; i < 1000000; i++)
+            //     {
+            //         object a = obj_i;     // 1000ms
+            //     }
+            // }, $"装箱");
 
             DU.RunWithTimer(() =>
             {
                 for (int i = 0; i < 1000000; i++)
                 {
-                    int a = (int)obj;     // 20ms
-                }
-            }, $"拆箱");
-
-            DU.RunWithTimer(() =>
-            {
-                for (int i = 0; i < 1000000; i++)
-                {
-                    object a = obj_i;     // 1000ms
-                }
-            }, $"装箱");
-
-            DU.RunWithTimer(() =>
-            {
-                for (int i = 0; i < 1000000; i++)
-                {
-                    object a = dic["a"];     // 1200ms
+                    object a = dic[key];     // 1200ms
                 }
             }, $"字符串字典取值");
 
-             DU.RunWithTimer(() =>
+            //     DU.RunWithTimer(() =>
+            //    {
+            //        for (int i = 0; i < 1000000; i++)
+            //        {
+            //            string n = obj.GetType().Name;    // 2700ms
+            //        }
+            //    }, $"取对象的类型");
+
+
+
+        }
+
+        /// <summary>
+        /// 一些接口耗时
+        /// 
+        /// 空方法-50ms
+        /// float.TryParse()-8000ms
+        /// string.IndexOf()-5000ms
+        /// </summary>
+        public void Test14()
+        {
+
+            DU.RunWithTimer(() =>
+           {
+               for (int i = 0; i < 1000000; i++)
+               {
+                   EmptyMethod();                   // 50ms
+               }
+           }, $"空方法");
+
+            DU.RunWithTimer(() =>
+           {
+               for (int i = 0; i < 1000000; i++)
+               {
+                   float.TryParse("3.14", out var f);
+               }
+           }, $"float.TryParse()");
+
+            DU.RunWithTimer(() =>
             {
                 for (int i = 0; i < 1000000; i++)
                 {
-                    string n = obj.GetType().Name;    // 2700ms
+                    var is_method = "ssssaaadfasddass".IndexOf("{") >= 0;
                 }
-            }, $"取对象的类型");
+            }, $"string.IndexOf()");
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        void EmptyMethod()
+        {
 
         }
+
     }
 
 
