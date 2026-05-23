@@ -55,10 +55,15 @@
     <Compile Include="Assets\Plugins\Demigiant\DOTween\Modules\DOTweenModuleAudio.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Assets\Plugins\EPPlus\I18N.dll" />
+    <None Include="Assets\Plugins\EPPlus\EPPlus.Interfaces.dll" />
     <None Include="Assets\Plugins\Demigiant\DOTween\DOTween.XML" />
     <None Include="Assets\Plugins\WSA\x64\xlua.dll" />
+    <None Include="Assets\Plugins\EPPlus\EPPlus.dll" />
     <None Include="Assets\Plugins\Demigiant\DOTween\DOTween.dll" />
+    <None Include="Assets\Plugins\EPPlus\EPPlus.System.Drawing.dll" />
     <None Include="Assets\Plugins\x86\xlua.dll" />
+    <None Include="Assets\Plugins\EPPlus\I18N.West.dll" />
     <None Include="Assets\Plugins\WSA\ARM64\xlua.dll" />
     <None Include="Assets\Plugins\x86_64\xlua.dll" />
     <None Include="Assets\Plugins\WSA\ARM\xlua.dll" />
@@ -390,6 +395,14 @@
       <HintPath>C:\Program Files\Unity 2021.3.6f1\Editor\Data\Managed\UnityEngine\UnityEditor.UnityConnectModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="I18N">
+      <HintPath>Assets\Plugins\EPPlus\I18N.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="EPPlus">
+      <HintPath>Assets\Plugins\EPPlus\EPPlus.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="OpenCvSharp">
       <HintPath>Assets\Packages\OpenCvSharp4.4.10.0.20241108\lib\netstandard2.1\OpenCvSharp.dll</HintPath>
       <Private>False</Private>
@@ -410,8 +423,16 @@
       <HintPath>Library\PackageCache\jillejr.newtonsoft.json-for-unity@f2c6cb0981\Plugins\Newtonsoft.Json Editor\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="EPPlus.System.Drawing">
+      <HintPath>Assets\Plugins\EPPlus\EPPlus.System.Drawing.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="System.Runtime.CompilerServices.Unsafe">
       <HintPath>Assets\Packages\System.Runtime.CompilerServices.Unsafe.6.0.0\lib\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="EPPlus.Interfaces">
+      <HintPath>Assets\Plugins\EPPlus\EPPlus.Interfaces.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Burst.Unsafe">
@@ -420,6 +441,10 @@
     </Reference>
     <Reference Include="Unity.Burst.Cecil.Mdb">
       <HintPath>Library\PackageCache\com.unity.burst@1.6.6\Unity.Burst.CodeGen\Unity.Burst.Cecil.Mdb.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="I18N.West">
+      <HintPath>Assets\Plugins\EPPlus\I18N.West.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Burst.Cecil">
@@ -962,8 +987,8 @@
       <HintPath>Library\ScriptAssemblies\PsdPlugin.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.TextMeshPro.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.TextMeshPro.Editor.dll</HintPath>
+    <Reference Include="Unity.Addressables">
+      <HintPath>Library\ScriptAssemblies\Unity.Addressables.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Performance.Profile-Analyzer.Editor">
@@ -972,10 +997,6 @@
     </Reference>
     <Reference Include="Unity.TestTools.CodeCoverage.Editor.OpenCover.Model">
       <HintPath>Library\ScriptAssemblies\Unity.TestTools.CodeCoverage.Editor.OpenCover.Model.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.Addressables">
-      <HintPath>Library\ScriptAssemblies\Unity.Addressables.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.VisualScripting.State.Editor">
@@ -1076,10 +1097,6 @@
     </Reference>
     <Reference Include="Unity.VisualScripting.Core.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.Core.Editor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.TextMeshPro">
-      <HintPath>Library\ScriptAssemblies\Unity.TextMeshPro.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Burst.Editor">
@@ -1188,8 +1205,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="Spine.Runtime.csproj" />
-    <ProjectReference Include="Spine.Editor.csproj" />
     <ProjectReference Include="com.zframework.io.csproj" />
   </ItemGroup>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />

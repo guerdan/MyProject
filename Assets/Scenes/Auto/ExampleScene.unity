@@ -4989,7 +4989,6 @@ MonoBehaviour:
   fullscreen: 1
   customResolution: 0
   screenResolution: {x: 720, y: 720}
-  targetFrameRate: 30
 --- !u!81 &198770951
 AudioListener:
   m_ObjectHideFlags: 0
@@ -5034,8 +5033,8 @@ Camera:
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
-  m_HDR: 1
-  m_AllowMSAA: 1
+  m_HDR: 0
+  m_AllowMSAA: 0
   m_AllowDynamicResolution: 0
   m_ForceIntoRT: 0
   m_OcclusionCulling: 1
@@ -5474,7 +5473,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 1
+  m_WasSpriteAssigned: 0
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!4 &898071110

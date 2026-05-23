@@ -24,7 +24,6 @@ namespace Script.Test
             Prefab.SetActive(false);
             Prefab1.SetActive(false);
 
-            Application.targetFrameRate=60;
         }
 
         private void OnButtonClick()

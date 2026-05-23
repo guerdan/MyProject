@@ -204,6 +204,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 119554407848724576}
+  - component: {fileID: 6141122664505975744}
   - component: {fileID: 1813704538445795227}
   - component: {fileID: 5877025194604676575}
   m_Layer: 5
@@ -235,6 +236,20 @@ RectTransform:
   m_AnchoredPosition: {x: -2, y: -15}
   m_SizeDelta: {x: 330, y: 176}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &6141122664505975744
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 483155423284138623}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4eb4367e24704104eb2bb3ba0fe30401, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ListComp: {fileID: 1813704538445795227}
+  itemPrefab: {fileID: 3621273020243720150}
 --- !u!114 &1813704538445795227
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1969,7 +1984,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 7209607764499187132}
   m_Direction: 2
   m_Value: 1
-  m_Size: 0.44857728
+  m_Size: 0.89715457
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -2616,8 +2631,7 @@ MonoBehaviour:
   - {fileID: 5984426601256912462}
   - {fileID: 7803164855325571412}
   - {fileID: 4381915520786007354}
-  LogListComp: {fileID: 1813704538445795227}
-  itemPrefab: {fileID: 3621273020243720150}
+  LogListComp: {fileID: 6141122664505975744}
 --- !u!1 &5455604290633174530
 GameObject:
   m_ObjectHideFlags: 0

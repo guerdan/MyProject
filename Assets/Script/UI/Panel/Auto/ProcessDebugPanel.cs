@@ -16,6 +16,7 @@ namespace Script.UI.Panel.Auto
 
         [SerializeField] private CheckBox ScreenDrawBtn;        //开启屏幕绘制
         [SerializeField] private CheckBox SaveMapCaptureBtn;    //保存地图拍摄快照
+        [SerializeField] private CheckBox MapIconDebugBtn;      //icon无法识别时，保存地图
         [SerializeField] private Button LookRunTimeBtn;         //查看执行耗时按钮
         [SerializeField] private KeywordTipsComp TipsComp;
 
@@ -38,6 +39,7 @@ namespace Script.UI.Panel.Auto
         {
             ScreenDrawBtn.SetData(Manager.ScreenDrawDebug, OnChangeScreenDraw);
             SaveMapCaptureBtn.SetData(Manager.SaveMapCaptureStatus, OnChangeSaveMapCapture);
+            MapIconDebugBtn.SetData(Manager.MapIconDebugStatus, OnChangeMapIconDebug);
         }
         void OnChangeScreenDraw(bool value)
         {
@@ -46,6 +48,10 @@ namespace Script.UI.Panel.Auto
         void OnChangeSaveMapCapture(bool value)
         {
             Manager.SaveMapCaptureStatus = value;
+        }
+        void OnChangeMapIconDebug(bool value)
+        {
+            Manager.MapIconDebugStatus = value;
         }
 
         void OnClickLookRunTimeBtn()

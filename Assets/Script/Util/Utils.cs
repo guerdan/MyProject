@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Security.Principal;
 using Script.Framework;
 using Script.Framework.UI;
 using Script.Model.Auto;
@@ -23,6 +25,7 @@ namespace Script.Util
                                 new Vector2Int(1, 0),
                                 new Vector2Int(0, -1),
                             };
+        // 转一圈的顺序
         public static readonly Vector2Int[] EightDirList = new Vector2Int[]{
                                 new Vector2Int(-1, -1),
                                 new Vector2Int(-1, 0),
@@ -33,6 +36,7 @@ namespace Script.Util
                                 new Vector2Int(1, -1),
                                 new Vector2Int(0, -1),
                             };
+                            
         public static readonly Vector2Int[] TwoDistanceArea = new Vector2Int[]{
                 new Vector2Int(0,2),
                 new Vector2Int(-1,1),new Vector2Int(0,1),new Vector2Int(1,1),
@@ -46,10 +50,33 @@ namespace Script.Util
         public static readonly float OneFrame = 0.0335f;
         public static readonly float MinFrameTime = 0.01f;           // 用来完成一帧的等待
         public static readonly Color32 Red = new Color32(255, 0, 0, 255);
+        public static readonly Color32 TransparentCol = new Color(0, 0, 0, 0);
         /// <summary>
         /// text组件中，不会换行的空格
         /// </summary>
         public static readonly string SpaceStr = "\u00A0";
+
+
+
+        public static int ScreenHeight;
+        public static int ScreenWidth;
+        public static string UserDomainName;        // 域名。没取，叫Desktop
+        public static string UserName;              // 登录用户名。在同台机子上是唯一的
+        public static bool IsAdmin;
+
+        public static void Init()
+        {
+            ScreenHeight = Screen.height;
+            ScreenWidth = Screen.width;
+            UserDomainName = Environment.UserDomainName;
+            UserName = Environment.UserName;
+
+            IsAdmin = CheckAdminByFileAccess();
+            DU.LogWarning($"当前是否为管理员模式 {IsAdmin}");
+        }
+
+
+
         /// <summary>
         /// 如果没有什么特别组件而想存成List[GameObject]，就改用存List[Transform]或者List[RectTransform]
         /// 以达到相同的效果
@@ -250,10 +277,12 @@ namespace Script.Util
         }
 
         #region AutoScript
-        public static void AutoScriptSwitchRunStatus(string id)
+        public static ScriptRunCommand AutoScriptSwitchRunStatus(string id)
         {
-            bool current = AutoScriptManager.Inst.IsRuning(id);
-            if (current)
+            bool is_run = AutoScriptManager.Inst.IsRuning(id);
+            ScriptRunCommand result = is_run ? ScriptRunCommand.StopScript : ScriptRunCommand.StartScript;
+
+            if (is_run)
             {
                 AutoScriptManager.Inst.StopScript(id);
             }
@@ -264,6 +293,7 @@ namespace Script.Util
             }
 
             ScriptManagerPanel.OnRefresh?.Invoke(id);
+            return result;
         }
 
         public static void AutoScriptCloseElsePanel()
@@ -278,9 +308,9 @@ namespace Script.Util
         public static void OpenDrawProcessPanel(string id)
         {
             // 打开后占全屏，一定会影响脚本执行，故暂停
+            AutoScriptManager.Inst.Settings.AddOpenRecent(id);          // 触发加载
             AutoScriptManager.Inst.StopScript(id);
             AutoScriptManager.Inst.ChangeHotScript(id);
-            AutoScriptManager.Inst.Settings.AddOpenRecent(id);
             UIManager.Inst.PopPanel(PanelEnum.DeskPetMain);
             UIManager.Inst.ShowPanel(PanelEnum.DrawProcessPanel, id);
         }
@@ -305,6 +335,36 @@ namespace Script.Util
 
 
         #endregion
+
+        public static float GetTextPreferHeight(float width, int fontSize, string content)
+        {
+            return SceneTool.Inst.GetTextPreferHeight(width, fontSize, content);
+        }
+        public static float GetTextPreferWidth(int fontSize, string content)
+        {
+            return SceneTool.Inst.GetTextPreferWidth(fontSize, content);
+        }
+
+
+        public static bool CheckAdminByFileAccess()
+        {
+            try
+            {
+                string tempFile = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+                    "temp_test.tmp"
+                );
+
+                File.WriteAllText(tempFile, "test");
+                File.Delete(tempFile);
+                return true;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return false;
+            }
+        }
+
     }
 
 

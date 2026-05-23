@@ -54,5 +54,10 @@ namespace Script.Util
             }
         }
 
+        public static void CreateDirectory(string dir)
+        {
+            Directory.CreateDirectory(dir);
+        }
+
     }
 }

@@ -153,5 +153,30 @@ namespace Script.Util
             result.Append("]");
             return result.ToString();
         }
+
+        public static string GetTimeString()
+        {
+            var time = DateTime.Now;
+            return $"[{time.Hour}-{time.Minute}-{time.Second}]";
+        }
+
+        // 编码：特殊字符串 → Base64
+        public static string StringToBase64(string s)
+        {
+            var bytes = System.Text.Encoding.UTF8.GetBytes(s);
+            return Convert.ToBase64String(bytes);
+        }
+
+        // 解码：Base64 → 原字符串
+        public static string Base64ToString(string base64)
+        {
+            var bytes = Convert.FromBase64String(base64);
+            return System.Text.Encoding.UTF8.GetString(bytes);
+        }
+        public static string BytesToBase64(byte[] bytes)
+        {
+            return  Convert.ToBase64String(bytes);
+        }
+
     }
 }

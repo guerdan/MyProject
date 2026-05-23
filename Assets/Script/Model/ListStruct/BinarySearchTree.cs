@@ -23,7 +23,7 @@ namespace Script.Model.ListStruct
         }
     }
 
-    public class BSTNode<T> 
+    public class BSTNode<T>
     {
         public T Value;
         public BSTNode<T> Left;
@@ -37,11 +37,13 @@ namespace Script.Model.ListStruct
         }
     }
 
-    public class BinarySearchTree<T> 
+    public class BinarySearchTree<T>
     {
+        public int Count;
         private BSTNode<T> _root;
         private Func<T, T, int> _comparer;
         private bool _delete_success;
+
 
         // 可以自定义比较器
         public BinarySearchTree(Func<T, T, int> comparer)
@@ -78,6 +80,7 @@ namespace Script.Model.ListStruct
         // 插入
         public void Insert(T value)
         {
+            Count++;
             _root = Insert(_root, value);
         }
 
@@ -102,6 +105,9 @@ namespace Script.Model.ListStruct
         {
             _delete_success = false;
             _root = Delete(_root, value);
+            if (_delete_success)
+                Count--;
+                
             return _delete_success;
         }
 
@@ -242,7 +248,7 @@ namespace Script.Model.ListStruct
             return Math.Max(leftHeight, rightHeight) + 1;
         }
 
-       
+
 
     }
 

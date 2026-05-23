@@ -29,8 +29,8 @@ public class TransparentWindow : MonoBehaviour
 	[Tooltip("Resolution the overlay should run at")] //
 	[SerializeField] Vector2Int screenResolution = new Vector2Int(1280, 720);
 
-	[Tooltip("The framerate the overlay should try to run at")] //
-	[SerializeField] int targetFrameRate = 30;
+	// [Tooltip("The framerate the overlay should try to run at")] //
+	// [SerializeField] int targetFrameRate = 30;
 
 
 	/////////////////////
@@ -93,7 +93,7 @@ public class TransparentWindow : MonoBehaviour
 
 		Screen.SetResolution(screenResolution.x, screenResolution.y, fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed);
 
-		Application.targetFrameRate = targetFrameRate;
+		// Application.targetFrameRate = targetFrameRate;	// 不知道其依赖不依赖
 		Application.runInBackground = true;
 
 #if !UNITY_EDITOR
@@ -104,10 +104,14 @@ public class TransparentWindow : MonoBehaviour
 
 		if (GetWindowRect(hwnd, out windowRect))
 		{
-			Debug.LogError("Couldn't get Window Rect");
+			// Debug.LogError("Couldn't get Window Rect");
+			DU.LogWarning($"【GetWindowRect】Left:{windowRect.Left} Top:{windowRect.Top}");
 		}
         //WS_POPUP决定了窗口的无边框
 		SetWindowLong(hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+
+		// 我们版本只用全屏。所以注释。
+		//
 		// SetWindowPos(hwnd, HWND_TOPMOST, windowRect.Left, windowRect.Top, fWidth, fHeight, 32 | 64);
 		SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, fWidth, fHeight, 32 | 64);
 		DwmExtendFrameIntoClientArea(hwnd, ref margins);

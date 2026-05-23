@@ -52,10 +52,6 @@ namespace Script.Test
             {
                 SetImage0();
             }
-            if (Input.GetKeyDown(KeyCode.R))
-            {
-                UIManager.Inst.ClearCache();
-            }
             if (Input.GetKeyDown(KeyCode.L))
             {
                 LookMemory();

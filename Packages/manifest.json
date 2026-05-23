@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.bshsf.filedialog":"file:../UniFileDialog",
+    "com.bshsf.filedialog": "file:../UniFileDialog",
     "com.cysharp.unitask": "https://github.com/Cysharp/UniTask.git?path=/src/UniTask/Assets/Plugins/UniTask",
     "com.unity.addressables": "1.19.19",
     "com.unity.feature.2d": "1.0.0",
@@ -12,7 +12,6 @@
     "com.unity.profiling.core": "1.0.2",
     "com.unity.search.extensions": "https://github.com/Unity-Technologies/com.unity.search.extensions.git?path=package",
     "com.unity.test-framework": "1.1.31",
-    "com.unity.textmeshpro": "3.0.6",
     "com.unity.timeline": "1.6.4",
     "com.unity.ugui": "1.0.0",
     "com.unity.visualscripting": "1.7.8",

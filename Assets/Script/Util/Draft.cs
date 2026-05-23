@@ -1251,7 +1251,7 @@ namespace Script.Util
             // if (_mapData == null)
             // {
             MapDataManager.Inst.Remove("Map-22");
-            MapDataManager.Inst.Create("Map-22", new CVRect(0, 0, 200, 200),0);
+            // MapDataManager.Inst.Create("Map-22", new CVRect(0, 0, 200, 200), 0);
             _mapData = MapDataManager.Inst.Get("Map-22");
             // var dir = @"D:\unityProject\MyProject\Assets\StreamingAssets\SmallMap\小地图_22";
             var dir = @"D:\unityProject\MyProject\Assets\StreamingAssets\Capture\小地图_22";
@@ -1260,7 +1260,8 @@ namespace Script.Util
             for (int i = 11; i <= 21; i++)
             {
                 var file_path = dir + $"/{i}.png";
-                _mapData.Capture(new Bitmap(file_path));
+                var colors = IU.BitmapToColor32(new Bitmap(file_path));
+                _mapData.Capture(colors);
             }
             // }
 
@@ -1304,7 +1305,7 @@ namespace Script.Util
             // _mapData.Print();
 
             var save_path = Application.streamingAssetsPath + $"/SmallMap/astar.png";
-            _mapData.SaveAStar(save_path);
+            // _mapData.SaveAStar(save_path);
 
         }
 

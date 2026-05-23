@@ -54,6 +54,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Image: {fileID: 322148176619894118}
   Border: 3
+  SizeText: {fileID: 0}
+  Btn: {fileID: 0}
 --- !u!1 &1142210858978121238
 GameObject:
   m_ObjectHideFlags: 0
@@ -195,8 +197,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   CloseButtons:
   - {fileID: 415300587733024310}
-  _animEnable: 1
-  _useScaleAnim: 1
   NInput: {fileID: 4140315860035014264}
   NTemplate: {fileID: 1316072330510528475}
   IInput: {fileID: 8447388082886776915}
@@ -552,7 +552,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "\u6A21\u7248\u5339\u914D"
+  m_Text: Match
 --- !u!114 &8578977506359614850
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -774,6 +774,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Image: {fileID: 1012402478617342267}
   Border: 3
+  SizeText: {fileID: 0}
+  Btn: {fileID: 0}
 --- !u!1 &6271156379759948685
 GameObject:
   m_ObjectHideFlags: 0

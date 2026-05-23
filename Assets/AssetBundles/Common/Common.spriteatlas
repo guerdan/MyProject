@@ -58,6 +58,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 155ca5d065c8739409127d9d858104e3, type: 3}
   - {fileID: 21300000, guid: 5f4ca0f04debbf94493feaed02d421a6, type: 3}
   - {fileID: 21300000, guid: 81568311075b7ec488c4ca826b319602, type: 3}
+  - {fileID: 21300000, guid: f11849319d3c6b6449921339776e4592, type: 3}
   - {fileID: 21300000, guid: 23bdb351ffe5cb94cb0adb00be98ddcc, type: 3}
   - {fileID: 21300000, guid: bcc9716178064de49883d09d4a5205f7, type: 3}
   - {fileID: 21300000, guid: d629e18147051964197717ca457aeb2e, type: 3}
@@ -105,6 +106,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 1e8ac637caa41a44f95d5b82d767df63, type: 3}
   - {fileID: 21300000, guid: 3ccdbe97399b9e245bfd2c56dfbb2bd2, type: 3}
   - {fileID: 21300000, guid: 9169e7c722ad58346bbe9418245534cb, type: 3}
+  - {fileID: 21300000, guid: 9bf57c08a7b92e24ba768280eaad79a3, type: 3}
   - {fileID: 21300000, guid: 9c7b60186ab1b5b41b3f2655ef5999fb, type: 3}
   - {fileID: 21300000, guid: ad0bf7286f27bd24fba1ecd5dfad10c1, type: 3}
   - {fileID: 21300000, guid: d70932686ab6c3f41a58747625611115, type: 3}
@@ -154,6 +156,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 9589eddde89e00a4ab7fd501b2a19919, type: 3}
   - {fileID: 21300000, guid: 9ff23d0ea43c5724691dcef23eef43cf, type: 3}
   - {fileID: 21300000, guid: 0022613e9faa2d24cbb5606c123929d4, type: 3}
+  - {fileID: 21300000, guid: 06b137aed12268f4898dd2662e5ecaae, type: 3}
   - {fileID: 21300000, guid: 552ef9be6e694324eb064bcbf6758e2f, type: 3}
   - {fileID: 21300000, guid: 3bafe8ce610cf8c439122930a236874b, type: 3}
   - {fileID: 21300000, guid: 10489cceeaa3cad49a6277158d3ca7af, type: 3}
@@ -175,6 +178,7 @@ SpriteAtlas:
   - b_start
   - s1_panelBg_bottom
   - mouse_move
+  - b_close1
   - icon_pvp_rank1
   - tab_common
   - folder_add 1
@@ -194,7 +198,7 @@ SpriteAtlas:
   - icon_delete
   - s1_tab_unable
   - tab_hero_active
-  - settings
+  - b_settings
   - search_icon
   - bg_paper
   - arrow1
@@ -222,6 +226,7 @@ SpriteAtlas:
   - search_box
   - frame_bg1
   - dot_line_12px
+  - b_settings1
   - hero_yxjb_close_bg
   - icon_edit
   - icon_loading_progress
@@ -271,6 +276,7 @@ SpriteAtlas:
   - icon_grass
   - frame_item
   - cross_white
+  - i_Capture
   - b_start1
   - icon_pvp_rank2
   - s1_tab_able

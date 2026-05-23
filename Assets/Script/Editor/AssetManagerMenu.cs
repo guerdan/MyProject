@@ -96,8 +96,27 @@ namespace Script.Editor
             return assetPath;
         }
 
-        [MenuItem(Utils.CustomToolsPath + "Build")]
-        public static void BuildProject()
+
+        /// <summary>
+        /// 运行速度快
+        /// </summary>
+        [MenuItem(Utils.CustomToolsPath + "Build/" + "None")]
+        public static void BuildProjectNone()
+        {
+            BuildProject(BuildOptions.None);
+        }
+
+        /// <summary>
+        /// 编译优化少，运行速度慢
+        /// </summary>
+        [MenuItem(Utils.CustomToolsPath + "Build/" + "Development")]
+        public static void BuildProjectDevelopment()
+        {
+            BuildProject(BuildOptions.Development);
+        }
+
+
+        public static void BuildProject(BuildOptions buildOptions)
         {
             var folderName = "Auto";
             var projectName = "My project";
@@ -117,14 +136,29 @@ namespace Script.Editor
             "Assets/Scenes/Auto/ExampleScene.unity", // 替换为你的场景路径
             };
 
-            // 构建选项
-            BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions
+
+            BuildPlayerOptions buildPlayerOptions = default;
+            if (buildOptions == BuildOptions.None)
             {
-                scenes = scenes,
-                locationPathName = buildPath,
-                target = BuildTarget.StandaloneWindows64, // 目标平台
-                options = BuildOptions.None // 构建选项
-            };
+                buildPlayerOptions = new BuildPlayerOptions
+                {
+                    scenes = scenes,
+                    locationPathName = buildPath,
+                    target = BuildTarget.StandaloneWindows64,   // 目标平台
+                    options = BuildOptions.None
+                };
+            }
+            else if (buildOptions == BuildOptions.Development)
+            {
+                buildPlayerOptions = new BuildPlayerOptions
+                {
+                    scenes = scenes,
+                    locationPathName = buildPath,
+                    target = BuildTarget.StandaloneWindows64,   
+                    options = BuildOptions.Development | BuildOptions.AllowDebugging         // 报错显示哪一行
+                };
+            }
+
 
             // 执行打包
             BuildReport report = BuildPipeline.BuildPlayer(buildPlayerOptions);

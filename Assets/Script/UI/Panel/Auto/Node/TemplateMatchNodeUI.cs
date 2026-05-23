@@ -38,7 +38,7 @@ namespace Script.UI.Panel.Auto.Node
         {
             base.RefreshContent();
             var data = _data as TemplateMatchOperNode;
-            TitleText.text = data.Name;
+            TitleText.text = data.GetName();
             TemplateImage.SetData(ImageManager.GetFullPath(data.TemplatePath), new Vector2(90, 90), true, 2);
             RegionText.text = AutoDataUIConfig.FormulaFormat(data.RegionExpression);
             RefreshTemplateImageBtn();
@@ -53,7 +53,7 @@ namespace Script.UI.Panel.Auto.Node
 
         void RefreshTemplateImageBtn()
         {
-            bool selected = _data.Id == _panel.MouseSelectedId;
+            bool selected = _panel.IsSelect(MouseSelectType.Node, _id);
             Utils.SetCanClick(TemplateImage.gameObject, selected && _finishOneClick);
 
             // DU.LogWarning($"interactable {selected && _finishOneClick}");

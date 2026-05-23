@@ -1,5 +1,8 @@
 
 using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using Script.Framework.Else;
 using Script.Model.Auto;
 using Script.UI.Components;
 using Script.Util;
@@ -11,22 +14,24 @@ namespace Script.UI.Panel.Auto.DeskPet
 {
     public class DeskPetMapFloat : MonoBehaviour
     {
+        public GlobalKeyboardManager KeyManager => GlobalKeyboardManager.Inst;
 
         [SerializeField] private Button CloseBtn;
         [SerializeField] private Button MemoryBtn;
         [SerializeField] private ImageDetailComp ImageComp;
 
-        List<string> options = new List<string>()
+        List<(Options, string)> MapOptions = new List<(Options, string)>()
             {
-                "_map",             // 像素粒度
-                "_grid",            // 5X5大格子粒度
-                "最近迷雾",
-                "最近迷雾 (跟踪)",
-                "_light_map",
-                "_small_map",
-                "_judge_map",
-                "_fog_map",
-                "保存全部地图",       // 保存至本地
+                (Options.Map,"map"),
+                (Options.Grid,"grid"),
+                (Options.Auto,"Auto"),
+                (Options.FindNearestFog,"NearFog"),
+                (Options.FindNearestFogFollowing,"NearFog (Follow)"),
+                (Options.FollowTarget,"FollowTarget"),
+                (Options.SmallMap,"small_map"),
+                (Options.LightMap,"light_map"),
+                (Options.JudgeMap,"judge_map"),
+                (Options.FogMap,"fog_map"),
             };
         DeskPetMain parent;
         KeywordTipsComp tipsComp;
@@ -42,6 +47,13 @@ namespace Script.UI.Panel.Auto.DeskPet
             MemoryBtn.onClick.AddListener(OnClickMemoryBtn);
         }
 
+        void OnEnable()
+        {
+        }
+        void OnDisable()
+        {
+        }
+
         public void SetData(DeskPetMain parent)
         {
             this.parent = parent;
@@ -51,6 +63,8 @@ namespace Script.UI.Panel.Auto.DeskPet
             //
             if (_scriptId != parent.ScriptId)
                 _optionSelectStatus = -1;
+
+            _scriptId = parent.ScriptId;
 
             if (_optionSelectStatus == -1)
                 OnSelectTipsComp(0);
@@ -64,7 +78,9 @@ namespace Script.UI.Panel.Auto.DeskPet
         void OnClickMemoryBtn()
         {
             Utils.SetActive(tipsComp, true);
-            tipsComp.SetData(options, OnSelectTipsComp, 140, 7);
+
+            var strList = MapOptions.Select(t => t.Item2).ToList();
+            tipsComp.SetData(strList, OnSelectTipsComp, 140, 7);
             tipsComp.SetCurIndex(_optionSelectStatus);
 
             var tipsCompRectT = tipsComp.GetComponent<RectTransform>();
@@ -73,49 +89,39 @@ namespace Script.UI.Panel.Auto.DeskPet
             tipsCompRectT.anchoredPosition = pos;
         }
 
+        MapData GetMapData(string scriptId, out string mapId)
+        {
+            mapId = null;
+            if (scriptId == null) return null;
+            var script = AutoScriptManager.Inst.GetScriptData(scriptId);
+            var node = script.GetNodeByType(NodeType.MapCapture);
+            if (node == null) return null;
+
+            var mapNode = node as MapCaptureNode;
+            mapId = mapNode.MapId;
+            var mapData = MapDataManager.Inst.Get(mapId);
+
+            return mapData;
+        }
+
 
         void OnSelectTipsComp(int option_int)
         {
-            var scriptId = parent.ScriptId;
-            if (scriptId == null) { ClearComp(); return; }
+            _optionSelectStatus = option_int;
+            _option = MapOptions[option_int].Item1;
 
-            var script = AutoScriptManager.Inst.GetScriptData(scriptId);
-            var node = script.GetNodeByType(NodeType.MapCapture);
-            if (node == null) { ClearComp(); return; }
-
-            var mapNode = node as MapCaptureNode;
-            _mapData = MapDataManager.Inst.Get(mapNode.MapId);
+            _mapData = GetMapData(parent.ScriptId, out string mapId);
             if (_mapData == null) { ClearComp(); return; }
-
-            int true_option_int = -1;
-            // 映射
-            switch (option_int)
-            {
-                case 2:
-                case 3:
-                case 4:
-                case 5:
-                    true_option_int = option_int + 2;
-                    break;
-                default:
-                    true_option_int = option_int;
-                    break;
-            }
-            _option = (Options)true_option_int;
 
             Sprite mapSprite = null;
             Vector2Int line_offset = Vector2Int.zero;
-            bool reset = _scriptId != parent.ScriptId || _optionSelectStatus != option_int;
-
-            _scriptId = scriptId;
-            _optionSelectStatus = option_int;
-
+            bool reset = _optionSelectStatus != option_int;
 
 
             // DU.RunWithTimer(() =>
             // {
-            ImageCompareTestPanel.GetSpriteOfMapOption(scriptId, mapNode.MapId, _option, ""
-                            , out mapSprite, out line_offset, out var anchor, ImageComp);
+            ImageCompareTestPanel.GetSpriteOfMapOption(_scriptId, mapId, _option, ""
+                            , out mapSprite, out line_offset, out var anchor, out string debug_str, ImageComp);
             // }, $"GetSpriteOfMapOption");
 
 
@@ -130,19 +136,19 @@ namespace Script.UI.Panel.Auto.DeskPet
 
             _mapData.GetContentAttr(out Vector2Int xRange, out Vector2Int yRange
             , out var w, out var h);
-            string title = "";
+            string title = $"{debug_str}";
 
-            if (_option == Options.FindNearestFogFollowing)
-            {
-                var result = _mapData.FindFogResult;
-                string title1 = $"全图 {w} * {h}";
-                string debug_str = _mapData.GetPathFindingDebugStr(result);
-                title = result == PathFindingResult.Success ? title1 : debug_str;
-            }
-            else
-            {
-                title = options[option_int];
-            }
+            // if (_option == Options.FindNearestFogFollowing)
+            // {
+            //     var result = _mapData.FindFogStatus;
+            //     string title1 = $"全图 {w} * {h}";
+            //     string debug_str = _mapData.GetPathFindingDebugStr(result);
+            //     title = result == PathFindingResult.Success ? title1 : debug_str;
+            // }
+            // else
+            // {
+            //     title = MapOptions[option_int].Item2;
+            // }
 
 
             if (reset)
@@ -153,8 +159,16 @@ namespace Script.UI.Panel.Auto.DeskPet
             ImageComp.SetLineOffset(line_offset);
 
         }
-        float _countDown = 0.5f;   // 1s间隔实例 
-        Vector2Int _playerPos;
+
+        #region Update
+        float _countDown = 0.5f;    // 1s间隔实例 
+        int _map_frame;             // 地图帧序
+
+
+        int _index;
+        int _max_index;
+        string _debug_dir;
+
         void Update()
         {
             float delta = Time.deltaTime;
@@ -164,34 +178,53 @@ namespace Script.UI.Panel.Auto.DeskPet
             if (_countDown <= 0)
             {
                 _countDown = 0.5f;
-                if (_mapData != null && _optionSelectStatus > -1
-                    && _option == Options.FindNearestFogFollowing)
-                {
 
-                    var playerPos = _mapData.GetPlayerPos();
-                    if (playerPos != _playerPos)
+                _scriptId = parent.ScriptId;
+                _mapData = GetMapData(_scriptId, out _);
+                var option_condition = _option == Options.FindNearestFogFollowing
+                    || _option == Options.FollowTarget || _option == Options.Auto;
+
+                if (_mapData != null && _optionSelectStatus > -1 && option_condition)
+                {
+                    var map_frame = _mapData.FrameCount;
+                    if (map_frame != _map_frame)
                     {
-                        _playerPos = playerPos;
-                        DU.RunWithTimer(() =>
-                        {
-                            OnSelectTipsComp(_optionSelectStatus);
-                        }, "图像自动更新");
+                        _map_frame = map_frame;
+                        // DU.RunWithTimer(() =>
+                        // {
+                        OnSelectTipsComp(_optionSelectStatus);
+                        // }, "Update");
                     }
+                }
+                if (_mapData == null)
+                {
+                    ClearComp();
                 }
             }
 
+            // Debug
+            if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.Space) && _mapData != null && _index <= _max_index)
+            {
+                var file_path = _debug_dir + $"/{_index++}.png";
+                var colors = IU.BitmapToColor32(new Bitmap(file_path));
+                _mapData.Capture(colors);
+                _mapData.PrintResult();
+            }
 
-            // if (Input.GetKeyDown(KeyCode.Space) && _mapData != null && _index <= _max_index)
-            // {
-            //     var file_path = _debug_dir + $"/{_index++}.png";
-            //     _mapData.Capture(new Bitmap(file_path));
-            //     _mapData.PrintResult();
-            // }
+            if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.Return))
+            {
+                MapDataManager.Inst.Remove("Map-22");
+                MapDataManager.Inst.Create("Map-22", new CVRect(0, 0, 200, 200));
+                _mapData = MapDataManager.Inst.Get("Map-22");
+                _index = 15; _max_index = 26; _debug_dir = @"D:\unityProject\MyProject_Resource\P3P4";
+                DU.LogWarning("【重置地图数据】成功");
+            }
         }
 
-        int _index = 31;
-        int _max_index = 111;
-        string _debug_dir = @"D:\unityProject\MyProject\TestResource\图\0.2间隔";
+        #endregion
+
+
+
 
         void ClearComp()
         {

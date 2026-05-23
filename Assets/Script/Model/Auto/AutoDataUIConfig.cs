@@ -1,6 +1,8 @@
 
+using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 using Script.Util;
 
 namespace Script.Model.Auto
@@ -8,47 +10,30 @@ namespace Script.Model.Auto
 
     public static class AutoDataUIConfig
     {
-        public static List<NodeType> NodeTypes = new List<NodeType>()
+        public static List<(NodeType, string)> NodeTypes = new List<(NodeType, string)>()
         {
-            NodeType.TemplateMatchOper,
-            NodeType.MouseOper,
-            NodeType.KeyBoardOper,
-            NodeType.AssignOper,
-            NodeType.ConditionOper,
-            NodeType.WaitOper,
-            NodeType.TriggerEvent,
-            NodeType.ListenEvent,
-            NodeType.MapCapture,
-            NodeType.MapPathFinding,
-            NodeType.StopScript,
-        };
+            (NodeType.CaptureOper,SU.JieTu),
+            (NodeType.TemplateMatchOper,SU.MoBanPiPei),
+            (NodeType.AssignOper,SU.FuZhi),
+            (NodeType.ConditionOper,SU.TiaoJianPanDuan),
+            (NodeType.ForOper,SU.XunHuan),
+            (NodeType.MouseOper,SU.ShuBiao),
+            (NodeType.KeyBoardOper,SU.JianPan),
+            (NodeType.WaitOper,SU.DengDai),
+            (NodeType.TriggerEvent,SU.ChuFaShiJian),
+            (NodeType.ListenEvent,SU.JianTingShiJian),
+            (NodeType.StopScript,SU.ZanTingJiaoBen),
+            (NodeType.MapCapture,SU.DiTuShiBie),
+            (NodeType.MapPathFinding,SU.DiTuXunLu),
+            (NodeType.ItemGridRecog,SU.WuPingGeShiBie),
 
-        public static Dictionary<NodeType, string> NodeTypeNames = new Dictionary<NodeType, string>()
-        {
-            { NodeType.TemplateMatchOper, "模版匹配" },
-            { NodeType.MouseOper, "鼠标" },
-            { NodeType.KeyBoardOper, "键盘" },
-            { NodeType.AssignOper, "赋值" },
-            { NodeType.ConditionOper, "条件" },
-            { NodeType.WaitOper, "等待" },
-            { NodeType.TriggerEvent, "事件触发" },
-            { NodeType.ListenEvent, "事件监听" },
-            { NodeType.MapCapture, "地图识别 "},
-            { NodeType.MapPathFinding, "地图寻路" },
-            { NodeType.StopScript, "暂停脚本" },
         };
 
         public static List<string> GetNodeTypeNameList()
         {
-            var list = new List<string>();
-            foreach (var type in NodeTypes)
-            {
-                list.Add(NodeTypeNames[type]);
-            }
+            var list = NodeTypes.ConvertAll(t => SU.GetString(t.Item2));
             return list;
         }
-
-
 
         #region 键盘UI
         public static Dictionary<KeyboardEnum, string> KeyboardEnum2Name = new Dictionary<KeyboardEnum, string>()
@@ -110,6 +95,17 @@ namespace Script.Model.Auto
             { KeyboardEnum.X, "X" },
             { KeyboardEnum.Y, "Y" },
             { KeyboardEnum.Z, "Z" },
+            { KeyboardEnum.Comma, "," },
+            { KeyboardEnum.Period, "." },
+            { KeyboardEnum.Semicolon, ";" },
+            { KeyboardEnum.Quote, "'" },
+            { KeyboardEnum.Slash, "/" },
+            { KeyboardEnum.Backslash, "\\" },
+            { KeyboardEnum.BracketLeft, "[" },
+            { KeyboardEnum.BracketRight, "]" },
+            { KeyboardEnum.Minus, "-" },
+            { KeyboardEnum.Equals, "=" },
+            { KeyboardEnum.Grave, "`" },
         };
         public static Dictionary<string, KeyboardEnum> _keyboardName2Enum;
         public static Dictionary<string, KeyboardEnum> _keyboardLowercaseName2Enum;
@@ -199,9 +195,9 @@ namespace Script.Model.Auto
 
         public static Dictionary<KeyBoardOperType, string> KeyboardOperTypeNames = new Dictionary<KeyBoardOperType, string>()
         {
-            { KeyBoardOperType.FullPress, "敲键" },
-            { KeyBoardOperType.KeyDown, "只按下" },
-            { KeyBoardOperType.KeyUp, "只抬起" },
+            { KeyBoardOperType.FullPress, SU.QiaoJian },
+            { KeyBoardOperType.KeyDown, SU.ZhiAnXia },
+            { KeyBoardOperType.KeyUp, SU.ZhiTaiQi },
 
         };
 
@@ -210,7 +206,7 @@ namespace Script.Model.Auto
             var list = new List<string>();
             foreach (var type in KeyboardOperTypes)
             {
-                list.Add(KeyboardOperTypeNames[type]);
+                list.Add(SU.GetString(KeyboardOperTypeNames[type]));
             }
             return list;
         }
@@ -222,9 +218,9 @@ namespace Script.Model.Auto
 
         public static List<string> MouseClickTypes = new List<string>()
         {
-            "左键",
-            "右键",
-            "移动",
+            SU.ZuoJian,
+            SU.YouJian,
+            SU.YiDong,
         };
 
         #endregion
@@ -232,26 +228,35 @@ namespace Script.Model.Auto
 
         #region 赋值UI
 
+        /// <summary>
+        /// 保持本块结构
+        /// </summary>
         public static List<FormulaVarType> VarTypes = new List<FormulaVarType>()
         {
             FormulaVarType.Undefined,
             FormulaVarType.Float,
+            FormulaVarType.Bool,
             FormulaVarType.Vector2,
             FormulaVarType.Vector4,
             FormulaVarType.ListFloat,
             FormulaVarType.ListVector2,
             FormulaVarType.ListVector4,
+            FormulaVarType.String,
+            FormulaVarType.ListString,
         };
 
         public static Dictionary<string, FormulaVarType> VarName2Type = new Dictionary<string, FormulaVarType>()
         {
             { "undef", FormulaVarType.Undefined },
             { "float", FormulaVarType.Float },
+            { "bool", FormulaVarType.Bool },
             { "vector2", FormulaVarType.Vector2 },
             { "vector4", FormulaVarType.Vector4 },
+            { "string", FormulaVarType.String },
             { "float[]", FormulaVarType.ListFloat },
             { "vector2[]", FormulaVarType.ListVector2 },
             { "vector4[]", FormulaVarType.ListVector4 },
+            { "string[]", FormulaVarType.ListString },
         };
 
         private static Dictionary<FormulaVarType, string> _varType2Name;
@@ -285,31 +290,39 @@ namespace Script.Model.Auto
             }
         }
 
+        public static FormulaVarType ConvertVarType(FormulaVarType type, bool has_bracket)
+        {
+            if (has_bracket)
+                switch (type)
+                {
+                    case FormulaVarType.ListFloat: return FormulaVarType.Float;
+                    case FormulaVarType.ListVector2: return FormulaVarType.Vector2;
+                    case FormulaVarType.ListVector4: return FormulaVarType.Vector4;
+                    case FormulaVarType.ListString: return FormulaVarType.String;
+                }
+            return type;
+        }
+
         #endregion
 
 
         #region 地图寻路UI
 
-        public static List<PathFindingType> MapPFTypes = new List<PathFindingType>()
+        public static List<(PathFindingType, string)> MapPFTypes = new List<(PathFindingType, string)>()
         {
-            PathFindingType.ExploreFog,
-            PathFindingType.SearchTarget,
-            PathFindingType.KillAllTarget,
+            (PathFindingType.Undefined, SU.Wu),
+            (PathFindingType.ExploreFog, SU.TanSuoMiWu) ,
+            (PathFindingType.FollowPlayer, SU.GenSuiMuBiao) ,
+            (PathFindingType.ReachPos, SU.QuWangMuDiDi) ,
         };
 
-        public static Dictionary<PathFindingType, string> MapPFTypeNames = new Dictionary<PathFindingType, string>()
-        {
-            { PathFindingType.ExploreFog, "探索迷雾" },
-            { PathFindingType.SearchTarget, "搜寻目标" },
-            { PathFindingType.KillAllTarget, "消灭全部目标" },
-        };
 
         public static List<string> GetMapPFTypeNameList()
         {
             var list = new List<string>();
             foreach (var type in MapPFTypes)
             {
-                list.Add(MapPFTypeNames[type]);
+                list.Add(SU.GetString(type.Item2));
             }
 
             return list;
@@ -345,10 +358,18 @@ namespace Script.Model.Auto
             var result = new StringBuilder();
             for (int i = 0; i < list.Count; i++)
             {
+                string front = i > 0 ? list[i - 1] : "";
+                string back = i < list.Count - 1 ? list[i + 1] : "";
+
                 var token = list[i];
                 if (IsSymbol(token))
                 {
-                    if (token == "(" || token == ")" || token == "{" || token == "}" || token == ".")
+                    if (token == "(" || token == ")"  || token == "}" || token == "."
+                        || token == "\"")
+                        result.Append(token);
+                    else if (token == ";" || token == "," || token == "{")
+                        result.Append($"{token} ");
+                    else if (front == "\"" || back == "\"")
                         result.Append(token);
                     else
                         result.Append($" {token} ");
@@ -362,8 +383,7 @@ namespace Script.Model.Auto
             return result.ToString();
         }
 
-        static System.Text.RegularExpressions.Regex _tokenizeRegex =
-            new System.Text.RegularExpressions.Regex(@">=|<=|==|!=|&&|\|\||[+\-*/()=,><.\{\}:\?;]");
+        static Regex _tokenizeRegex = new Regex(@">=|<=|==|!=|&&|\|\||\[|\]|[+\-*/()=,><.\{\}:\?;""]");
         // 将表达式字符串分割成 运算符与操作数。一次性全部完成
         public static List<string> TokenizeFormat(string expression)
         {
@@ -371,20 +391,16 @@ namespace Script.Model.Auto
             var matches = _tokenizeRegex.Matches(expression);
 
             var temp = expression;
-            int index = -1;
 
-            foreach (System.Text.RegularExpressions.Match match in matches)
+            int cursor = 0;
+            foreach (Match match in matches)
             {
                 var oper = match.Value;
-                index = temp.IndexOf(oper, index + 1);
+                var index = match.Index - cursor;
 
                 // 如果"-"后面是数字, 则跳过
-                if (oper == "-" && index < temp.Length - 1)
-                {
-                    var next_char = temp[index + 1];
-                    if (next_char >= '0' && next_char <= '9')
-                        continue;
-                }
+                if (oper == "-" && index == 0)
+                    continue;
 
                 if (index > 0)
                 {
@@ -394,8 +410,9 @@ namespace Script.Model.Auto
 
                 tokens.Add(oper);                              //运算符
 
-                temp = temp.Substring(index + oper.Length);    //即使传入temp.Length属于特殊情况不会报错，返回空串
-                index = -1;
+                int next_start = index + oper.Length;
+                temp = temp.Substring(next_start);    //即使传入temp.Length属于特殊情况不会报错，返回空串
+                cursor += next_start;
             }
 
             if (temp.Length > 0)
@@ -409,27 +426,42 @@ namespace Script.Model.Auto
 
         #region Other
         // 搜索匹配的变量名
-        // 要求: 小写变量名能搜出来大写的变量名
-        public static List<string> GetAssignMatchList(string search, Dictionary<string, FormulaVarInfo_Edit> varRef)
+        // 要求: 除了开头第一个字母不变，小写变量名能搜出来大写的变量名
+        public static List<TipMatchItem> GetAssignMatchList(string search, List<TipMatchItem> varRef)
         {
-            List<string> r = new List<string>();
+            int MatchLimit = 20;
+
+            List<TipMatchItem> r = new List<TipMatchItem>();
             if (string.IsNullOrEmpty(search))
                 return r;
 
-            search = search.ToLower();
+            if (search.Length > 1)
+                search = search.Substring(0, 1) + search.Substring(1, search.Length - 1).ToLower();
 
-            foreach (var var_info in varRef.Values)
-                if (var_info.VarNameLower.Contains(search))
-                    r.Add(var_info.VarName);
+            foreach (TipMatchItem match in varRef)
+            {
+                if (match.MatchStr.StartsWith(search))
+                    r.Add(match);
+                if (r.Count >= MatchLimit)
+                    break;
+            }
 
-            Utils.CommonSort(r);
+            r.Sort((aI, bI) =>
+            {
+                var a = aI.OriStr;
+                var b = bI.OriStr;
+                if (a.Length != b.Length)
+                    return a.Length.CompareTo(b.Length);
+                else
+                    return string.Compare(a, b, StringComparison.Ordinal);
+            });
             return r;
         }
 
         // 搜索匹配的事件名，编辑监听节点的事件名时提示已存在的事件。
         // 要求: 小写变量名能搜出来大写的变量名
         public static List<string> GetEventMatchList(string search
-                    , Dictionary<string, (List<TriggerEventNode>, string)> varRef)
+                    , Dictionary<string, (List<TriggerEventNode>, string, bool)> varRef)
         {
             List<string> r = new List<string>();
             if (string.IsNullOrEmpty(search))
@@ -451,9 +483,11 @@ namespace Script.Model.Auto
 
         // 提取在编辑中的表达式中最后一个关键词
         // 光标放到带有"." 目前会失效
-        public static void GetAssignKeyword(string formula, int cursorPos, out string keyword, out int startIndex)
+        public static void GetAssignKeyword(string formula, int cursorPos,
+                                            out string keyword, out int startIndex, out string back)
         {
             keyword = "";
+            back = "";
             startIndex = 0;
 
             var index = cursorPos - 1;
@@ -463,11 +497,14 @@ namespace Script.Model.Auto
 
             int start = 0;
             var last_token = list[0];
-            foreach (var token in list)
+            var key_index = 0;
+            for (var i = 0; i < list.Count; i++)
             {
+                var token = list[i];
                 if (index - start - token.Length < 0)
                 {
                     last_token = token;
+                    key_index = i;
                     break;
                 }
 
@@ -479,6 +516,10 @@ namespace Script.Model.Auto
 
             keyword = last_token;
             startIndex = start;
+            if (key_index + 1 < list.Count)
+            {
+                back = list[key_index + 1];
+            }
         }
 
         // 不含"="表达式
@@ -499,18 +540,19 @@ namespace Script.Model.Auto
                 if (_operators.Contains(token) && (lastToken == null || _operators.Contains(lastToken)))
                     return false; // 连续运算符或开头是运算符
 
-                var is_method = token.IndexOf("{") >= 0;
-                if (is_method)
-                {
-                    if (token.IndexOf("}") < 0) return false; // 不完整
-                    // 方法变量
-                    RPNCalculator.GetMethodParseResult(token, out _, out string[] param_list);
-                    foreach (var param in param_list)
-                    {
-                        if (!ExpressionIsLegal(param))
-                            return false;
-                    }
-                }
+                // 以后要换思路写了
+                // var is_method = token.IndexOf("{") >= 0;
+                // if (is_method)
+                // {
+                //     if (token.IndexOf("}") < 0) return false; // 不完整
+                //     // 方法变量
+                //     RPNCalculator.GetMethodParseResult(token, out _, out string[] param_list);
+                //     foreach (var param in param_list)
+                //     {
+                //         if (!ExpressionIsLegal(param))
+                //             return false;
+                //     }
+                // }
 
                 lastToken = token;
             }
@@ -556,5 +598,17 @@ namespace Script.Model.Auto
             return true;
         }
         #endregion
+    }
+
+    public struct TipMatchItem
+    {
+        public string OriStr;
+        public string MatchStr;
+        public int Type;            // 0-变量；1-方法名
+
+        public TipMatchItem(string oriStr, string matchStr, int type)
+        {
+            OriStr = oriStr; MatchStr = matchStr; Type = type;
+        }
     }
 }

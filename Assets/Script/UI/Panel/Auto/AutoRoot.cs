@@ -18,49 +18,25 @@ namespace Script.UI.Panel.Auto
         protected static AutoRoot inst;
         public static AutoRoot Inst { get { return inst; } }
 
+
         void Awake()
         {
             base.Awake();
             inst = this;
-
-            // WU.Init();
-            // WU.AddMouseListener(MouseRecord);
-            // WU.AddKeyboardListener(KeyboardRecord);
         }
 
-        void OnDestroy()
-        {
-            // WU.RemoveMouseListener(MouseRecord);
-            // WU.RemoveKeyboardListener(KeyboardRecord);
-            // WU.Release();
-
-        }
 
         void Start()
         {
+            base.Start();
+
+            Application.targetFrameRate = 30;
+            AutoScriptManager.Inst.Init();
+
             // 打开桌宠
-            PanelUtil.PanelDefineDic[PanelEnum.DeskPetMain].InitPos = 
-                new Vector2(100 - Screen.width/2,  Screen.height/2 - 100);
+            PanelUtil.PanelDefineDic[PanelEnum.DeskPetMain].InitPos =
+                new Vector2(100 - Screen.width / 2, Screen.height / 2 - 100);
             UIManager.Inst.ShowPanel(PanelEnum.DeskPetMain, null);
-
-            // 获取 System.Drawing 的加载路径
-            // string assemblyPath = typeof(Bitmap).Assembly.Location;
-            // DU.LogWarning($"System.Drawing.dll is loaded from: {assemblyPath}");
-        }
-
-        void KeyboardRecord(KeyboardHookEnum action, WU.KBDLLHOOKSTRUCT hookStruct)
-        {
-
-            // 普通键，
-            if (action == KeyboardHookEnum.KeyDown)
-            {
-                if (hookStruct.vkCode == (uint)KeyboardEnum.Esc)
-                {
-                    string id = DrawProcessPanel.LastOpenId;
-                    AutoScriptManager.Inst.StopScript(id);
-                }
-            }
-
         }
 
 
@@ -74,53 +50,10 @@ namespace Script.UI.Panel.Auto
             //     UIManager.Inst.ShowPanel(PanelEnum.HeroDetailPanel, null);
             // }
 
+            float delta = Time.deltaTime;
+            AutoScriptManager.Inst.OnUpdate(delta);
 
-            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.L))
-            {
-                UIManager.Inst.ShowPanel(PanelEnum.ProcessNodeInfoPanel, null);
-            }
 
-            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.O))
-            {
-                //模拟数据
-                var data = new List<string>();
-                for (int i = 0; i < 100; i++)
-                {
-                    string str = $"Item {i}";
-                    if (i % 2 == 0)
-                    {
-                        str += " - 这是一个测试文本，用于展示虚拟列表的功能。";
-                    }
-                    else
-                    {
-                        str += " - 这是一个测试文本，用于展示虚拟列表的功能。内容会翻个几倍，看看效果如何。内容会翻个几倍，看看效果如何。内容会翻个几倍，看看效果如何。内容会翻个几倍，看看效果如何。";
-                    }
-                    data.Add(str);
-                }
-                UIManager.Inst.ShowPanel(PanelEnum.LogPrintPanel, data);
-            }
-
-            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.A))
-            {
-                var data = new List<string>() { "MatchSource/folder.png", "MatchTemplate/folder_transparent.png" };
-                UIManager.Inst.ShowPanel(PanelEnum.PicMatchFloat, data);
-            }
-
-            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.S))
-            {
-                UIManager.Inst.ShowPanel(PanelEnum.ScriptManagerPanel, null);
-            }
-
-            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.D))
-            {
-                string id = DrawProcessPanel.LastOpenId;
-                if (id != null)
-                    Utils.OpenDrawProcessPanel(id);
-            }
-            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.T))
-            {
-                UIManager.Inst.ShowPanel(PanelEnum.ImageMatchTestPanel, null);
-            }
 
             if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.C))
             {
@@ -141,5 +74,11 @@ namespace Script.UI.Panel.Auto
         {
             TransparentWindow.Main.ShowWindow();
         }
+
+        void OnDestroy()
+        {
+            AutoScriptManager.Inst.OnDestroy();
+        }
+
     }
 }

@@ -1,10 +1,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using Microsoft.Win32.SafeHandles;
 using OpenCvSharp;
+using Script.Framework.Else;
 using Script.Model.Auto;
 using Script.Util;
 using UnityEngine;
@@ -17,72 +21,133 @@ namespace Script.Test
         public static TestExecutionTime Inst
         { get { if (_inst == null) _inst = new TestExecutionTime(); return _inst; } }
 
+
+        private static bool _dummyBool;
+        private static bool _dummyBool1;
+        private static bool _dummyBool2;
         /// <summary>
         /// 比较操作
         /// 
         /// 结论：
-        /// int比较-3ms
+        /// int比较 = byte比较 = long比较 -3ms
         /// 枚举比较-3ms
-        /// 字符串比较-至少160ms
-        /// 
+        /// 字符串比较-(长度不一样220ms)(长度一样1000ms)
+        /// 浮点整型互转-50ms
+        /// >=和>耗时相同
         /// </summary>
         public void Test()
         {
+
             //
             DU.RunWithTimer(() =>
             {
                 for (int i = 0; i < 10000000; i++)      //30ms
                 {
-                    var a = (i & (1 << 5)) != 0;
+                    // var a = (i & (1 << 5)) != 0;
                 }
             }, "位与+比较");
 
 
-            DU.RunWithTimer(() =>
-            {
-                var b = BigCellType.AllEmpty;
-                for (int i = 0; i < 10000000; i++)      //30ms
-                {
-                    var a = b == BigCellType.HasObstacle;
-                }
-            }, "枚举比较");
+            // DU.RunWithTimer(() =>
+            // {
+            //     var b = BigCellType.AllEmpty;
+            //     for (int i = 0; i < 10000000; i++)      //30ms
+            //     {
+            //         var a = b == BigCellType.HasObstacle;
+            //     }
+            // }, "枚举比较");
 
             DU.RunWithTimer(() =>
             {
                 var b = 2;
-                for (int i = 0; i < 10000000; i++)      //30ms
+                for (int i = 0; i < 10000000; i++)
                 {
-                    var a = b == 3;
+                    var a = b == 3;                     // 每次6ms
                 }
-            }, "数字比较");
+            }, "整型比较");
 
-            string str = "aasdaxzczxvsdfqwqwcxzvadfadwqqwaasdaxzczxvsdfqwkkkklll";
             DU.RunWithTimer(() =>
             {
-                for (int i = 0; i < 10000000; i++)      //160ms
+                byte b = 2;
+                byte c = 6;
+                for (int i = 0; i < 10000000; i++)
                 {
-                    var a = str == "aasdaxzczxvsdfqwqwcxzvadfadwqqwaasdaxzczxvsdfqwqwcxzvadfadwqqw";
+                    var a = b == c;                     // 每次6ms
+                }
+            }, "byte比较");
+
+            var s1 = DU.RunWithTimer(() =>
+            {
+                bool result = false;
+                bool result1 = false;
+                bool result2 = false;
+                long b = DateTime.UtcNow.Ticks;
+                long c = DateTime.UtcNow.Ticks;
+                long b1 = DateTime.UtcNow.Ticks;
+                long c1 = DateTime.UtcNow.Ticks;
+                long b2 = DateTime.UtcNow.Ticks;
+                long c2 = DateTime.UtcNow.Ticks;
+
+                for (int i = 0; i < 10000000; i++)
+                {
+                    result = b == c;                     // 每次6ms
+                    result1 = b1 == c1;                     // 每次6ms
+                    result2 = b2 == c2;                     // 每次6ms
+                }
+
+                _dummyBool = result;
+                _dummyBool1 = result1;
+                _dummyBool2 = result2;
+            }, "long比较");
+
+            ConsolePrint(s1);
+
+            string str = "aaasdasdasdasfsdfasdfasdfasdfasfaaasdasdasdasfsdfasdfasdfasdfasfaaasdasdasdasfsdfasdfasdfasdfasf";
+            string str1 = "aaasdasdasdasfsdfasdfasdfasdfasfaaasdasdasdasfsdfasdfasdfasdfasfaaasdasdasdasfsdfasdfasdfasdfask";
+            // string str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+            // string str1 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbba";
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)      //看长度
+                {
+                    var a = object.ReferenceEquals(str, str1);                     //
                 }
             }, "字符串比较");
 
-            ClassA a = new ClassA();
-            ClassA b = new ClassA();
-            DU.RunWithTimer(() =>
-            {
-                for (int i = 0; i < 10000000; i++)      //30ms
-                {
-                    var ab = a == b;
-                }
-            }, "引用比较");
+            // ClassA a = new ClassA();
+            // ClassA b = new ClassA();
+            // DU.RunWithTimer(() =>
+            // {
+            //     for (int i = 0; i < 10000000; i++)      //30ms
+            //     {
+            //         var ab = a == b;
+            //     }
+            // }, "引用比较");
 
-            DU.RunWithTimer(() =>
-            {
-                for (int i = 0; i < 10000000; i++)      //30ms
-                {
-                    float a = i;
-                    int b = (int)a;
-                }
-            }, "浮点整型互转");
+            // DU.RunWithTimer(() =>
+            // {
+            //     for (int i = 0; i < 10000000; i++)      //30ms
+            //     {
+            //         float a = i;
+            //         int b = (int)a;
+            //     }
+            // }, "浮点整型互转");
+
+
+            // DU.RunWithTimer(() =>
+            // {
+            //     for (int i = 0; i < 10000000; i++)      //35ms
+            //     {
+            //         bool k = 3 >= 2;
+            //     }
+            // }, ">=比较");
+            // DU.RunWithTimer(() =>
+            // {
+            //     for (int i = 0; i < 10000000; i++)      //35ms
+            //     {
+            //         bool k = 3 > 2;
+            //     }
+            // }, ">比较");
         }
         Vector2Int forTest1_a;
         int forTest1_b;
@@ -352,6 +417,9 @@ namespace Script.Test
 
         }
 
+        /// <summary>
+        /// 一次最少1ms，随着图变大，匹配次数变多，会慢慢涨。平均20ms
+        /// </summary>
         public void Test7()
         {
             var pathI = $"{Application.streamingAssetsPath}/木质1.png";
@@ -435,15 +503,6 @@ namespace Script.Test
                 for (int i = 0; i < 1000000; i++)    // 42ms 
                 {
                     var k = a.b.a;
-                    k = a.b.a;
-                    k = a.b.a;
-                    k = a.b.a;
-                    k = a.b.a;
-                    k = a.b.a;
-                    k = a.b.a;
-                    k = a.b.a;
-                    k = a.b.a;
-                    k = a.b.a;
                 }
             }, $"暂存对象字段，再访问");
 
@@ -452,15 +511,6 @@ namespace Script.Test
                 for (int i = 0; i < 1000000; i++)    // 36ms 
                 {
                     var a = b;
-                    a = b;
-                    a = b;
-                    a = b;
-                    a = b;
-                    a = b;
-                    a = b;
-                    a = b;
-                    a = b;
-                    a = b;
                 }
             }, $"访问栈对象");
             // DU.RunWithTimer(() =>
@@ -501,8 +551,9 @@ namespace Script.Test
         /// <summary>
         /// 测试查字典的耗时。
         /// 
-        /// string字典-1100ms
-        /// int字典-500ms
+        /// string字典-1000ms               真机 300ms
+        /// int字典 = char字典 -500ms       真机 110ms
+        /// Vector2Int字典-1000ms           真机 300ms
         /// </summary>
         public void Test10()
         {
@@ -521,51 +572,98 @@ namespace Script.Test
 
             List<string> list = new List<string>() { "2", "2", "2", "2", "2", "2", "2", "2", "2", "2" };
 
-            DU.RunWithTimer(() =>
+            // DU.RunWithTimer(() =>
+            // {
+            //     for (int i = 0; i < 10000000; i++)    // 30ms 
+            //     {
+            //     }
+            // }, $"空");
+
+            // var s1 = DU.RunWithTimer(() =>
+            //  {
+            //      for (int i = 0; i < 10000000; i++)    // 1800ms
+            //      {
+            //          var k = dic.TryGetValue("2", out _);
+            //      }
+            //  }, $"查string字典 Try");
+            // ConsolePrint(s1);
+
+            // var s2 = DU.RunWithTimer(() =>
+            // {
+            //     for (int i = 0; i < 10000000; i++)    //1200ms
+            //     {
+            //         var k = dic["2"];
+            //     }
+            // }, $"查string字典 []");
+            // ConsolePrint(s2);
+
+            // DU.RunWithTimer(() =>
+            // {
+            //     for (int i = 0; i < 10000000; i++)    // 800ms
+            //     {
+            //         var k = int_dic.TryGetValue(2, out _);
+            //     }
+            // }, $"查int字典 Try");
+
+            var s3 = DU.RunWithTimer(() =>
             {
-                for (int i = 0; i < 10000000; i++)    // 30ms 
+                for (int i = 0; i < 10000000; i++)    //500ms
                 {
+                    var k = int_dic[2];
                 }
-            }, $"空");
+            }, $"查int字典 []");
+            ConsolePrint(s3);
 
-            DU.RunWithTimer(() =>
-           {
-               for (int i = 0; i < 10000000; i++)    // 1800ms
-               {
-                   var k = dic.TryGetValue("2", out _);
-               }
-           }, $"查string字典 Try");
+            // Dictionary<Tuple4Long, string> dic_tuple = new Dictionary<Tuple4Long, string>();
+            // var tuple_item = new Tuple4Long(1, 1, 1, 1);
+            // dic_tuple[tuple_item] = "good";
 
-            DU.RunWithTimer(() =>
-           {
-               for (int i = 0; i < 10000000; i++)    //1200ms
-               {
-                   var k = dic["2"];
-               }
-           }, $"查string字典 []");
-            DU.RunWithTimer(() =>
-           {
-               for (int i = 0; i < 10000000; i++)    // 800ms
-               {
-                   var k = int_dic.TryGetValue(2, out _);
-               }
-           }, $"查int字典 Try");
+            // var s4 = DU.RunWithTimer(() =>
+            // {
+            //     for (int i = 0; i < 10000000; i++)    //500ms
+            //     {
+            //         var k = dic_tuple[tuple_item];
+            //     }
+            // }, $"查Tuple5Long字典 []");
+            // ConsolePrint(s4);
 
-            DU.RunWithTimer(() =>
-           {
-               for (int i = 0; i < 10000000; i++)    //500ms
-               {
-                   var k = int_dic[2];
-               }
-           }, $"查int字典 []");
 
-            //     DU.RunWithTimer(() =>
-            //    {
-            //        for (int i = 0; i < 10000000; i++)    //8000ms
-            //        {
-            //            var k = list.IndexOf("3");
-            //        }
-            //    }, $"查string list");
+            // Dictionary<Vector2Int, string> dic_v2 = new Dictionary<Vector2Int, string>();
+            // var v2_item = new Vector2Int(1, 1);
+            // dic_v2[v2_item] = "good";
+            // var s5 = DU.RunWithTimer(() =>
+            // {
+            //     for (int i = 0; i < 10000000; i++)    
+            //     {
+            //         var k = dic_v2[v2_item];
+            //     }
+            // }, $"查Vector2Int字典 []");
+            // ConsolePrint(s5);
+
+            Dictionary<char, string> dic_c = new Dictionary<char, string>();
+            var c_item = 'c';
+            dic_c[c_item] = "good";
+            var s6 = DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)
+                {
+                    var k = dic_c[c_item];
+                }
+            }, $"查char字典 []");
+            ConsolePrint(s6);
+
+
+            var hashset = new HashSet<string>();
+            string key = "MwD2D2YA0vB/AMGABfAHCIL9A38PYwALAAcA";
+            hashset.Add(key); 
+            var s7 = DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)    //
+                {
+                    bool k = hashset.Contains(key);
+                }
+            }, $"查string集合");
+            ConsolePrint(s7);
         }
         /// <summary>
         /// 测试截图性能,
@@ -702,39 +800,430 @@ namespace Script.Test
         /// 空方法-50ms
         /// float.TryParse()-8000ms
         /// string.IndexOf()-5000ms
+        /// Screen.height()-500ms
+        /// Array.Copy()比for要快10倍
         /// </summary>
         public void Test14()
         {
+            int[] list1 = new int[10000000];
+            int[] list2 = new int[10000000];
 
             DU.RunWithTimer(() =>
            {
-               for (int i = 0; i < 1000000; i++)
+               for (int i = 0; i < 10000000; i++)
                {
-                   EmptyMethod();                   // 50ms
+                   //    EmptyMethod();                   
                }
            }, $"空方法");
 
+
             DU.RunWithTimer(() =>
            {
-               for (int i = 0; i < 1000000; i++)
+               for (int i = 0; i < 100; i++)
                {
-                   float.TryParse("3.14", out var f);
+                   Array.Copy(list1, list2, 1000000);     //200ms 0.02         
                }
-           }, $"float.TryParse()");
+           }, $"数组拷贝");
+
+            //     DU.RunWithTimer(() =>
+            //    {
+            //        for (int i = 0; i < 1000000; i++)
+            //        {
+            //            float.TryParse("3.14", out var f);
+            //        }
+            //    }, $"float.TryParse()");
+
+            //     DU.RunWithTimer(() =>
+            //     {
+            //         for (int i = 0; i < 1000000; i++)
+            //         {
+            //             var is_method = "ssssaaadfasddass".IndexOf("{") >= 0;
+            //         }
+            //     }, $"string.IndexOf()");
+
+            // DU.RunWithTimer(() =>
+            // {
+            //     for (int i = 0; i < 10000000; i++)
+            //     {
+            //         var k = Screen.height;
+            //     }
+            // }, $"Screen.height()");
+
+        }
+
+        /// <summary>
+        /// 图像识别专场
+        /// 几乎一样的。如果要转到Color32[] 则会耗时激增—50ms。转到Vec3b[]—1ms
+        /// </summary>
+        public void Test15()
+        {
+            Mat mat = IU.GetMat($"{Application.streamingAssetsPath}/木质1.png");
+            Bitmap bitmap = new Bitmap($"{Application.streamingAssetsPath}/木质1.png");
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 100; i++)       // 50ms
+                {
+                    var colors = IU.BitmapToColor32(bitmap);
+                }
+            }, $"BitmapToColor32()");
+
 
             DU.RunWithTimer(() =>
             {
-                for (int i = 0; i < 1000000; i++)
+                for (int i = 0; i < 100; i++)       // 50ms
                 {
-                    var is_method = "ssssaaadfasddass".IndexOf("{") >= 0;
+                    var colors = IU.MatToColor32(mat);
                 }
-            }, $"string.IndexOf()");
+            }, $"MatToColor32()");
+
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void EmptyMethod()
         {
 
+        }
+
+        /// <summary>
+        /// 1层遍历比2层遍历略微快一些
+        /// </summary>
+        public void Test16()
+        {
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)       // 24ms
+                {
+                }
+            }, $"1层遍历");
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000; i++)       // 28ms
+                {
+                    for (int j = 0; j < 1000; j++)
+                    {
+
+                    }
+                }
+            }, $"2层遍历");
+        }
+
+        /// <summary>
+        /// 列表专题
+        /// 自定义的SList 性能优于 系统自带List。它没有额外开销
+        /// 
+        /// 真机上，循环开销可以忽略不计。方法可以内联
+        /// </summary>
+        public void Test17()
+        {
+            var s1 = DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)       // 真机6ms
+                {
+
+                }
+            }, $"空");
+            ConsolePrint(s1);
+
+            var List = new List<int>(10000000);
+
+            var s2 = DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)       // 真机8ms
+                {
+                    var a = List.Count;
+                }
+            }, $"系统List.Count访问");
+            ConsolePrint(s2);
+
+            var s3 = DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)       // 真机26ms
+                {
+                    List.Add(i);
+                }
+            }, $"系统List.Add()");
+            ConsolePrint(s3);
+
+            var s4 = DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)       // 真机31ms
+                {
+                    var a = List[i];
+                }
+            }, $"系统List取值");
+            ConsolePrint(s4);
+
+            var s5 = DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)       // 真机38ms
+                {
+                    List[i] = i;
+                }
+            }, $"系统List赋值");
+            ConsolePrint(s5);
+
+
+            SList<int> l = new SList<int>(10000000);
+
+            var s6 = DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)       // 真机6.7ms
+                {
+                    var a = l.Count;
+                }
+            }, $"自定义SList.Count访问");
+            ConsolePrint(s6);
+
+            var s7 = DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)       // 真机22.5ms
+                {
+                    // l[l.Count++] = i;
+                    l.Add(i);                // 测试下来，居然Count++(完整的内存读写)的耗时最高，
+                }
+            }, $"自定义SList.Add()");
+            ConsolePrint(s7);
+
+
+            var s8 = DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)       // 真机10ms
+                {
+                    var a = l[i];
+                    var b = l[i];
+                    var c = l[i];
+                }
+            }, $"自定义SList取值");
+            ConsolePrint(s8);
+
+            var s9 = DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)       // 真机10.6ms
+                {
+                    l[i] = i;
+                    l[i] = i;
+                    l[i] = i;
+                }
+            }, $"自定义SList赋值");
+            ConsolePrint(s9);
+
+        }
+
+
+        public void ConsolePrint(string str)
+        {
+            AutoScriptManager.Inst.AddLog(ScriptLogType.Warning, str);
+        }
+
+        /// <summary>
+        /// 循环与if嵌套
+        /// 结论：1.能把if移到外面的尽量移外面去。
+        /// 2.switch能够加速 if逻辑
+        /// </summary>
+        public void Test18()
+        {
+            var type = 20;
+
+            var s1 = DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)      // 编辑器 370ms | 67ms(项数变多，耗时没有涨)
+                {                                       // 真机 30ms | 12ms(项数变多，会涨)
+                    var b = 0;
+                    if (type == 1)
+                        b = 1;
+                    else if (type == 2)
+                        b = 2;
+                    else if (type == 3)
+                        b = 3;
+                    else if (type == 4)
+                        b = 4;
+                    else if (type == 5)
+                        b = 5;
+                    else if (type == 6)
+                        b = 6;
+                    else if (type == 7)
+                        b = 7;
+                    else if (type == 8)
+                        b = 8;
+                    else if (type == 9)
+                        b = 9;
+                    else if (type == 10)
+                        b = 10;
+                    else if (type == 11)
+                        b = 11;
+                    else if (type == 12)
+                        b = 12;
+                    else if (type == 13)
+                        b = 13;
+                    else if (type == 14)
+                        b = 14;
+                    else if (type == 15)
+                        b = 15;
+                    else if (type == 16)
+                        b = 16;
+                    else if (type == 17)
+                        b = 17;
+                    else if (type == 18)
+                        b = 18;
+                    else if (type == 19)
+                        b = 19;
+                    else if (type == 20)
+                        b = 20;
+
+                    // switch (type)               // 12ms
+                    // {
+                    //     case 1:
+                    //         b = 1; break;
+                    //     case 2:
+                    //         b = 2; break;
+                    //     case 3:
+                    //         b = 3; break;
+                    //     case 4:
+                    //         b = 4; break;
+                    //     case 5:
+                    //         b = 5; break;
+                    //     case 6:
+                    //         b = 6; break;
+                    //     case 7:
+                    //         b = 7; break;
+                    //     case 8:
+                    //         b = 8; break;
+                    //     case 9:
+                    //         b = 9; break;
+                    //     case 10:
+                    //         b = 10; break;
+                    //     case 11:
+                    //         b = 11; break;
+                    //     case 12:
+                    //         b = 12; break;
+                    //     case 13:
+                    //         b = 13; break;
+                    //     case 14:
+                    //         b = 14; break;
+                    //     case 15:
+                    //         b = 15; break;
+                    //     case 16:
+                    //         b = 16; break;
+                    //     case 17:
+                    //         b = 17; break;
+                    //     case 18:
+                    //         b = 18; break;
+                    //     case 19:
+                    //         b = 19; break;
+                    //     case 20:
+                    //         b = 20; break;
+                    // }
+                }
+            }, $"循环内if判断");
+            ConsolePrint(s1);
+
+            var s2 = DU.RunWithTimer(() =>
+            {
+                var b = 0;
+                if (type == 1)
+                    for (int i = 0; i < 10000000; i++)
+                    {
+                        b = 1;
+                    }
+                else if (type == 2)
+                    for (int i = 0; i < 10000000; i++)
+                    {
+                        b = 2;
+                    }
+                else if (type == 3)
+                    for (int i = 0; i < 10000000; i++)
+                    {
+                        b = 3;
+                    }
+                else if (type == 4)
+                    for (int i = 0; i < 10000000; i++)
+                    {
+                        b = 4;
+                    }
+                else if (type == 5)
+                    for (int i = 0; i < 10000000; i++)
+                    {
+                        b = 5;
+                    }
+                else if (type == 6)
+                    for (int i = 0; i < 10000000; i++)
+                    {
+                        b = 6;
+                    }
+
+            }, $"循环外if判断");
+            ConsolePrint(s2);
+
+        }
+
+
+        /// <summary>
+        /// CopyFromScreen - 27ms         0像素保底-13ms
+        /// </summary>
+        public void Test19()
+        {
+
+            DU.RunWithTimer(() =>
+            {
+                // var size = new System.Drawing.Size(Utils.ScreenWidth, Utils.ScreenHeight);
+                var size = new System.Drawing.Size(Utils.ScreenWidth / 2, Utils.ScreenHeight);
+                // var size = new System.Drawing.Size(1, 1);
+                using (Bitmap screenBmp = new Bitmap(size.Width, size.Height))
+                {
+                    using (System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(screenBmp))
+                    {
+                        //第1、2个参数：屏幕起始坐标（如 0,0）
+                        //第3、4个参数：目标 Bitmap 的起始坐标（如 0,0）
+                        //第5个参数：复制的区域大小
+                        g.CopyFromScreen(0, 0, 0, 0, screenBmp.Size);
+                    }
+                }
+
+            }, $"CopyFromScreen 32");
+
+        }
+
+        /// <summary>
+        /// 字符串专题
+        /// 
+        /// string常量池只包括：string字面量 + 编译期常量拼接。走的是复用内存
+        /// </summary>
+        public void Test20()
+        {
+            DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)       // 48
+                {
+                }
+            }, $"空");
+
+
+            string str = "aaaaaaaaaaa";
+            var s0 = DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)       // 65 _ 17ms  
+                {
+                    char c = str[10];
+                }
+            }, $"string取char");
+            ConsolePrint(s0);
+
+
+            var s1 = DU.RunWithTimer(() =>
+            {
+                for (int i = 0; i < 10000000; i++)       // _3ms
+                {
+                    var c = str.Length;                 // 为字段
+                }
+            }, $"Length");
+
+            // var s2= DU.RunWithTimer(() =>
+            // {
+            //     for (int i = 0; i < 10000000; i++)       // 2000ms
+            //     {
+            //         var c = str.ToCharArray();
+            //     }
+            // }, $"ToCharArray()");
         }
 
     }

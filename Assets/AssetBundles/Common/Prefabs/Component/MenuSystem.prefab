@@ -340,7 +340,6 @@ MonoBehaviour:
   paddingLeft: 0
   spacingX: 0
   spacingY: 0
-  _scrollView: {fileID: 0}
 --- !u!114 &1602377123496562035
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -542,7 +541,6 @@ MonoBehaviour:
   paddingLeft: 0
   spacingX: 0
   spacingY: 0
-  _scrollView: {fileID: 0}
 --- !u!114 &221948587163595817
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -941,7 +939,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "\u6A21\u7248\u5339\u914D"
+  m_Text: Text
 --- !u!1 &4564703023858683942
 GameObject:
   m_ObjectHideFlags: 0
@@ -1154,7 +1152,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "\u6A21\u7248\u5339\u914D"
+  m_Text: Text
 --- !u!1 &5391874705254501070
 GameObject:
   m_ObjectHideFlags: 0
@@ -1234,7 +1232,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "\u6A21\u7248\u5339\u914D"
+  m_Text: Text
 --- !u!1 &5971108580173347147
 GameObject:
   m_ObjectHideFlags: 0
@@ -1823,7 +1821,6 @@ MonoBehaviour:
   paddingLeft: 0
   spacingX: 0
   spacingY: 0
-  _scrollView: {fileID: 0}
 --- !u!114 &709092812670436164
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -23,11 +23,11 @@ namespace Script.UI.Components
             _border_width = border_width;
             RectTransform trans = (RectTransform)transform;
             // 4个边框UI的位置依赖于此节点
-            trans.anchorMin = new Vector2(0, 1);
-            trans.anchorMax = new Vector2(0, 1);
-            trans.pivot = new Vector2(0, 1);
+            trans.anchorMin = new Vector2(0, 0);
+            trans.anchorMax = new Vector2(0, 0);
+            trans.pivot = new Vector2(0, 0);
             trans.sizeDelta = new Vector2(rect.w, rect.h);
-            trans.anchoredPosition = new Vector2(rect.x, -rect.y);
+            trans.anchoredPosition = new Vector2(rect.x, rect.y);
 
             topUI.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, _border_width);
             bottomUI.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, _border_width);

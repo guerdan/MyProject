@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Script.Util;
 using UnityEngine;
 
@@ -11,21 +12,27 @@ namespace Script.Model.Auto
         Float,              //单值
         Vector2,            //双值
         Vector4,            //四值
+        String,             //字符串，需要带"
         ListFloat,          //单值列表
-        ListVector2,        //双值列表
+        ListVector2,        //双值列表 Vector2Int
         ListVector4,        //四值列表
+        ListString,         //字符串列表
+        Bool,               //bool，仅显示用，实际按Float存储
 
     }
 
-    public struct FormulaVarInfo
+    public class FormulaVarInfo
     {
-        public object Value;                            //变量值    
-        public FormulaVarType Type;                     //变量类型
+        public object Value;                            // 变量值    
+        public FormulaVarType Type;                     // 变量类型
+        public bool Dirty;                              // HashSet的重建需要 Dirty。这个设计只能服务一项重建。
+        public object HashSet;                          //     
 
         public FormulaVarInfo(FormulaVarType type, object value)
         {
             Type = type;
             Value = value;
+            Dirty = true;
         }
     }
 
@@ -136,17 +143,18 @@ namespace Script.Model.Auto
         public static readonly string IN_VarName = "IN";
         public event Action OnVarValueChange;
 
+        // 编辑下：统计变量的"赋值"。
+        // 变化时机：1.增赋值节点 2.删赋值节点 3.修改赋值节点
+        private Dictionary<string, FormulaVarInfo_Edit> InEdit_VarRef = new Dictionary<string, FormulaVarInfo_Edit>();
+
+
         private Dictionary<string, AssignFormulaParse> _assignFormulaCache = new Dictionary<string, AssignFormulaParse>();
 
         #region 运行变量
         // 存储运行中的所有变量。 变量不能重名
         private Dictionary<string, FormulaVarInfo> _allVars = new Dictionary<string, FormulaVarInfo>();
 
-
-        // 编辑下：统计变量的"赋值"。
-        // 变化时机：1.增赋值节点 2.删赋值节点 3.修改赋值节点
-        private Dictionary<string, FormulaVarInfo_Edit> InEdit_VarRef = new Dictionary<string, FormulaVarInfo_Edit>();
-
+        #endregion
 
         /// <summary>
         /// 赋值语句。必须指定类型。在UI侧第一次赋值变量需指定类型，后面就可自动提示
@@ -164,7 +172,7 @@ namespace Script.Model.Auto
             }
 
             // 这里解决右边式子的值
-            if (inData.Type != FormulaVarType.Undefined)
+            if (inData != null)
                 _allVars[IN_VarName] = inData;
 
             object v = null;
@@ -180,6 +188,9 @@ namespace Script.Model.Auto
                 case FormulaVarType.Vector4:
                     v = FormulaGetResultV4(rightRPN);
                     break;
+                case FormulaVarType.String:
+                    v = FormulaGetResultString(rightRPN);
+                    break;
                 case FormulaVarType.ListFloat:
                     v = FormulaGetResultFL(rightRPN);
                     break;
@@ -189,10 +200,13 @@ namespace Script.Model.Auto
                 case FormulaVarType.ListVector4:
                     v = FormulaGetResultV4L(rightRPN);
                     break;
+                case FormulaVarType.ListString:
+                    v = FormulaGetResultSL(rightRPN);
+                    break;
             }
 
 
-            if (inData.Type != FormulaVarType.Undefined)
+            if (inData != null)
                 _allVars.Remove(IN_VarName);
 
             RunAssign(parseInfo, type, v);
@@ -205,42 +219,50 @@ namespace Script.Model.Auto
         public void RunAssign(AssignFormulaParse parseInfo, FormulaVarType type, object value)
         {
 
-            var left_index_type = parseInfo.ArrayIndex.Type;
+            var array_index_type = parseInfo.ArrayIndex.Type;
             string var_name = parseInfo.VarName;
             RPN_TokenInfo arrayIndex_token = parseInfo.ArrayIndex;
-            if (left_index_type == RPN_TokenType.Undefined)         // 直接变量赋值
+            if (array_index_type == RPN_TokenType.Undefined)         // 直接变量赋值
             {
-                _allVars[var_name] = new FormulaVarInfo(type, value);
+                if (!_allVars.TryGetValue(var_name, out var var_info))
+                {
+                    var_info = new FormulaVarInfo(type, null);
+                    _allVars[var_name] = var_info;
+                }
+                var_info.Value = value;
             }
             else
             {
+                var var_info = _allVars[var_name];
+                var_info.Dirty = true;
+
                 int index = 0;
-                if (left_index_type == RPN_TokenType.Formula)      //数组的动态索引赋值
+                if (array_index_type == RPN_TokenType.Formula)      //数组的动态索引赋值
                 {
                     index = (int)FormulaGetResult(arrayIndex_token.RawStr);
                 }
-                else if (left_index_type == RPN_TokenType.Float)    //数组的静态索引赋值
+                else if (array_index_type == RPN_TokenType.Float)    //数组的静态索引赋值
                 {
-                    index = (int)arrayIndex_token.Param.F;
+                    index = arrayIndex_token.Param.Int;
                 }
 
                 switch (type)
                 {
                     case FormulaVarType.Float:
                         {
-                            var list = (float[])_allVars[var_name].Value;
+                            var list = (float[])var_info.Value;
                             list[index] = (float)value;
                         }
                         break;
                     case FormulaVarType.Vector2:
                         {
-                            var list = (Vector2[])_allVars[var_name].Value;
+                            var list = (Vector2[])var_info.Value;
                             list[index] = (Vector2)value;
                         }
                         break;
                     case FormulaVarType.Vector4:
                         {
-                            var list = (Vector4[])_allVars[var_name].Value;
+                            var list = (Vector4[])var_info.Value;
                             list[index] = (Vector4)value;
                         }
                         break;
@@ -255,8 +277,16 @@ namespace Script.Model.Auto
 
         public void RunAssign(string var_name, FormulaVarType type, object value)
         {
+            if (var_name == "")
+                return;
             _allVars[var_name] = new FormulaVarInfo(type, value);
             OnVarValueChange?.Invoke();
+        }
+
+        public FormulaVarInfo GetVarValue(string name)
+        {
+            _allVars.TryGetValue(name, out var result);
+            return result;
         }
 
         /// <summary>
@@ -267,9 +297,22 @@ namespace Script.Model.Auto
             return InEdit_VarRef;
         }
 
+        // item1-原字符串 | item2-小写
+        public List<TipMatchItem> GetAllTips()
+        {
+            var result = MethodParseUtil.MethodNameList.ToList();
+            foreach (var value in InEdit_VarRef.Values)
+            {
+                result.Add(new TipMatchItem(value.VarName, value.VarNameLower, 0));
+            }
+            result.Sort((a, b) => a.OriStr.Length - b.OriStr.Length);
+            return result;
+        }
+
+
         public void AddVarRef(string var_name, FormulaVarType var_type, BaseNodeData node)
         {
-            if (var_type == FormulaVarType.Undefined || var_name == "")
+            if (var_type == FormulaVarType.Undefined || string.IsNullOrEmpty(var_name))
                 return;
 
             if (!InEdit_VarRef.TryGetValue(var_name, out FormulaVarInfo_Edit info))
@@ -283,7 +326,7 @@ namespace Script.Model.Auto
 
         public void DeleteVarRef(string var_name, FormulaVarType var_type, BaseNodeData node)
         {
-            if (var_type == FormulaVarType.Undefined || var_name == "")
+            if (var_type == FormulaVarType.Undefined || string.IsNullOrEmpty(var_name))
                 return;
 
             if (InEdit_VarRef.TryGetValue(var_name, out FormulaVarInfo_Edit info))
@@ -296,7 +339,20 @@ namespace Script.Model.Auto
             }
         }
 
-        public bool CheckConditionLegal(string formula)
+        public bool HaveVarRef(string var_name)
+        {
+            return InEdit_VarRef.ContainsKey(var_name);
+        }
+
+        /// <summary>
+        /// 运行时，加入变量的Editor监视。就一份，不用管删。
+        /// </summary>
+        public void AddVarRef_InRun(string field)
+        {
+            if (!HaveVarRef(field))
+                AddVarRef(field, FormulaVarType.ListVector4, null);
+        }
+        public bool CheckForExpressionLegal(string formula)
         {
             string[] expressions = new string[3];
             var index0 = formula.IndexOf(";");
@@ -315,8 +371,12 @@ namespace Script.Model.Auto
 
             return result;
         }
+
         public bool CheckFormulaLegal(string formula, FormulaVarType type)
         {
+            if (type == FormulaVarType.Bool)
+                type = FormulaVarType.Float;
+
             var equal_index = formula.IndexOf("=");
             var var_name = "";
             var left_str = "";
@@ -330,7 +390,6 @@ namespace Script.Model.Auto
                 var_name = "";
             }
 
-            var isLegal = CheckVar(var_name, type);
             var expressions = new string[3];
 
             var index1 = left_str.IndexOf("?");
@@ -340,44 +399,29 @@ namespace Script.Model.Auto
                 expressions[0] = left_str.Substring(0, index1);
                 expressions[1] = left_str.Substring(index1 + 1, index2 - index1 - 1);
                 expressions[2] = left_str.Substring(index2 + 1);
-                isLegal = isLegal
-                            && AutoDataUIConfig.ConditionIsLegal(expressions[0])
-                            && AutoDataUIConfig.ExpressionIsLegal(expressions[1])
-                            && AutoDataUIConfig.ExpressionIsLegal(expressions[2]);
-
+                bool isLegal = AutoDataUIConfig.ConditionIsLegal(expressions[0])
+                        && AutoDataUIConfig.ExpressionIsLegal(expressions[1])
+                        && AutoDataUIConfig.ExpressionIsLegal(expressions[2]);
+                return isLegal;
             }
             else
             {
                 expressions[0] = left_str;
                 expressions[1] = "";
                 expressions[2] = "";
-                isLegal = isLegal && AutoDataUIConfig.ExpressionIsLegal(expressions[0]);
+                bool isLegal = AutoDataUIConfig.ExpressionIsLegal(expressions[0]);
+                return isLegal;
             }
-            return isLegal;
-        }
-
-        public bool CheckFormula(string name, string expression, FormulaVarType type)
-        {
-            return CheckVar(name, type) && AutoDataUIConfig.ExpressionIsLegal(expression);
-        }
-        public bool CheckVar(string name, FormulaVarType type)
-        {
-            if (type == FormulaVarType.Undefined || name == "")
-                return false;
-            // 新声明 或者 类型符合
-            return !GetFormulaVarInfo_Edit(name, out var info) || info.Type == type;
 
         }
+
+
 
         public bool GetFormulaVarInfo_Edit(string name, out FormulaVarInfo_Edit info)
         {
             return InEdit_VarRef.TryGetValue(name, out info);
         }
-        public FormulaVarInfo GetVarValue(string name)
-        {
-            _allVars.TryGetValue(name, out var result);
-            return result;
-        }
+
 
         #region float
 
@@ -427,8 +471,26 @@ namespace Script.Model.Auto
                 // 调用方法
                 switch (method_id)
                 {
-                    case MethodID.F_Add:
+                    case MethodID.Add:
                         return Invoke(Add, param_list);
+                    case MethodID.GetDistance:
+                        return Invoke((Func<Vector2, Vector2, float>)GetDistance, param_list);
+                    case MethodID.EqualV2:
+                        return Invoke((Func<Vector2, Vector2, float>)EqualV2, param_list);
+                    case MethodID.EqualV4:
+                        return Invoke((Func<Vector4, Vector4, float>)EqualV4, param_list);
+                    case MethodID.CompareCol:
+                        return Invoke(CompareCol, param_list);
+                    case MethodID.FindMin:
+                        return Invoke(FindMin, param_list);
+                    case MethodID.FindMax:
+                        return Invoke(FindMax, param_list);
+                    case MethodID.FindMinV2L:
+                        return Invoke(FindMinV2L, param_list);
+                    case MethodID.FindMaxV2L:
+                        return Invoke(FindMaxV2L, param_list);
+                    case MethodID.ContainNumSL:
+                        return Invoke(ContainCountSL, param_list);
                     default:
                         throw new Exception($"方法 {p.Str} 不存在，默认值0");
                 }
@@ -464,14 +526,14 @@ namespace Script.Model.Auto
 
                 return obj.F;
             }
-            else if (tInfo.Type == RPN_TokenType.ArrayVar)
+            else if (tInfo.Type == RPN_TokenType.ArrayIndexOper)
             {
                 var var_name = p.Str;
-                int index = (int)p.F;
+                int index = GetIndexValue(p.Params[0]);
                 if (_allVars.TryGetValue(var_name, out var v))
                     if (v.Type == FormulaVarType.ListFloat)
                     {
-                        var list = (List<float>)v.Value;
+                        var list = (float[])v.Value;
                         return list[index];
                     }
                     else
@@ -494,7 +556,26 @@ namespace Script.Model.Auto
             return FormulaGetResult(tInfo.RawStr);
         }
 
+        int GetIndexValue(RPN_TokenInfo tInfo)
+        {
+            if (tInfo.Type == RPN_TokenType.Float)
+            {
+                return tInfo.Param.Int;
+            }
+            else if (tInfo.Type == RPN_TokenType.Variable)
+            {
+                if (_allVars.TryGetValue(tInfo.RawStr, out var v))
+                    if (v.Type == FormulaVarType.Float)
+                    {
+                        return (int)(float)v.Value;
+                    }
+                    else
+                        throw new Exception($"{tInfo.RawStr}不是Float");
 
+            }
+
+            return 0;
+        }
 
 
         #endregion
@@ -534,7 +615,7 @@ namespace Script.Model.Auto
                 // 调用方法
                 switch (method_id)
                 {
-                    case MethodID.V2_Constructor:
+                    case MethodID.V2_New:
                         return Invoke(V2_Constructor, param_list);
                     case MethodID.V2_GetCenter:
                         return Invoke(GetCenter, param_list);
@@ -542,14 +623,14 @@ namespace Script.Model.Auto
                         throw new Exception($"方法 {p.Str} 不存在，默认值0");
                 }
             }
-            else if (tInfo.Type == RPN_TokenType.ArrayVar)
+            else if (tInfo.Type == RPN_TokenType.ArrayIndexOper)
             {
                 var var_name = p.Str;
-                int index = (int)p.F;
+                int index = GetIndexValue(p.Params[0]);
                 if (_allVars.TryGetValue(var_name, out var v))
                     if (v.Type == FormulaVarType.ListVector2)
                     {
-                        var list = (List<Vector2>)v.Value;
+                        var list = (Vector2[])v.Value;
                         return list[index];
                     }
                     else
@@ -577,8 +658,7 @@ namespace Script.Model.Auto
         public Vector4 FormulaGetResultV4(string formula)
         {
             var list = RPNCalculator.GetRPN(formula);
-            var result = RPNCalculator.EvaluateRPNForVector4(list, OperandResolverV4);
-            return result;
+            return FormulaGetResultV4(list);
         }
         public Vector4 FormulaGetResultV4(RPN_TokenInfo[] list)
         {
@@ -608,7 +688,7 @@ namespace Script.Model.Auto
                 // 调用方法
                 switch (method_id)
                 {
-                    case MethodID.V4_Constructor:
+                    case MethodID.V4_New:
                         return Invoke(V4_Constructor, param_list);
                     case MethodID.V4_Screen:
                         return Invoke(Screen, param_list);
@@ -617,14 +697,14 @@ namespace Script.Model.Auto
                 }
 
             }
-            else if (tInfo.Type == RPN_TokenType.ArrayVar)
+            else if (tInfo.Type == RPN_TokenType.ArrayIndexOper)
             {
                 var var_name = p.Str;
-                int index = (int)p.F;
+                int index = GetIndexValue(p.Params[0]);
                 if (_allVars.TryGetValue(var_name, out var v))
                     if (v.Type == FormulaVarType.ListVector4)
                     {
-                        var list = (List<Vector4>)v.Value;
+                        var list = (Vector4[])v.Value;
                         return list[index];
                     }
                     else
@@ -638,15 +718,82 @@ namespace Script.Model.Auto
             DU.LogWarning($"变量 {tInfo.RawStr} 计算异常");
             return default;
         }
-        public Vector4 ParseVector4(string str)
-        {
-            return FormulaGetResultV4(str);
-        }
+
 
         #endregion
 
 
-        #region FloatList
+        #region String
+
+        public string FormulaGetResultString(string formula)
+        {
+            var list = RPNCalculator.GetRPN(formula);
+            return FormulaGetResultString(list);
+        }
+
+
+        public string FormulaGetResultString(RPN_TokenInfo[] tlist)
+        {
+            // string不支持运算符
+            if (tlist.Length != 1)
+            {
+                throw new Exception($"string类型解析报错");
+            }
+            var tInfo = tlist[0];
+
+            var p = tInfo.Param;
+            if (tInfo.Type == RPN_TokenType.String)
+            {
+                return tInfo.Param.Str;
+            }
+            if (tInfo.Type == RPN_TokenType.Variable)
+            {
+                var var_name = tInfo.RawStr;
+                if (_allVars.TryGetValue(var_name, out var v))
+                    return (string)v.Value;
+                else
+                    DU.LogWarning($"变量 {var_name} 不存在于变量字典中");
+
+                return default;
+            }
+            else if (tInfo.Type == RPN_TokenType.MethodVar)
+            {
+                var method_id = p.MethodID;
+                var param_list = p.Params;
+
+                // 方法名
+                switch (method_id)
+                {
+                    default:
+                        throw new Exception($"方法 {p.Str} 不存在，默认值0");
+                }
+
+            }
+            else if (tInfo.Type == RPN_TokenType.ArrayIndexOper)
+            {
+                var var_name = p.Str;
+                int index = GetIndexValue(p.Params[0]);
+                if (_allVars.TryGetValue(var_name, out var v))
+                    if (v.Type == FormulaVarType.ListString)
+                    {
+                        var list = (string[])v.Value;
+                        return list[index];
+                    }
+                    else
+                        DU.LogWarning($"变量 {var_name} 不是string数组类型");
+                else
+                    DU.LogWarning($"变量 {var_name} 不存在于变量字典中");
+
+                return default;
+            }
+
+            DU.LogWarning($"变量 {tInfo.RawStr} 计算异常");
+            return default;
+        }
+
+        #endregion
+
+        #region Float[]
 
         public float[] FormulaGetResultFL(string formula)
         {
@@ -654,12 +801,15 @@ namespace Script.Model.Auto
             var result = FormulaGetResultFL(list);
             return result;
         }
+
         public float[] FormulaGetResultFL(RPN_TokenInfo[] list)
         {
-            if (list.Length != 1)
-                throw new Exception($"获取ListFloat 语法错误");
+            var result = RPNCalculator.EvaluateRPNForFL(list, OperandResolvertFL);
+            return result;
+        }
 
-            var tInfo = list[0];
+        public float[] OperandResolvertFL(RPN_TokenInfo tInfo)
+        {
             if (tInfo.Type == RPN_TokenType.Variable)
             {
                 var var_name = tInfo.RawStr;
@@ -670,6 +820,17 @@ namespace Script.Model.Auto
 
                 return default;
             }
+            else if (tInfo.Type == RPN_TokenType.Array)
+            {
+                var p = tInfo.Param;
+                var param_list = p.Strs;
+                var result = new float[param_list.Length];
+                for (int i = 0; i < param_list.Length; i++)
+                {
+                    result[i] = FormulaGetResult(param_list[i]);
+                }
+                return result;
+            }
             else if (tInfo.Type == RPN_TokenType.MethodVar)
             {
                 var p = tInfo.Param;
@@ -679,10 +840,20 @@ namespace Script.Model.Auto
                 // 调用方法
                 switch (method_id)
                 {
-                    case MethodID.FL_Constructor:
+                    case MethodID.FL_New:
                         return Invoke(FL_Constructor, param_list);
-                    case MethodID.FL_Find:
-                        return Invoke(FL_FindIndex, param_list);
+                    case MethodID.FL_FilterFL:
+                        return Invoke(FilterFL, param_list);
+                    case MethodID.FL_FilterV2L:
+                        return Invoke(FilterV2L, param_list);
+                    case MethodID.FL_FilterV4L:
+                        return Invoke(FilterV4L, param_list);
+                    case MethodID.FL_ConvertV2L:
+                        return Invoke(ConvertV2L, param_list);
+                    case MethodID.FL_ConvertV4L:
+                        return Invoke(ConvertV4L, param_list);
+                    case MethodID.FL_EachAddFL:
+                        return Invoke(EachAddFL, param_list);
                     default:
                         throw new Exception($"方法 {p.Str} 不存在，默认值0");
                 }
@@ -695,7 +866,7 @@ namespace Script.Model.Auto
         }
         #endregion
 
-        #region Vector2List
+        #region Vector2[]
 
         public Vector2[] FormulaGetResultV2L(string formula)
         {
@@ -705,10 +876,12 @@ namespace Script.Model.Auto
         }
         public Vector2[] FormulaGetResultV2L(RPN_TokenInfo[] list)
         {
-            if (list.Length != 1)
-                throw new Exception($"获取ListFloat 语法错误");
+            var result = RPNCalculator.EvaluateRPNForV2L(list, OperandResolvertV2L);
+            return result;
+        }
 
-            var tInfo = list[0];
+        public Vector2[] OperandResolvertV2L(RPN_TokenInfo tInfo)
+        {
             if (tInfo.Type == RPN_TokenType.Variable)
             {
                 var var_name = tInfo.RawStr;
@@ -719,6 +892,17 @@ namespace Script.Model.Auto
 
                 return default;
             }
+            else if (tInfo.Type == RPN_TokenType.Array)
+            {
+                var p = tInfo.Param;
+                var param_list = p.Strs;
+                var result = new Vector2[param_list.Length];
+                for (int i = 0; i < param_list.Length; i++)
+                {
+                    result[i] = FormulaGetResultV2(param_list[i]);
+                }
+                return result;
+            }
             else if (tInfo.Type == RPN_TokenType.MethodVar)
             {
                 var p = tInfo.Param;
@@ -728,8 +912,10 @@ namespace Script.Model.Auto
                 // 调用方法
                 switch (method_id)
                 {
-                    case MethodID.V2L_Constructor:
+                    case MethodID.V2L_New:
                         return Invoke(V2L_Constructor, param_list);
+                    case MethodID.V2L_EachAddV2L:
+                        return Invoke(EachAddV2L, param_list);
                     default:
                         throw new Exception($"方法 {p.Str} 不存在，默认值0");
                 }
@@ -743,19 +929,23 @@ namespace Script.Model.Auto
         }
         #endregion
 
-        #region Vector4List
+        #region Vector4[]
         public Vector4[] FormulaGetResultV4L(string formula)
         {
             var list = RPNCalculator.GetRPN(formula);
-            var result = FormulaGetResultV4L(list);
-            return result;
+            return FormulaGetResultV4L(list);
         }
+
         public Vector4[] FormulaGetResultV4L(RPN_TokenInfo[] list)
         {
-            if (list.Length != 1)
-                throw new Exception($"获取ListFloat 语法错误");
+            var result = RPNCalculator.EvaluateRPNForV4L(list, OperandResolvertV4L);
+            return result;
+        }
 
-            var tInfo = list[0];
+
+        public Vector4[] OperandResolvertV4L(RPN_TokenInfo tInfo)
+        {
+
             if (tInfo.Type == RPN_TokenType.Variable)
             {
                 var var_name = tInfo.RawStr;
@@ -766,17 +956,34 @@ namespace Script.Model.Auto
 
                 return default;
             }
+            else if (tInfo.Type == RPN_TokenType.Array)
+            {
+                var p = tInfo.Param;
+                var param_list = p.Strs;
+                var result = new Vector4[param_list.Length];
+                for (int i = 0; i < param_list.Length; i++)
+                {
+                    result[i] = FormulaGetResultV4(param_list[i]);
+                }
+                return result;
+            }
             else if (tInfo.Type == RPN_TokenType.MethodVar)
             {
-                var p = list[0].Param;
+                var p = tInfo.Param;
                 var method_id = p.MethodID;
                 var param_list = p.Params;
 
                 // 调用方法
                 switch (method_id)
                 {
-                    case MethodID.V4L_Constructor:
+                    case MethodID.V4L_New:
                         return Invoke(V4L_Constructor, param_list);
+                    case MethodID.V4L_Add:
+                        return Invoke(V4L_Add, param_list);
+                    case MethodID.V4L_GetScreenCols:
+                        return Invoke(GetScreenCols, param_list);
+                    case MethodID.V4L_EachAddV4L:
+                        return Invoke(EachAddV4L, param_list);
                     default:
                         throw new Exception($"方法 {p.Str} 不存在，默认值0");
                 }
@@ -789,7 +996,94 @@ namespace Script.Model.Auto
 
         #endregion
 
-        #region Condition (float)
+        #region String[] 
+        // 缩写SL
+
+        public string[] FormulaGetResultSL(string formula)
+        {
+            var list = RPNCalculator.GetRPN(formula);
+            return FormulaGetResultSL(list);
+        }
+
+
+        public string[] FormulaGetResultSL(RPN_TokenInfo[] tlist)
+        {
+            // string不支持运算符
+            if (tlist.Length != 1)
+            {
+                throw new Exception($"string[]类型解析报错");
+            }
+            var tInfo = tlist[0];
+
+            if (tInfo.Type == RPN_TokenType.Variable)
+            {
+                var var_name = tInfo.RawStr;
+                if (_allVars.TryGetValue(var_name, out var v))
+                    return (string[])v.Value;
+                else
+                    DU.LogWarning($"变量 {var_name} 不存在于变量字典中");
+
+                return default;
+            }
+            else if (tInfo.Type == RPN_TokenType.Array)
+            {
+                var p = tInfo.Param;
+                var param_list = p.Strs;
+                var result = new string[param_list.Length];
+                for (int i = 0; i < param_list.Length; i++)
+                {
+                    result[i] = FormulaGetResultString(param_list[i]);
+                }
+                return result;
+            }
+            else if (tInfo.Type == RPN_TokenType.MethodVar)
+            {
+                var p = tInfo.Param;
+                var method_id = p.MethodID;
+                var param_list = p.Params;
+
+                // 调用方法
+                switch (method_id)
+                {
+                    case MethodID.SL_New:
+                        return Invoke(SL_Constructor, param_list);
+                    // case MethodID.StrL_Add:
+                    //     return Invoke(StrL_Add, param_list);
+                    default:
+                        throw new Exception($"方法 {p.Str} 不存在，默认值0");
+                }
+            }
+            else
+            {
+                throw new Exception($"获取ListFloat 语法错误");
+            }
+        }
+
+        /// <summary>
+        /// 直接查allvar, 脏了就重建
+        /// </summary>
+        public HashSet<string> FormulaGetResultSHashSet(string var_name)
+        {
+            FormulaVarInfo var_info = _allVars[var_name];
+            if (var_info.Dirty)
+            {
+                var_info.Dirty = false;
+                var value = (string[])var_info.Value;
+                var set = new HashSet<string>();
+                foreach (var str in value)
+                    set.Add(str);
+                var_info.HashSet = set;
+            }
+
+            var result = (HashSet<string>)var_info.HashSet;
+            return result;
+        }
+
+
+
+        #endregion
+
+        #region Condition (变量只用float)
         public bool FormulaGetResultCondition(string formula)
         {
             var list = RPNCalculator.GetRPN(formula, true);
@@ -797,36 +1091,27 @@ namespace Script.Model.Auto
             return result;
         }
 
-        public bool OperandResolverCondition(string operand)
+        public bool OperandResolverCondition(RPN_TokenInfo token)
         {
-            RPNCalculator.ConditionParseCompareOper(operand, out var oper, out var left, out var right);
-            if (oper == "")
-            {
-                DU.LogWarning($"变量 {operand} 不含比较符");
-                return false;
-            }
-            var left_v = FormulaGetResult(left);
-            var right_v = FormulaGetResult(right);
-
+            var param = token.Param;
+            float f = FormulaGetResult(param.Params);
+            var oper = (RPN_TokenType)param.Int;
             switch (oper)
             {
-                case "==":
-                    return left_v == right_v;
-                case "!=":
-                    return left_v != right_v;
-                case ">":
-                    return left_v > right_v;
-                case "<":
-                    return left_v < right_v;
-                case ">=":
-                    return left_v >= right_v;
-                case "<=":
-                    return left_v <= right_v;
-                default:
-                    DU.LogWarning($"变量 {operand} 比较符 {oper} 不存在");
-                    return false;
+                case RPN_TokenType.OperatorEqual:
+                    return f == 0;
+                case RPN_TokenType.OperatorNotEqual:
+                    return f != 0;
+                case RPN_TokenType.OperatorGreater:
+                    return f > 0;
+                case RPN_TokenType.OperatorGreaterOrEqual:
+                    return f >= 0;
+                case RPN_TokenType.OperatorSmaller:
+                    return f < 0;
+                case RPN_TokenType.OperatorSmallerOrEqual:
+                    return f <= 0;
             }
-
+            return false;
         }
         #endregion
 
@@ -835,6 +1120,5 @@ namespace Script.Model.Auto
             _allVars.Clear();
         }
 
-        #endregion
     }
 }

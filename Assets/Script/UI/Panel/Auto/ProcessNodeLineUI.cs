@@ -20,8 +20,9 @@ namespace Script.UI.Panel.Auto
         string _toId;
         BaseNodeData _fromData;
         BaseNodeData _toData;
-        public bool _isTrue;
+        NodeLinkInfo _link;
         DrawProcessPanel _panel;
+        int _drawFrameTime;
 
         public void Awake()
         {
@@ -33,28 +34,33 @@ namespace Script.UI.Panel.Auto
             _id = id;
             _panel = panel;
 
-            // line-11-12
-            var s = id.Substring(5);
-            int first = s.IndexOf('-');
-            _fromId = BaseNodeData.IdStart + s.Substring(0, first);      // from-id
-            _toId = BaseNodeData.IdStart + s.Substring(first + 1);    // to-id
+            // "11-12"
+            int first = id.IndexOf('-');
+            _fromId = id.Substring(0, first);      
+            _toId = id.Substring(first + 1);    
 
             _fromData = AutoScriptManager.Inst.GetNode(_panel._scriptData, _fromId);
             _toData = AutoScriptManager.Inst.GetNode(_panel._scriptData, _toId);
-            _isTrue = _fromData.TrueNextNodes.Contains(_toId);
+            _link = _fromData.Links[_toId];
 
         }
 
         /// <summary>
         /// 动态剔除功能，要考虑到线段可能没有to节点但也要显示。
         /// </summary>
-        public void DrawLine()
+        public void DrawLine(int frameTime)
         {
-            var from_end = _panel.GetLineEndPos(_fromData, _isTrue ? 1 : 2);
-            var to_end = _panel.GetLineEndPos(_toData, 0);
+            // 这里避免了重复刷新。
+            if (_drawFrameTime == frameTime)
+                return;
+            _drawFrameTime = frameTime;
+
+            var from_end = _panel.GetLineEndPos(_fromData, _link.SelfDoor);
+            var to_end = _panel.GetLineEndPos(_toData, _link.OtherDoor);
 
             Color color;
-            if (_id == _panel.MouseSelectedId || _fromId == _panel.MouseSelectedId || _toId == _panel.MouseSelectedId)
+            if (_panel.IsSelect(MouseSelectType.Line, _id) || _panel.IsSelect(MouseSelectType.Node, _fromId)
+                 || _panel.IsSelect(MouseSelectType.Node, _toId))
             {
                 color = ProcessNodeUI.WhiteColor;
             }
@@ -69,7 +75,7 @@ namespace Script.UI.Panel.Auto
                     color = ProcessNodeUI.RedColor;
             }
 
-            if (_fromId == _panel.MouseSelectedId)
+            if (_panel.IsSelect(MouseSelectType.Node, _fromId))
             {
                 Vector2 v = to_end - from_end;
                 from_end += v.normalized * 10;
@@ -115,7 +121,7 @@ namespace Script.UI.Panel.Auto
             if (eventData.button == PointerEventData.InputButton.Right)
                 return;
 
-            _panel.MouseSelectedId = _id;
+            _panel.SelectUI(MouseSelectType.Line, _id);
         }
 
 

@@ -110,7 +110,7 @@ namespace Script.UI.Panel.Auto
         public override void Close()
         {
             base.Close();
-            Mat cap0 = IU.BitmapToMat(_bitmap);
+            IU.BitmapToMat(_bitmap, out var cap0, out _);
             Cv2.ImShow("Match Result", cap0);
 
         }

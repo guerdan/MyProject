@@ -1,10 +1,12 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using System;
 namespace Script.UI.Components
 {
     public class CustomInputField : InputField
     {
+        public Action<PointerEventData> onPointerDownCustom;
         public override void OnUpdateSelected(BaseEventData eventData)
         {
             if (!isFocused)
@@ -17,6 +19,12 @@ namespace Script.UI.Components
             }
 
             base.OnUpdateSelected(eventData);
+        }
+
+        public override void OnPointerDown(PointerEventData eventData)
+        {
+            base.OnPointerDown(eventData);
+            onPointerDownCustom?.Invoke(eventData);
         }
 
     }

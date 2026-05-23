@@ -6,6 +6,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using OpenCvSharp;
+using Script.Model.Auto;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -15,7 +16,8 @@ namespace Script.Util
     #region CVRect
 
     /// <summary>
-    /// 与openCV 的 Rect 意义相同的结构体。在左上原点的坐标系下，左上角坐标为(x,y),宽高为(w,h)
+    /// 约定：基于 x轴朝右|y轴朝上的坐标系。(x,y)描述矩形的左下角坐标，(w,h)描述宽高
+    /// 当CVRect参数传到OpenCV接口 或 CaptureWindow()时，会转换成:基于 x轴朝右|y轴朝下的坐标系
     /// </summary>
     public struct CVRect
     {
@@ -24,8 +26,8 @@ namespace Script.Util
         public int w;
         public int h;
 
-        public Vector2Int LeftTop => new Vector2Int(x, y);
-        public Vector2Int RightBottom => new Vector2Int(x + w, y + h);
+        public Vector2Int LeftDown => new Vector2Int(x, y);
+        public Vector2Int RightUp => new Vector2Int(x + w, y + h);
 
         public CVRect(int x, int y, int w, int h)
         {
@@ -35,12 +37,16 @@ namespace Script.Util
             this.h = h;
         }
 
-
-        public static CVRect GetByRegion(Vector4 v)
+        public static CVRect ConvertV4(Vector4 v)
+        {
+            return new CVRect((int)v.x, (int)v.y, (int)v.z, (int)v.w);
+        }
+        public static CVRect ConvertV4Bigger(Vector4 v)
         {
             return new CVRect((int)Math.Floor(v.x), (int)Math.Floor(v.y)
             , (int)Math.Ceiling(v.z), (int)Math.Ceiling(v.w));
         }
+
 
         /// <summary>
         /// 像素：获取中心点坐标，当长宽都为奇数时，最准确
@@ -91,7 +97,7 @@ namespace Script.Util
     {
         public CVRect Rect;     // 匹配区域
         public float Score;     // 匹配分数
-        public int UIType;      // 如何渲染.0-红框，1-绿框，2-蓝框
+        public int UIType;      // 如何渲染.0-绿框，1-红框，2-蓝框，3-详情绿框
     }
 
     #region IU
@@ -106,25 +112,24 @@ namespace Script.Util
 
         public static string PicPath = @"D:\unityProject\MyProject\TestResource\图";
 
-        // 等优化，用缓存
+        // 从IU坐标系 转换成 脚本坐标系并且以左下角为起点
+        // **对称接口，用两次就是还原。
+        public static CVRect ReverseYAndChange(CVRect source, int screenH = -1)
+        {
+            screenH = screenH < 0 ? Utils.ScreenHeight : screenH;
+            //化简 screenH - 1 - source.y - source.h + 1 => screenH - source.y - source.h
+            return new CVRect(source.x, screenH - source.y - source.h, source.w, source.h);
+        }
+
+        /// <summary>
+        /// 等优化，用缓存
+        /// </summary>
         public static Mat GetMat(string path, bool use_alpha = false)
         {
             var mode = use_alpha ? ImreadModes.Unchanged : ImreadModes.Color; // Color 强制3通道BGR
-            var mat = Cv2.ImRead(path, mode);
-            if (mat.Empty())        // 读取失败，改格式
-            {
-                string tempPath = Path.Combine(Path.GetDirectoryName(path), "temp_" + Path.GetFileName(path));
-                using (var bitmap = new Bitmap(path))
-                {
-                    mat = BitmapToMat(bitmap);
-                    // 写回path会因为文件锁定，所以绕到临时路径保存
-                    bitmap.Save(tempPath, ImageFormat.Png);
-                }
 
-                File.Delete(path);
-                File.Move(tempPath, path);
-            }
-
+            byte[] data = File.ReadAllBytes(path);
+            Mat mat = Cv2.ImDecode(data, mode);
             return mat;
         }
 
@@ -135,12 +140,41 @@ namespace Script.Util
                 throw new ArgumentException("Mat is null or empty!");
             }
 
-            // 中文路径直接保存会失败。先暂存再移动文件
-            string tempPath = "temp_image.png";
-            Cv2.ImWrite(tempPath, mat);
-            File.Delete(filePath);
-            File.Move(tempPath, filePath);
+            // 中文路径直接保存会失败。所以用File接口
+            byte[] data = mat.ToBytes();
+            File.WriteAllBytes(filePath, data);
+        }
 
+        public static Color32[] MatToColor32(Mat mat)
+        {
+            Vec3b[] data;
+            mat.GetArray(out data);
+            Color32[] colors = new Color32[data.Length];
+            for (int i = 0; i < data.Length; i++)
+            {
+                var pixel = data[i];
+                byte blue = pixel.Item0;
+                byte green = pixel.Item1;
+                byte red = pixel.Item2;
+                colors[i] = new Color32(red, green, blue, 255);
+            }
+            return colors;
+        }
+        public static Color32[] MatToColor32(Mat mat, CVRect region)
+        {
+            Vec3b[] data;
+            mat.GetArray(out data);
+            var total = region.w * region.h;
+            Color32[] colors = new Color32[total];
+            for (int i = 0; i < total; i++)
+            {
+                var pixel = data[i];
+                byte blue = pixel.Item0;
+                byte green = pixel.Item1;
+                byte red = pixel.Item2;
+                colors[i] = new Color32(red, green, blue, 255);
+            }
+            return colors;
         }
 
         public static byte[] Color32ToByte(Color32[] colors)
@@ -170,7 +204,7 @@ namespace Script.Util
         }
 
 
-        public static Color32[] Color32ReverseYAxis(Color32[] pixels, int w)
+        public static void Color32ReverseYAxis(Color32[] pixels, int w)
         {
             int h = pixels.Length / w;
             int half_h = h / 2;
@@ -184,9 +218,11 @@ namespace Script.Util
                     pixels[reverse] = temp;
                 }
 
-            return pixels;
         }
 
+        /// <summary>
+        /// mono下是jit—in-time模式，动态编译，所以内联没用(目前测的)
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Color32Equal(Color32 c0, Color32 c1)
         {
@@ -278,6 +314,7 @@ namespace Script.Util
             int hR, wR;
             hR = result.Rows; //继续优化了10ms 
             wR = result.Cols;
+            int screen_height = hR + hT - 1;
 
             byte[,] cull = new byte[hR, wR];    //优化了10ms. 从Mat(拆装箱)转[,]
             result.GetArray(out float[] scores);
@@ -328,6 +365,8 @@ namespace Script.Util
 
                         // 得到匹配结果
                         var rect = new CVRect(tx, ty, wT, hT);
+                        rect = ReverseYAndChange(rect, screen_height);
+
                         var r = new CVMatchResult
                         {
                             Rect = rect,
@@ -349,7 +388,7 @@ namespace Script.Util
         }
 
         // 越小越好
-        public static List<CVMatchResult> FindResultMin(Mat result, int wT, int hT, float threshold)
+        public static List<CVMatchResult> FindResultMin(Mat result, int wT, int hT, float threshold, out float min)
         {
             List<CVMatchResult> matchResults = new List<CVMatchResult>();
             int hR, wR;
@@ -359,7 +398,7 @@ namespace Script.Util
             byte[,] cull = new byte[hR, wR];    //优化了10ms. 从Mat(拆装箱)转[,]
             result.GetArray(out float[] scores);
 
-
+            min = 100;
             // 筛选所有结果，找出所有大于阈值的位置
             for (int y = 0; y < hR; y++)
             {
@@ -373,6 +412,8 @@ namespace Script.Util
                     var tx = x;
                     var ty = y;
 
+                    if (score < min)
+                        min = score;
 
                     if (score <= threshold)
                     {
@@ -435,7 +476,7 @@ namespace Script.Util
         /// <summary>
         /// Bitmap 转 Mat；目前2ms,  ；保存读取方案60ms；逐像素读/赋值2000ms
         /// </summary>
-        public static Mat BitmapToMat(Bitmap bitmap)
+        public static void BitmapToMat(Bitmap bitmap, out Mat result, out Vec4b[] data)
         {
             int w = bitmap.Width;
             int h = bitmap.Height;
@@ -446,10 +487,24 @@ namespace Script.Util
 
             // 将像素数据复制到字节数组
             Mat source = Mat.FromPixelData(h, w, MatType.CV_8UC4, bitmapData.Scan0); // 4通道
+
+            source.GetArray(out data);
+
+            // Color32[] colors = new Color32[data.Length];         // ——转换的话，耗时30ms
+            // for (var i=0; i< data.Length; i++)
+            // {
+            //     var pixel = data[i];
+            //     byte blue = pixel.Item0;
+            //     byte green = pixel.Item1;
+            //     byte red = pixel.Item2;
+            //     byte alpha = pixel.Item3;
+            //     colors[i] = new Color32(red,green,blue,alpha);
+            // }
+
             Cv2.CvtColor(source, source, ColorConversionCodes.BGRA2BGR);
             bitmap.UnlockBits(bitmapData);
 
-            return source;
+            result = source;
 
             // OpenCvSharp.Extensions依赖于System.Drawing.Common.dll, 但该包不被Unity平台支持
             // Unity平台是 .Net Framework 用的是System.Drawing.dll
@@ -492,10 +547,10 @@ namespace Script.Util
                     for (int x = 0; x < w; x++)
                     {
                         int start = y * h_stride + x * stride;
-                        colors[y * w + x] = 
+                        colors[y * w + x] =
                             new Color32(pixels[start + 2], pixels[start + 1], pixels[start + 0], 255);
                     }
-              
+
             }
             else
             {
@@ -538,6 +593,7 @@ namespace Script.Util
         /// </summary>
         public static Bitmap CutOutImage(Bitmap bitmap, CVRect region)
         {
+
             Rectangle rect = new Rectangle(region.x, region.y, region.w, region.h);
             Bitmap cut_bitmap = bitmap.Clone(rect, bitmap.PixelFormat);
             return cut_bitmap;
@@ -545,11 +601,43 @@ namespace Script.Util
 
         #endregion
 
+        #region Vec3b
 
+        static Dictionary<string, Vec3bImage> _Vec3bImageCache = new Dictionary<string, Vec3bImage>();
+        public static Vec3bImage GetVec3BImage(string path, bool use_cache = true)
+        {
+            if (use_cache)
+            {
+                if (!_Vec3bImageCache.TryGetValue(path, out var result))
+                {
+                    using (var mat = GetMat(path))
+                    {
+                        mat.GetArray<Vec3b>(out var colors);
+                        result = new Vec3bImage(colors, mat.Width, mat.Height);
+                        _Vec3bImageCache[path] = result;
+                    }
+                }
+                return result;
+            }
+            else
+            {
+                using (var mat = GetMat(path))
+                {
+                    mat.GetArray<Vec3b>(out var colors);
+                    var result = new Vec3bImage(colors, mat.Width, mat.Height);
+                    return result;
+                }
+            }
+
+        }
+
+
+        #endregion
 
     }
 
     #endregion
+
 
 
 }

@@ -60,7 +60,7 @@ namespace Script.UI.Components
             _onSelect = (i, is_click) =>
             {
                 onSelect?.Invoke(i);
-                if (is_click)
+                if (is_click && onSelect != null)
                     gameObject.SetActive(false);
             };
             UseSelectColor = useSelectColor;
@@ -99,6 +99,7 @@ namespace Script.UI.Components
             Refresh();
             ListComp.AdjustItemInViewVertical(SelectIndex);
         }
+
         // 是否开启点击区域外关闭
         public void SetAutoCloseWithoutArea(List<GameObject> area)
         {
@@ -164,7 +165,6 @@ namespace Script.UI.Components
                 if (up_move)
                 {
                     SetCurIndex((SelectIndex - 1 + _strList.Count) % _strList.Count);
-                    ListComp.AdjustItemInViewVertical(SelectIndex);
                 }
 
                 if (Input.GetKeyDown(KeyCode.DownArrow)) down_move = true;
@@ -185,7 +185,6 @@ namespace Script.UI.Components
                 if (down_move)
                 {
                     SetCurIndex((SelectIndex + 1) % _strList.Count);
-                    ListComp.AdjustItemInViewVertical(SelectIndex);
                 }
             }
         }

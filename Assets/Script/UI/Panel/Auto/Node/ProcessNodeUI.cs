@@ -11,15 +11,12 @@ using Script.UI.Components;
 
 namespace Script.UI.Panel.Auto.Node
 {
-    public enum ProcessNodeDragStatus
+    public enum NodeUI_DragType
     {
-        None,           // 无拖拽状态
+        None,           // 无
         DragCard,       // 拖拽卡片
-        DrawLineTrue,   // 拖拽true线
-        DrawLineFalse,  // 拖拽false线
-        DragCircleIn,   // 拖拽in圈圈
-        DragCircleTrue, // 拖拽true圈圈
-        DragCircleFalse,// 拖拽false圈圈
+        DrawLine,       // 画线
+        DragCircle,     // 拖拽圈圈
     }
 
     public class ProcessNodeUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
@@ -47,10 +44,11 @@ namespace Script.UI.Panel.Auto.Node
         // [SerializeField] private RectTransform EventNode;     //决定不要了,拆离出来单独做个事件接收节点
         [SerializeField] public RectTransform TrueOutNode;      // 上圈圈，有T字显示
         [SerializeField] public RectTransform FalseOutNode;     // 下圈圈，有F字显示
+        [SerializeField] public RectTransform SecondInNode;     // 第二个In口
         [SerializeField] private Image OutlineF;      //前
         [SerializeField] private Image OutlineB;      //后。常规色
         [SerializeField] private GameObject IsFirstMark;      //起点标记
-        [SerializeField] private Text DelayText;
+        [SerializeField] protected Text DelayText;
 
 
         public RectTransform selfR => (RectTransform)transform;
@@ -67,6 +65,7 @@ namespace Script.UI.Panel.Auto.Node
         RectTransform TrueCircleTextR;
         RectTransform FalseCircleTextR;
         RectTransform InCircleTextR;
+        RectTransform SecondInCircleTextR;
 
         protected virtual void Awake()
         {
@@ -81,17 +80,19 @@ namespace Script.UI.Panel.Auto.Node
                 FalseCircleTextR = (RectTransform)FalseOutNode.GetComponentInChildren<Text>().transform;
             if (InflowNode.childCount > 0)
                 InCircleTextR = (RectTransform)InflowNode.GetComponentInChildren<Text>().transform;
+            if (SecondInNode && SecondInNode.childCount > 0)
+                SecondInCircleTextR = (RectTransform)SecondInNode.GetComponentInChildren<Text>().transform;
         }
         protected virtual void OnEnable()
         {
             AutoScriptManager.Inst.OnTick += Tick;
-            AutoScriptManager.Inst.OnStatusChange += StatusChange;
+            AutoScriptManager.Inst.OnChangeNodeStatus += StatusChange;
         }
 
         protected virtual void OnDisable()
         {
             AutoScriptManager.Inst.OnTick -= Tick;
-            AutoScriptManager.Inst.OnStatusChange -= StatusChange;
+            AutoScriptManager.Inst.OnChangeNodeStatus -= StatusChange;
 
         }
 
@@ -123,7 +124,7 @@ namespace Script.UI.Panel.Auto.Node
         /// </summary>
         public void Refresh()
         {
-            bool selected = _id == _panel.MouseSelectedId;
+            bool selected = _panel.IsSelect(MouseSelectType.Node, _id);
             // bool show_progress = _type != NodeType.AssignOper && _type != NodeType.ListenEvent;
             // 这个样式空闲时要框
             bool type1 = _type == NodeType.TemplateMatchOper;
@@ -160,21 +161,31 @@ namespace Script.UI.Panel.Auto.Node
 
         public virtual void RefreshSlotUI()
         {
-            InflowNode.anchoredPosition = _panel.GetLineEndPos(_data, 0) - selfR.anchoredPosition;
-            TrueOutNode.anchoredPosition = _panel.GetLineEndPos(_data, 1) - selfR.anchoredPosition;
+            InflowNode.anchoredPosition = _panel.GetLineEndPos(_data, NodeDoor.In) - selfR.anchoredPosition;
+            TrueOutNode.anchoredPosition = _panel.GetLineEndPos(_data, NodeDoor.OutTrue) - selfR.anchoredPosition;
 
-            _panel.GetLineEndOwnership(_data.NodeType, out bool _, out bool has_true, out bool has_false);
-            if (has_false) FalseOutNode.anchoredPosition = _panel.GetLineEndPos(_data, 2) - selfR.anchoredPosition;
+            _panel.GetLineEndOwnership(_data.NodeType, out bool _, out bool has_second_in,
+                                        out bool has_true, out bool has_false);
+            if (has_false) FalseOutNode.anchoredPosition = _panel.GetLineEndPos(_data, NodeDoor.OutFalse) - selfR.anchoredPosition;
+            if (has_second_in) SecondInNode.anchoredPosition = _panel.GetLineEndPos(_data, NodeDoor.In1) - selfR.anchoredPosition;
 
-            if (_data.NodeType == NodeType.ConditionOper || _data.NodeType == NodeType.MapPathFinding
-                || _data.NodeType == NodeType.AssignOper)
+            // 计算圈圈旁文本的位置
+            //  
+            if (_data.NodeType == NodeType.ConditionOper || _data.NodeType == NodeType.ForOper
+                || _data.NodeType == NodeType.MapPathFinding || _data.NodeType == NodeType.AssignOper)
             {
-                var pos0 = _panel.GetLineEndPos(_data, 1) - selfR.anchoredPosition;
-                TrueCircleTextR.anchoredPosition = GetTextPos(pos0);
-                var pos1 = _panel.GetLineEndPos(_data, 2) - selfR.anchoredPosition;
-                FalseCircleTextR.anchoredPosition = GetTextPos(pos1);
-                var pos2 = _panel.GetLineEndPos(_data, 0) - selfR.anchoredPosition;
-                InCircleTextR.anchoredPosition = GetTextPos(pos2, 1);
+                var pos0 = _panel.GetLineEndPos(_data, NodeDoor.In) - selfR.anchoredPosition;
+                InCircleTextR.anchoredPosition = GetTextPos(pos0, 1);
+                var pos1 = _panel.GetLineEndPos(_data, NodeDoor.OutTrue) - selfR.anchoredPosition;
+                TrueCircleTextR.anchoredPosition = GetTextPos(pos1);
+                var pos2 = _panel.GetLineEndPos(_data, NodeDoor.OutFalse) - selfR.anchoredPosition;
+                FalseCircleTextR.anchoredPosition = GetTextPos(pos2);
+            }
+
+            if (_data.NodeType == NodeType.ForOper)
+            {
+                var pos3 = _panel.GetLineEndPos(_data, NodeDoor.In1) - selfR.anchoredPosition;
+                SecondInCircleTextR.anchoredPosition = GetTextPos(pos3);
             }
         }
 
@@ -203,28 +214,31 @@ namespace Script.UI.Panel.Auto.Node
         /// </summary>
         public virtual void RefreshSelected()
         {
-            bool selected = _id == _panel.MouseSelectedId;
-            _panel.GetLineEndOwnership(_data.NodeType, out bool _, out bool has_true, out bool has_false);
+            bool selected = _panel.IsSelect(MouseSelectType.Node, _id);
+            _panel.GetLineEndOwnership(_data.NodeType, out bool _, out _,
+                                        out bool has_true, out bool has_false);
             var checkBox_true = TrueOutNode.GetComponent<CheckBox>();
             var checkBox_false = FalseOutNode ? FalseOutNode.GetComponent<CheckBox>() : null;
             var checkBox_in = InflowNode ? InflowNode.GetComponent<CheckBox>() : null;
 
 
-            if (_data.NodeType == NodeType.TemplateMatchOper
-                || _data.NodeType == NodeType.ConditionOper || _data.NodeType == NodeType.MapPathFinding)
+            if (_data.NodeType == NodeType.TemplateMatchOper || _data.NodeType == NodeType.ConditionOper
+                || _data.NodeType == NodeType.MapPathFinding || _data.NodeType == NodeType.ForOper)
             {
                 // 复杂圈圈，有T/F字样
                 Utils.SetActive(TrueOutNode, true);
                 Utils.SetActive(FalseOutNode, true);
+                Utils.SetActive(SecondInNode, _data.NodeType == NodeType.ForOper);  // ForOper的唯一差别
                 checkBox_true.SetData(selected);
                 checkBox_false.SetData(selected);
-                if (checkBox_in) checkBox_in.SetData(false);
+                if (checkBox_in) checkBox_in.SetData(false);    // false代表 selected = false，显示文本
             }
             else
             {
                 // 普通圈圈款式，无T/F字样
                 Utils.SetActive(TrueOutNode, selected && has_true);
                 Utils.SetActive(FalseOutNode, selected && has_false);
+                Utils.SetActive(SecondInNode, false);
                 if (checkBox_true) checkBox_true.SetData(true);
                 if (checkBox_false) checkBox_false.SetData(true);
                 if (checkBox_in) checkBox_in.SetData(_data.NodeType != NodeType.AssignOper);
@@ -280,7 +294,22 @@ namespace Script.UI.Panel.Auto.Node
 
 
         #region 操作交互
-        private ProcessNodeDragStatus _dragStatus = ProcessNodeDragStatus.None;
+
+        public struct NodeUI_DragInfo
+        {
+            public NodeUI_DragType Type;
+            public NodeDoor FromDoor;
+            public NodeDoor ToDoor;
+
+            public NodeUI_DragInfo(NodeUI_DragType type, NodeDoor fromDoor)
+            {
+                Type = type;
+                FromDoor = fromDoor;
+                ToDoor = NodeDoor.In;
+            }
+        }
+
+        private NodeUI_DragInfo _dragStatus = default;
         private bool _inDragging = false;
         private Vector2 _dragOffset;
         private bool _doubleClick = false;
@@ -289,7 +318,7 @@ namespace Script.UI.Panel.Auto.Node
         // 重置状态位
         void ClearOperation()
         {
-            _dragStatus = ProcessNodeDragStatus.None;
+            _dragStatus = default;
             _inDragging = false;
             _finishOneClick = false;
         }
@@ -305,10 +334,10 @@ namespace Script.UI.Panel.Auto.Node
             var click_left = eventData.button == PointerEventData.InputButton.Left;
             var click_right = eventData.button == PointerEventData.InputButton.Right;
 
-            _doubleClick = _panel.MouseSelectedId == _id;
+            _doubleClick = _panel.IsSelect(MouseSelectType.Node, _id);
 
             // 设置选中，节点变白框
-            _panel.MouseSelectedId = _id;
+            _panel.SelectUI(MouseSelectType.Node, _id);
 
             // 拖拽圈圈
             // 检测点击位置，是否在 圈圈区域 内，矩形30X30范围，用于拖拽连线
@@ -321,48 +350,55 @@ namespace Script.UI.Panel.Auto.Node
                 );
                 // 故加个画布Height
                 clickPos += new Vector2(0, _panel.Map.ContentH);
-                _panel.GetLineEndOwnership(_data.NodeType, out bool has_in, out bool has_out_true,
-                    out bool has_out_false);
+                _panel.GetLineEndOwnership(_data.NodeType, out bool has_in, out bool has_second_in,
+                                            out bool has_out_true, out bool has_out_false);
 
-                bool change_circle = _data.NodeType != NodeType.TemplateMatchOper;
+                bool circle_change_pos = _data.NodeType != NodeType.TemplateMatchOper;
 
-                if (has_in && click_right && change_circle)
+                if (has_in && click_right && circle_change_pos)
                 {
-                    Vector2 inPos = _panel.GetLineEndPos(_data, 0);
+                    Vector2 inPos = _panel.GetLineEndPos(_data, NodeDoor.In);
                     bool inIntersect = Intersect(clickPos, inPos, 30, 30);
                     if (inIntersect)
-                        _dragStatus = ProcessNodeDragStatus.DragCircleIn;
+                        _dragStatus = new NodeUI_DragInfo(NodeUI_DragType.DragCircle, NodeDoor.In);
+                }
+
+                if (has_second_in && click_right && circle_change_pos)
+                {
+                    Vector2 inPos = _panel.GetLineEndPos(_data, NodeDoor.In1);
+                    bool inIntersect = Intersect(clickPos, inPos, 30, 30);
+                    if (inIntersect)
+                        _dragStatus = new NodeUI_DragInfo(NodeUI_DragType.DragCircle, NodeDoor.In1);
+
                 }
 
                 // 画布(0,0)为原点下的坐标
                 if (has_out_true)
                 {
-                    Vector2 truePos = _panel.GetLineEndPos(_data, 1);
+                    Vector2 truePos = _panel.GetLineEndPos(_data, NodeDoor.OutTrue);
                     bool trueIntersect = Intersect(clickPos, truePos, 30, 30);
                     if (trueIntersect)
                         if (click_left)
-                            _dragStatus = ProcessNodeDragStatus.DrawLineTrue;
-                        else if (click_right && change_circle)
-                            _dragStatus = ProcessNodeDragStatus.DragCircleTrue;
+                            _dragStatus = new NodeUI_DragInfo(NodeUI_DragType.DrawLine, NodeDoor.OutTrue);
+                        else if (click_right && circle_change_pos)
+                            _dragStatus = new NodeUI_DragInfo(NodeUI_DragType.DragCircle, NodeDoor.OutTrue);
 
                 }
 
                 if (has_out_false)
                 {
-                    Vector2 falsePos = _panel.GetLineEndPos(_data, 2);
+                    Vector2 falsePos = _panel.GetLineEndPos(_data, NodeDoor.OutFalse);
                     bool falseIntersect = Intersect(clickPos, falsePos, 30, 30);
                     if (falseIntersect)
                         if (click_left)
-                            _dragStatus = ProcessNodeDragStatus.DrawLineFalse;
-                        else if (click_right && change_circle)
-                            _dragStatus = ProcessNodeDragStatus.DragCircleFalse;
+                            _dragStatus = new NodeUI_DragInfo(NodeUI_DragType.DrawLine, NodeDoor.OutFalse);
+                        else if (click_right && circle_change_pos)
+                            _dragStatus = new NodeUI_DragInfo(NodeUI_DragType.DragCircle, NodeDoor.OutFalse);
                 }
-
             }
 
-
             // 拖拽卡片
-            if (_dragStatus == ProcessNodeDragStatus.None)
+            if (_dragStatus.Type == NodeUI_DragType.None)
             {
                 Vector2 pointerLocalPos;
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(
@@ -370,7 +406,7 @@ namespace Script.UI.Panel.Auto.Node
                     out pointerLocalPos
                 );
                 _dragOffset = selfR.anchoredPosition - pointerLocalPos;
-                _dragStatus = ProcessNodeDragStatus.DragCard;
+                _dragStatus = new NodeUI_DragInfo(NodeUI_DragType.DragCard, 0);
             }
 
         }
@@ -427,7 +463,9 @@ namespace Script.UI.Panel.Auto.Node
                                 _panel.Canvas, eventData.position, eventData.pressEventCamera,
                                 out canvas_point);
 
-            if (_dragStatus == ProcessNodeDragStatus.DragCard)
+            var type = _dragStatus.Type;
+            NodeDoor door = _dragStatus.FromDoor;
+            if (type == NodeUI_DragType.DragCard)
             {
 
                 var pos = _panel.Map.MapConvert(canvas_point + _dragOffset);
@@ -442,56 +480,60 @@ namespace Script.UI.Panel.Auto.Node
                 RefreshRelativeLine();
 
             }
-            else if (_dragStatus == ProcessNodeDragStatus.DrawLineTrue || _dragStatus == ProcessNodeDragStatus.DrawLineFalse)
+            else if (type == NodeUI_DragType.DrawLine)
             {
-                var from = _panel.GetLineEndPos(_data, _dragStatus == ProcessNodeDragStatus.DrawLineTrue ? 1 : 2);
+                var from = _panel.GetLineEndPos(_data, door);
                 string hover_id = _panel.MouseHoverId;
                 bool has_in = GetTargetHasIn(hover_id);
+                var mouse_pos = new Vector2(canvas_point.x, _panel.CanvasCfg.H + canvas_point.y);
 
-                if (hover_id != null && hover_id != _id && has_in &&
-                !_data.TrueNextNodes.Contains(hover_id) && !_data.FalseNextNodes.Contains(hover_id))
+                if (hover_id != null && hover_id != _id && has_in && !_data.Links.ContainsKey(hover_id))
                 {
                     // 有悬浮节点，画到悬浮节点入口
                     var hover_ui = _panel.GetNode(_panel.MouseHoverId);
-                    var to = _panel.GetLineEndPos(hover_ui._data, 0);
-                    _panel.ShowLineForDrag(from, to, WhiteColor);
+                    _panel.GetLineEndOwnership(hover_ui._type, out _, out bool has_in1, out _, out _);
+                    var to0 = _panel.GetLineEndPos(hover_ui._data, NodeDoor.In);
+                    if (has_in1)
+                    {
+                        var to1 = _panel.GetLineEndPos(hover_ui._data, NodeDoor.In1);
+                        if ((mouse_pos - to0).sqrMagnitude < (mouse_pos - to1).sqrMagnitude)
+                        { _panel.ShowLineForDrag(from, to0, WhiteColor); _dragStatus.ToDoor = NodeDoor.In; }
+                        else
+                        { _panel.ShowLineForDrag(from, to1, WhiteColor); _dragStatus.ToDoor = NodeDoor.In1; }
+                    }
+                    else
+                    {
+                        { _panel.ShowLineForDrag(from, to0, WhiteColor); _dragStatus.ToDoor = NodeDoor.In; }
+                    }
                 }
                 else
                 {
-                    // 没有悬浮节点，画到鼠标位置
-                    var to = new Vector2(canvas_point.x, _panel.CanvasCfg.H + canvas_point.y);
-                    _panel.ShowLineForDrag(from, to, WhiteColor);
+                    // 没有悬浮节点，画到鼠标位置。DragEnd时也不会做算
+                    _panel.ShowLineForDrag(from, mouse_pos, WhiteColor);
                 }
 
             }
-            else if (_dragStatus == ProcessNodeDragStatus.DragCircleTrue
-                    || _dragStatus == ProcessNodeDragStatus.DragCircleFalse
-                    || _dragStatus == ProcessNodeDragStatus.DragCircleIn)
+            else if (type == NodeUI_DragType.DragCircle)
             {
+                // 这里是给出入口手动绑插槽
+                //
                 Vector2 node_point;             // 本节点坐标系下的位置
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(
                                     (RectTransform)transform, eventData.position, eventData.pressEventCamera,
                                     out node_point);
 
 
-                var pos_list = new List<Vector2>(_panel.nodeUISlotPosCfg[_data.NodeType]);
+                var pos_list = new List<Vector2>(_panel.nodeUI_slotPos_cfg[_data.NodeType]);
                 float min_distance = float.MaxValue;
 
-                int type = -1;
-                if (_dragStatus == ProcessNodeDragStatus.DragCircleIn)
-                    type = 0;
-                else if (_dragStatus == ProcessNodeDragStatus.DragCircleTrue)
-                    type = 1;
-                else if (_dragStatus == ProcessNodeDragStatus.DragCircleFalse)
-                    type = 2;
 
                 var list = new int[8];
                 var slots = _scriptData.GetSlot(_data);
                 // 标记已占用的槽位
                 if (slots != null)
-                    for (int i = 0; i < 3; i++)
+                    for (int i = 0; i < 4; i++)
                     {
-                        if (i == type) continue;
+                        if (i == (int)door) continue;
                         int slot_value = slots[i];
                         if (slot_value >= 0)
                         {
@@ -499,10 +541,11 @@ namespace Script.UI.Panel.Auto.Node
                         }
                     }
 
-                int direction = 0;  // 0-下，转一圈
+                // 给出入口找槽, 跳过已占用的槽
+                int direction = 0;  // 0-正下
                 for (int i = 0; i < 8; i++)
                 {
-                    if (list[i] == 1) continue;   // 跳过已占用的槽
+                    if (list[i] == 1) continue;
                     var t = (node_point - pos_list[i]).SqrMagnitude();
                     if (t < min_distance)
                     {
@@ -512,8 +555,7 @@ namespace Script.UI.Panel.Auto.Node
                 }
 
 
-
-                _scriptData.AddSlot(_data, type, direction);
+                _scriptData.AddSlot(_data, (int)door, direction);
 
                 // 调整其他槽位，以及刷新线段
                 RefreshRelativeLine();
@@ -524,17 +566,16 @@ namespace Script.UI.Panel.Auto.Node
         public void OnEndDrag(PointerEventData eventData)
         {
             // DU.LogWarning("OnEndDrag");
-
-            if (_dragStatus == ProcessNodeDragStatus.DrawLineTrue || _dragStatus == ProcessNodeDragStatus.DrawLineFalse)
+            var type = _dragStatus.Type;
+            if (type == NodeUI_DragType.DrawLine)
             {
                 _panel.HideLineForDrag();
                 string hover_id = _panel.MouseHoverId;
-                bool in_own = GetTargetHasIn(hover_id);
+                bool has_in = GetTargetHasIn(hover_id);
 
-                if (hover_id != null && hover_id != _id && in_own)
+                if (hover_id != null && hover_id != _id && has_in && !_data.Links.ContainsKey(hover_id))
                 {
-                    _panel.AddLine(_scriptData, _id, hover_id,
-                        _dragStatus == ProcessNodeDragStatus.DrawLineTrue);
+                    _panel.AddLine(_scriptData, _id, hover_id, _dragStatus.FromDoor, _dragStatus.ToDoor);
                     RefreshSelected();
                 }
             }
@@ -560,7 +601,7 @@ namespace Script.UI.Panel.Auto.Node
             bool has_in = false;
             var ui = _panel.GetNode(id);
             if (ui)
-                _panel.GetLineEndOwnership(ui._data.NodeType, out has_in, out bool _, out bool _);
+                _panel.GetLineEndOwnership(ui._data.NodeType, out has_in, out bool _, out bool _, out bool _);
             return has_in;
         }
 
@@ -581,7 +622,8 @@ namespace Script.UI.Panel.Auto.Node
                 if (_data.NodeType == NodeType.TriggerEvent)
                 {
                     var data = _data as TriggerEventNode;
-                    match_list = _scriptData.GetListenNodes(data.EventNameParse).ConvertAll(m => m as BaseNodeData);
+                    var event_name = data.EventList != null ? data.EventList[0].Item3 : "";
+                    match_list = _scriptData.GetListenNodes(event_name).ConvertAll(m => m as BaseNodeData);
                 }
                 else if (_data.NodeType == NodeType.ListenEvent)
                 {
@@ -591,11 +633,13 @@ namespace Script.UI.Panel.Auto.Node
 
 
                 TipsComp.gameObject.SetActive(true);
-                TipsComp.SetData(match_list.ConvertAll(m => m.Name),
+                TipsComp.SetData(match_list.ConvertAll(m => m.GetShowName()),
                 index =>
                 {
-                    _panel.Map.ScrollToNode(match_list[index].Id);
-                });
+                    var id = match_list[index].Id;
+                    _panel.OnClickCanvasTab(_panel.GetCanvasIndex(id), false);
+                    _panel.Map.ScrollToNode(id);
+                }, 180);
 
                 // 设置位置
                 var tipsCompRectT = TipsComp.GetComponent<RectTransform>();
@@ -619,8 +663,9 @@ namespace Script.UI.Panel.Auto.Node
         void RefreshRelativeLine()
         {
             _panel.RefreshNodeSlot(_id);
+
             // 把关联的所有节点都刷一遍槽点，然后刷新线段
-            var set = _data.GetRelativeNode();
+            var set = _data.LineNodeIds;
             foreach (var node_id in set)
             {
                 _panel.RefreshNodeSlot(node_id);

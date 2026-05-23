@@ -47,7 +47,8 @@ namespace Script.UI.Components
                 if (_shader == null)
                     _shader = Shader.Find("Custom/UI/OutlineEx");
 
-                base.graphic.material = new Material(_shader);
+                if (_shader != null)
+                    base.graphic.material = new Material(_shader);
             }
 
             if (base.graphic.canvas)

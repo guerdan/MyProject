@@ -28,12 +28,12 @@ namespace Script.UI.Panel.Auto
 
         void OnEnable()
         {
-            AutoScriptManager.Inst.OnScriptEnd += RefreshBtn;
+            AutoScriptManager.Inst.OnChangeScriptStatus += RefreshBtn;
         }
 
         void OnDisable()
         {
-            AutoScriptManager.Inst.OnScriptEnd -= RefreshBtn;
+            AutoScriptManager.Inst.OnChangeScriptStatus -= RefreshBtn;
         }
 
         public void SetData(DrawProcessPanel panel)
@@ -46,16 +46,13 @@ namespace Script.UI.Panel.Auto
         void RefreshBtn()
         {
             AutoScriptData data = AutoScriptManager.Inst.GetScriptData(_panel._id);
-            string name = "";
-
-            if (data.IsRunning)
-                name = "b_stop";
-            else
-                name = data.IsEnd ? "b_restart" : "b_start";
+            string name = data.IsRunning ? "b_stop" : "b_start";
 
             var path = "Common/Sprites/New/" + name;
             AssetUtil.SetImage(path, RunBtn.GetComponent<Image>());
 
+            var gray = new Color(0.8f, 0.8f, 0.8f, 1);
+            CloseBtn.GetComponent<Image>().color = data.IsEnd ? gray : Color.white;
         }
 
         void OnClickRunBtn()

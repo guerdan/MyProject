@@ -49,6 +49,7 @@
     <Compile Include="Assets\Script\Util\PathUtil.cs" />
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\TimedDestroy.cs" />
     <Compile Include="Assets\Script\UI\Components\ExButton.cs" />
+    <Compile Include="Assets\Script\Model\Auto\NodeData.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\DeskPet\DeskPetNodeIcon.cs" />
     <Compile Include="Assets\Script\Framework\UI\PanelDefine.cs" />
     <Compile Include="Assets\Script\Util\OpenFileByWin32.cs" />
@@ -62,7 +63,9 @@
     <Compile Include="Assets\Script\Framework\UI\UISceneMixin.cs" />
     <Compile Include="Assets\Script\XBattle\AStar\AStarCell.cs" />
     <Compile Include="Assets\Script\UI\Components\VertIndexAsUV1.cs" />
+    <Compile Include="Assets\Script\Framework\Else\GlobalKeyboard.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\DebugVarsFloat.cs" />
+    <Compile Include="Assets\Script\Util\PipelineServer.cs" />
     <Compile Include="Assets\Script\Test\AssetTest.cs" />
     <Compile Include="Assets\Script\Test\DestroyDemo.cs" />
     <Compile Include="Assets\Script\Model\ListStruct\BinarySearchTree.cs" />
@@ -77,6 +80,8 @@
     <Compile Include="Assets\Script\UI\Panel\Auto\Node\MouseNodeUI.cs" />
     <Compile Include="Assets\Script\Render\GPUSkinning\BoneAnim2Tex.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\Node\TemplateMatchNodeUI.cs" />
+    <Compile Include="Assets\Script\Util\SU.cs" />
+    <Compile Include="Assets\Script\UI\Components\TextScrollView.cs" />
     <Compile Include="Assets\Script\Model\Auto\AutoRunData.cs" />
     <Compile Include="Assets\Script\UI\Components\MenuSystem.cs" />
     <Compile Include="Assets\Script\Util\TweenUtil.cs" />
@@ -92,9 +97,10 @@
     <Compile Include="Assets\Script\Util\EditDisabledAttribute.cs" />
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\DragObject.cs" />
     <Compile Include="Assets\Script\Framework\AssetLoader\ImageManager.cs" />
+    <Compile Include="Assets\Script\Model\Auto\AutoPipeData.cs" />
     <Compile Include="Assets\Script\Test\PerformanceTestClass.cs" />
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\FollowMouse.cs" />
-    <Compile Include="Assets\Script\Model\Auto\AutoData.cs" />
+    <Compile Include="Assets\Script\Model\Auto\AutoScriptData.cs" />
     <Compile Include="Assets\Script\Test\TestExecutionTime.cs" />
     <Compile Include="Assets\Script\XLua\XLuaManager.cs" />
     <Compile Include="Assets\Script\UI\Components\ImageLoadComp.cs" />
@@ -110,12 +116,15 @@
     <Compile Include="Assets\Script\UI\Components\KeywordTipsComp.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\ImageSourcePanel.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\DrawProcessBtnBar.cs" />
+    <Compile Include="Assets\Script\Model\Auto\MapDataSave.cs" />
     <Compile Include="Assets\Script\Render\OutlineRender\CameraDepthRender.cs" />
+    <Compile Include="Assets\Script\Model\Auto\RecogUtil.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\ProcessDebugPanel.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\ConfirmPanel.cs" />
     <Compile Include="Assets\Script\Render\GPUSkinning\GPUSkinningSample.cs" />
     <Compile Include="Assets\Script\UI\Components\MenuComp.cs" />
     <Compile Include="Assets\Script\Framework\GameTimer.cs" />
+    <Compile Include="Assets\Script\UI\Components\InputTextSVItem.cs" />
     <Compile Include="Assets\Script\UI\Components\OutlineCustome.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\Node\MapNodeUI.cs" />
     <Compile Include="Assets\Script\UI\Helper.cs" />
@@ -123,11 +132,13 @@
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\MoveMouse.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\ImageInfoPanel.cs" />
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\GameManager.cs" />
+    <Compile Include="Assets\Script\Framework\Else\SimpleStruct.cs" />
     <Compile Include="Assets\Script\Render\GPUSkinning\GPUSkinUtil.cs" />
     <Compile Include="Assets\Script\UI\Components\InputTextComp.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\LogPrintItem.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\ProcessNodeInfoPanel.cs" />
     <Compile Include="Assets\Script\Test\UITest.cs" />
+    <Compile Include="Assets\Script\Util\MMFPeer.cs" />
     <Compile Include="Assets\Script\XBattle\QuadTree\QuadTree.cs" />
     <Compile Include="Assets\Script\Framework\UI\BasePanel.cs" />
     <Compile Include="Assets\Script\XBattle\AStar\AStarPanel.cs" />
@@ -138,10 +149,13 @@
     <Compile Include="Assets\Script\Model\ListStruct\RedBlackTree.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\PicMatchFloat.cs" />
     <Compile Include="Assets\Script\Framework\UI\UIManager.cs" />
+    <Compile Include="Assets\Script\UI\Panel\Auto\ScriptManagerSettingsPanel.cs" />
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\SystemInput.cs" />
     <Compile Include="Assets\Script\UI\Components\MoveParent.cs" />
+    <Compile Include="Assets\Script\Model\Auto\AffixCfgManager.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\DeskPet\DeskPetMapFloat.cs" />
     <Compile Include="Assets\Script\Model\Auto\MapData.cs" />
+    <Compile Include="Assets\Script\Model\Auto\AutoScriptManager.cs" />
     <Compile Include="Assets\Script\Test\ForFBXTest.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\TemplateMatchDrawResultPanel.cs" />
     <Compile Include="Assets\Script\UI\Panel\Hero\HeroDetailPanel.cs" />
@@ -164,21 +178,19 @@
     <Compile Include="Assets\Script\UI\Panel\Auto\ProcessNodeLineUI.cs" />
     <Compile Include="Assets\Script\UI\Panel\Auto\DrawProcessPanel.cs" />
     <Compile Include="Assets\Script\UI\Components\SquareFrameUI.cs" />
+    <Compile Include="Assets\Script\UI\Components\InputTextSV.cs" />
     <Compile Include="Assets\Script\Render\OutlineRender\OutLineRender.cs" />
     <Compile Include="Assets\Script\Model\ListStruct\AVLTree.cs" />
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\TransparentWindow.cs" />
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\DragWindow.cs" />
     <Compile Include="Assets\Script\UI\Panel\TransparentWindow\WindowBoundsCollider2D.cs" />
     <Compile Include="Assets\Script\UI\Components\OutlineEx.cs" />
-    <Compile Include="Assets\Script\Model\Auto\GameItemCfg.cs" />
+    <Compile Include="Assets\Script\Model\Auto\GameItemCfgManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Packages\OpenCvSharp4.runtime.win.4.10.0.20241108\runtimes\win-x64\native\OpenCvSharpExtern.dll" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMPro.cginc" />
     <None Include="Assets\Packages\System.Runtime.CompilerServices.Unsafe.6.0.0\LICENSE.TXT" />
-    <None Include="Assets\Spine\version.txt" />
     <None Include="Assets\AssetBundles\Lua\Folder2\test2.lua.txt" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile Overlay.shader" />
     <None Include="Assets\Render Style\Line\Shaders\OutlineZOffset.shader" />
     <None Include="Assets\Render Style\Line\Shaders\Detect Line\LineBlur.shader" />
     <None Include="Assets\AssetBundles\Lua\Folder2\test12.lua.txt" />
@@ -193,16 +205,12 @@
     <None Include="Assets\AssetBundles\Lua\Folder2\test14.lua.txt" />
     <None Include="Assets\AssetBundles\Lua\Folder1\classA.lua.txt" />
     <None Include="Assets\AssetBundles\Lua\Folder2\test13.lua.txt" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap.shader" />
     <None Include="Assets\Shader\MultiPassShader.shader" />
     <None Include="Assets\Packages\OpenCvSharp4.runtime.win.4.10.0.20241108\runtimes\win-x86\native\OpenCvSharpExtern.dll" />
     <None Include="Assets\Others\Shaders\Diffuse.shader" />
     <None Include="Assets\Shader\Outline2.shader" />
     <None Include="Assets\Script\Render\GPUSkinning\BoneAnim.shader" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMPro_Mobile.cginc" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF SSD.shader" />
     <None Include="Assets\Render Style\Line\Shaders\OutlineStencilFlag.shader" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Surface-Mobile.shader" />
     <None Include="Assets\AssetBundles\Lua\LuaSummary.txt" />
     <None Include="Assets\AssetBundles\Lua\Folder2\test4.lua.txt" />
     <None Include="Assets\Packages\OpenCvSharp4.4.10.0.20241108\lib\netstandard2.1\OpenCvSharp.xml" />
@@ -220,28 +228,19 @@
     <None Include="Assets\Render Style\Line\Shaders\OutlineNdotV.shader" />
     <None Include="Assets\Script\Render\OutlineRender\GetDepthTexture.shader" />
     <None Include="Assets\AssetBundles\Other\Sprite2AtlasAddress.txt" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Surface.shader" />
     <None Include="Assets\Script\Render\GPUSkinning\2DBoneAnim.shader" />
-    <None Include="Assets\TextMesh Pro\Sprites\EmojiOne Attribution.txt" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap-Custom-Atlas.shader" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF.shader" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile SSD.shader" />
-    <None Include="Assets\TextMesh Pro\Resources\LineBreaking Leading Characters.txt" />
     <None Include="Assets\Script\Render\OutlineRender\OutLinePostProcessDepth.shader" />
     <None Include="Assets\AssetBundles\Common\FuncMaterial\OutlineProcess\OutLinePostProcess.shader" />
     <None Include="Assets\AssetBundles\Lua\Folder2\test5.lua.txt" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMPro_Properties.cginc" />
     <None Include="Assets\Render Style\Line\Shaders\Blend.cginc" />
     <None Include="Assets\Render Style\Line\Shaders\Detect Line\UVDetect.shader" />
     <None Include="Assets\Shader\OutlineEx.shader" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMPro_Surface.cginc" />
     <None Include="Assets\Packages\OpenCvSharp4.4.10.0.20241108\lib\netstandard2.1\OpenCvSharp.dll" />
     <None Include="Assets\Shader\uv1.shader" />
     <None Include="Assets\AssetBundles\Lua\Folder2\test7.lua.txt" />
     <None Include="Assets\Packages\System.Runtime.CompilerServices.Unsafe.6.0.0\useSharedDesignerContext.txt" />
     <None Include="Assets\Script\Render\GPUSkinning\BoneAnim_Improved.shader" />
     <None Include="Assets\Shader\ColorMask.shader" />
-    <None Include="Assets\TextMesh Pro\Resources\LineBreaking Following Characters.txt" />
     <None Include="Assets\Render Style\Line\Shaders\OutlineGeometryLine.shader" />
     <None Include="Assets\Shader\Outline3D.shader" />
     <None Include="Assets\Others\3D\PBR.shader" />
@@ -249,22 +248,16 @@
     <None Include="Assets\Shader\Tiling.shader" />
     <None Include="Assets\Render Style\Line\Shaders\OutlineOverlay.shader" />
     <None Include="Assets\Packages\OpenCvSharp4.runtime.win.4.10.0.20241108\runtimes\win-x64\native\opencv_videoio_ffmpeg4100_64.dll" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile Masking.shader" />
     <None Include="Assets\Render Style\Line\Shaders\OutlineStencil.shader" />
     <None Include="Assets\Packages\OpenCvSharp4.runtime.win.4.10.0.20241108\runtimes\win-x86\native\opencv_videoio_ffmpeg4100.dll" />
     <None Include="Assets\Render Style\Line\Shaders\OutlineCommon.shader" />
     <None Include="Assets\AssetBundles\Lua\Folder2\test19.lua.txt" />
     <None Include="Assets\Shader\ImageOuterOutline.shader" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF Overlay.shader" />
     <None Include="Assets\Render Style\Line\Shaders\OutlineGeometryTriangle.shader" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap-Mobile.shader" />
     <None Include="Assets\AssetBundles\Lua\Folder1\testA.lua.txt" />
-    <None Include="Assets\TextMesh Pro\Fonts\LiberationSans - OFL.txt" />
     <None Include="Assets\Packages\System.Runtime.CompilerServices.Unsafe.6.0.0\THIRD-PARTY-NOTICES.TXT" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile.shader" />
     <None Include="Assets\Packages\System.Runtime.CompilerServices.Unsafe.6.0.0\lib\netstandard2.0\System.Runtime.CompilerServices.Unsafe.xml" />
     <None Include="Assets\AssetBundles\Lua\Folder2\test11.lua.txt" />
-    <None Include="Assets\TextMesh Pro\Shaders\TMP_Sprite.shader" />
     <None Include="Assets\Packages\System.Runtime.CompilerServices.Unsafe.6.0.0\lib\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll" />
   </ItemGroup>
   <ItemGroup>
@@ -592,6 +585,14 @@
       <HintPath>C:\Program Files\Unity 2021.3.6f1\Editor\Data\Managed\UnityEngine\UnityEditor.UnityConnectModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="I18N">
+      <HintPath>Assets\Plugins\EPPlus\I18N.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="EPPlus">
+      <HintPath>Assets\Plugins\EPPlus\EPPlus.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="OpenCvSharp">
       <HintPath>Assets\Packages\OpenCvSharp4.4.10.0.20241108\lib\netstandard2.1\OpenCvSharp.dll</HintPath>
       <Private>False</Private>
@@ -612,8 +613,16 @@
       <HintPath>Library\PackageCache\jillejr.newtonsoft.json-for-unity@f2c6cb0981\Plugins\Newtonsoft.Json Editor\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="EPPlus.System.Drawing">
+      <HintPath>Assets\Plugins\EPPlus\EPPlus.System.Drawing.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="System.Runtime.CompilerServices.Unsafe">
       <HintPath>Assets\Packages\System.Runtime.CompilerServices.Unsafe.6.0.0\lib\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="EPPlus.Interfaces">
+      <HintPath>Assets\Plugins\EPPlus\EPPlus.Interfaces.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Burst.Unsafe">
@@ -622,6 +631,10 @@
     </Reference>
     <Reference Include="Unity.Burst.Cecil.Mdb">
       <HintPath>Library\PackageCache\com.unity.burst@1.6.6\Unity.Burst.CodeGen\Unity.Burst.Cecil.Mdb.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="I18N.West">
+      <HintPath>Assets\Plugins\EPPlus\I18N.West.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Burst.Cecil">
@@ -1164,8 +1177,8 @@
       <HintPath>Library\ScriptAssemblies\PsdPlugin.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.TextMeshPro.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.TextMeshPro.Editor.dll</HintPath>
+    <Reference Include="Unity.Addressables">
+      <HintPath>Library\ScriptAssemblies\Unity.Addressables.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Performance.Profile-Analyzer.Editor">
@@ -1174,10 +1187,6 @@
     </Reference>
     <Reference Include="Unity.TestTools.CodeCoverage.Editor.OpenCover.Model">
       <HintPath>Library\ScriptAssemblies\Unity.TestTools.CodeCoverage.Editor.OpenCover.Model.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.Addressables">
-      <HintPath>Library\ScriptAssemblies\Unity.Addressables.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.VisualScripting.State.Editor">
@@ -1278,10 +1287,6 @@
     </Reference>
     <Reference Include="Unity.VisualScripting.Core.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.Core.Editor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.TextMeshPro">
-      <HintPath>Library\ScriptAssemblies\Unity.TextMeshPro.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Burst.Editor">
@@ -1391,8 +1396,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="Assembly-CSharp-firstpass.csproj" />
-    <ProjectReference Include="Spine.Runtime.csproj" />
-    <ProjectReference Include="Spine.Editor.csproj" />
     <ProjectReference Include="com.zframework.io.csproj" />
   </ItemGroup>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />

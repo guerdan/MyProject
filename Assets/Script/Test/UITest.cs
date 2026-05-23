@@ -17,7 +17,6 @@ namespace Script.UI.Test
         public MeshRenderer meshRenderer;
         void Start()
         {
-            Application.targetFrameRate = 60;
 
         }
         void Update()
@@ -36,11 +35,7 @@ namespace Script.UI.Test
             {
             }
 
-            if (Input.GetKeyDown(KeyCode.Q))
-            {
-                Application.targetFrameRate = 60;
-
-            }
+           
 
             if (Input.GetKeyDown(KeyCode.R))
             {
@@ -162,14 +157,7 @@ namespace Script.UI.Test
         // int b3 = 8;
         // int b4 = 8;
         // int b5 = 8;
-        float a = 1;
-        float b = 3.24f;
-        float c = 4.24f;
-        float d = 5.24f;
-        float e = 6.24f;
-        float g = 7.24f;
-        float h = 8.24f;
-        float k = 8.24f;
+
 
 
         void CustomMethod()

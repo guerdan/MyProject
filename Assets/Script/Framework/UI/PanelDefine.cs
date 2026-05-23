@@ -13,12 +13,14 @@ namespace Script.Framework.UI
         TopSystem,      // 顶层系统通知界面，层级3，如：断线重连弹窗、转菊花、轮播通知栏
     }
 
-    //当关闭Layer=0的界面栈的最后个界面时，调用AssetManager.ReleaseUnuseAsset真正回收资源
+    // 当关闭Layer=0的界面栈的最后个界面时，调用AssetManager.ReleaseUnuseAsset真正回收资源
+    // 最后个WindowsPopUp关闭时 执行 ReleaseUnuseAsset
+    // 资源上不应该出现敏感词；实例上可以有赋值的敏感词，它们会在界面关闭后及时销毁。
     public enum UIRecycleTypeEnum
     {
         Once,          //关闭界面后，立即销毁实例。
-        Normal,        //关闭界面60秒后，销毁实例。
-        Frequent,      //一直缓存实例。
+        Normal,        //关闭界面10秒后，销毁实例。
+        Frequent,      //关闭界面60秒后，销毁实例。
     }
 
 
@@ -42,6 +44,7 @@ namespace Script.Framework.UI
         ImageInfoPanel,
         ImageSourcePanel,
         ScriptManagerPanel,
+        ScriptManagerSettingsPanel,
         TemplateMatchDrawResultPanel,
         ImageMatchTestPanel,
         ImageCompareTestPanel,
@@ -226,6 +229,17 @@ namespace Script.Framework.UI
             },
 
             new PanelDefine{
+                Key = PanelEnum.ScriptManagerSettingsPanel,
+                Name = "ScriptManagerSettingsPanel",
+                Path = "Auto/Prefabs/ScriptManagerSettingsPanel",
+                Type = UITypeEnum.PopUp,
+                RecycleType = UIRecycleTypeEnum.Normal,
+                InitPos = new Vector2(0, 0),
+                HideLastPanel = false,
+                ClickOutWinClose = true,
+            },
+
+            new PanelDefine{
                 Key = PanelEnum.TemplateMatchDrawResultPanel,
                 Name = "TemplateMatchDrawResultPanel",
                 Path = "Auto/Prefabs/TemplateMatchDrawResultPanel",
@@ -275,7 +289,7 @@ namespace Script.Framework.UI
                 InitPos = new Vector2(0, 0),
                 HideLastPanel = false,
             },
-            
+
             new PanelDefine{
                 Key = PanelEnum.DebugMessageFloat,
                 Name = "DebugMessageFloat",
@@ -295,7 +309,7 @@ namespace Script.Framework.UI
                 InitPos = new Vector2(0, 0),
                 HideLastPanel = false,
             },
-            
+
         };
 
 

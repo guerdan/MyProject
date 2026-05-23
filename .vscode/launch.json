@@ -6,6 +6,7 @@
             "type": "vstuc",
             "request": "attach",
             "playerConnection": true, // 启用 Player 调试
+            // "path": "${workspaceFolder}/Library/EditorInstance.json"
             // "endPoint": "192.168.43.143:56860"
         },
         {

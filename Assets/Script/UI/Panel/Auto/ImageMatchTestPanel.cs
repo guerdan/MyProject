@@ -79,7 +79,7 @@ namespace Script.UI.Panel.Auto
             else
             {
                 r_mat = IU.MatchTemplateCustomMask(s_mat, t_mat, t_mat);
-                results = IU.FindResultMin(r_mat, t_mat.Width, t_mat.Height, 0.6f);
+                results = IU.FindResultMin(r_mat, t_mat.Width, t_mat.Height, 0.6f, out _);
                 results.Sort((a, b) =>
                 {
                     if (a.Score != b.Score)

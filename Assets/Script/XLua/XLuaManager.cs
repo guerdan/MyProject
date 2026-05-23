@@ -28,7 +28,6 @@
 //             Inst = this;
 //             //创建lua运行环境
 //             luaEnv = new LuaEnv();
-//             Application.targetFrameRate= 120;
 
 //             StartCoroutine(LoadLuaAddressable());
 //         }

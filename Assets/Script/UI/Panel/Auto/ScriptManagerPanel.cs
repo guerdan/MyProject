@@ -31,12 +31,13 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private Button ClearBtn;
 
         [SerializeField] private Button CreateBtn;
+        [SerializeField] private Button SettingsBtn;
 
 
         List<string> _collectionIds;
         List<string> _searchIds;
 
-        string _directoryPath = "";
+        string _directoryPath = "Script";
 
         void Awake()
         {
@@ -44,6 +45,7 @@ namespace Script.UI.Panel.Auto
             ClearBtn.onClick.AddListener(OnClearBtnClick);
             ReturnDirPathBtn.onClick.AddListener(OnReturnDirPathBtnClick);
             CreateBtn.onClick.AddListener(OnCreateBtnClick);
+            SettingsBtn.onClick.AddListener(OnClickSettingsBtn);
 
 
             ScriptItemPrefab.SetActive(false);
@@ -77,7 +79,7 @@ namespace Script.UI.Panel.Auto
             if (id.StartsWith(AutoScriptManager.FolderIdStart))
             {
                 id = id.Substring(AutoScriptManager.FolderIdStart.Length + Application.streamingAssetsPath.Length + 1);
-                var text = id.Substring(id.LastIndexOf("/") + 1);
+                var text = id.Substring(id.LastIndexOf('/') + 1);
                 var ui = item.GetComponent<ScriptManagerFolderItem>();
                 // 只用下点击事件功能
                 ui.SetData(text, () =>
@@ -140,7 +142,7 @@ namespace Script.UI.Panel.Auto
             if (SearchInput.GetText() != "")
                 return;
 
-            var index = _directoryPath.LastIndexOf("/");
+            var index = _directoryPath.LastIndexOf('/');
             if (index >= 0)
             {
                 _directoryPath = _directoryPath.Substring(0, index);
@@ -168,8 +170,8 @@ namespace Script.UI.Panel.Auto
             ConfirmPanelParam param = new ConfirmPanelParam
             {
                 Type = ConfirmPanelType.EditInput,
-                PanelTitle = "创建脚本",
-                Region0Title = "脚本名",
+                PanelTitle = SU.GetString(SU.ChuangJianJiaoBen),
+                Region0Title = SU.GetString(SU.JiaoBenMing),
                 Region0Text = "",
                 OnConfirm = OnConfirm,
             };
@@ -181,6 +183,33 @@ namespace Script.UI.Panel.Auto
             };
 
             UIManager.Inst.ShowPanel(PanelEnum.ConfirmPanel, param, config);
+        }
+
+        void OnClickSettingsBtn()
+        {
+
+            UIManager.Inst.ShowPanel(PanelEnum.ScriptManagerSettingsPanel, null);
+            // Action<string, string> OnConfirm = (string name, string _) =>
+            // {
+            //     manager.Settings.PipeName = name;
+            // };
+
+            // ConfirmPanelParam param = new ConfirmPanelParam
+            // {
+            //     Type = ConfirmPanelType.EditInput,
+            //     PanelTitle = "PipeName",
+            //     Region0Title = "PipeName\n(重启生效)",
+            //     Region0Text = manager.Settings.PipeName,
+            //     OnConfirm = OnConfirm,
+            // };
+            // PanelRunConfig config = new PanelRunConfig
+            // {
+            //     SetPosType = PanelSetPosType.Reference,
+            //     PosTarget = SettingsBtn.GetComponent<RectTransform>(),
+            //     PosOffset = new Vector2(0, -30),
+            // };
+
+            // UIManager.Inst.ShowPanel(PanelEnum.ConfirmPanel, param, config);
         }
 
         void OnDisable()

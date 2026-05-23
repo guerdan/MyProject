@@ -15,11 +15,14 @@ namespace Script.UI.Components
     public class ImageDetailCompFloat
     {
         [SerializeField] public RectTransform SelfRT;
+        [SerializeField] public Image ColorImage;
         [SerializeField] public Text PosT;
-        [SerializeField] public Text RT;
+        [SerializeField] public Text RT;        // RedText
         [SerializeField] public Text GT;
         [SerializeField] public Text BT;
-        [SerializeField] public Image ColorImage;
+        [SerializeField] public Text CRT;       // ConvolutionRedText
+        [SerializeField] public Text CGT;
+        [SerializeField] public Text CBT;
 
     }
     /// <summary>
@@ -134,9 +137,9 @@ namespace Script.UI.Components
             _imageSize = new Vector2Int(spr.texture.width, spr.texture.height);
             if (SizeText)
             {
-                var str = string.Format($"{_imageSize.x} * {_imageSize.y}");
+                var str = string.Format($"({_imageSize.x}*{_imageSize.y})");
                 if (!string.IsNullOrEmpty(name))
-                    str = $"{name} — " + str;
+                    str = $"{str} {name}" ;
                 SizeText.text = str;
             }
 
@@ -144,7 +147,8 @@ namespace Script.UI.Components
             MinScale = Math.Min(_edgeLen / _imageSize.x, _edgeLen / _imageSize.y);
             MinScale = Math.Min(MinScale, MaxScale);
 
-            if (reset)
+            // 重置 或者 必须的初始化
+            if (reset || _sizeScale == 0)
             {
                 _sizeScale = MinScale;
                 RefreshScale();
@@ -210,15 +214,15 @@ namespace Script.UI.Components
 
         public void ClearData()
         {
-            _imageRT.sizeDelta = new Vector2(100, 100);
-            _maskRT.sizeDelta = new Vector2(100, 100);
+            // _imageRT.sizeDelta = new Vector2(100, 100);
+            // _maskRT.sizeDelta = new Vector2(100, 100);
             Image.sprite = DefaultSprite;
-            _imageSize = default;
+            // _imageSize = default;
             if (SizeText) SizeText.text = " * ";
 
-            _sizeScale = 1;
+            // _sizeScale = 1;
             _select_pixel_pos = new Vector2Int(-1, -1);
-            ScrollRect.normalizedPosition = new Vector2(0.5f, 0.5f);
+            // ScrollRect.normalizedPosition = new Vector2(0.5f, 0.5f);
 
         }
 
@@ -478,6 +482,9 @@ namespace Script.UI.Components
 
 
         #region  SelectPixel
+
+        Vector3Int _center_pix;                 // 中心点颜色
+        Vector3Int _convolution_pix;            // 卷积颜色
         void RefreshSelectPixel()
         {
             if (_select_pixel_pos.x < 0)
@@ -516,11 +523,49 @@ namespace Script.UI.Components
             var tex = Image.sprite.texture;
             var color = tex.GetPixel((int)_select_pixel_pos.x, (int)_select_pixel_pos.y);
             Float.PosT.text = $"（{(int)_select_pixel_pos.x}   ,   {(int)_select_pixel_pos.y}）";
-            Float.RT.text = $"{(int)(color.r * 255)} , ";
-            Float.GT.text = $"{(int)(color.g * 255)} , ";
-            Float.BT.text = $"{(int)(color.b * 255)}";
+            _center_pix = new Vector3Int((int)(color.r * 255), (int)(color.g * 255), (int)(color.b * 255));
+
+            Float.RT.text = $"{_center_pix.x} , ";
+            Float.GT.text = $"{_center_pix.y} , ";
+            Float.BT.text = $"{_center_pix.z}";
             Float.ColorImage.color = color;
+
+            if (_select_pixel_pos.x > 0 && _select_pixel_pos.x < _imageSize.x - 1
+                && _select_pixel_pos.y > 0 && _select_pixel_pos.y < _imageSize.y - 1)
+            {
+                // 卷积后颜色
+                var r = 0f;
+                var g = 0f;
+                var b = 0f;
+                for (int i = -1; i <= 1; i++)
+                    for (int j = -1; j <= 1; j++)
+                    {
+                        var c = tex.GetPixel((int)_select_pixel_pos.x + i, (int)_select_pixel_pos.y + j);
+                        r += c.r * 255;
+                        g += c.g * 255;
+                        b += c.b * 255;
+                    }
+
+                _convolution_pix = new Vector3Int((int)r / 9, (int)g / 9, (int)b / 9);
+                Float.CRT.text = $"{_convolution_pix.x} , ";
+                Float.CGT.text = $"{_convolution_pix.y} , ";
+                Float.CBT.text = $"{_convolution_pix.z}";
+            }
+            else
+            {
+                _convolution_pix = Vector3Int.zero;
+                Float.CRT.text = $"";
+                Float.CGT.text = $"";
+                Float.CBT.text = $"";
+            }
         }
+
+        public void GetSelectPixelInfo(out Vector3Int center, out Vector3Int convolution)
+        {
+            center = _center_pix;
+            convolution = _convolution_pix;
+        }
+
         #endregion
 
 

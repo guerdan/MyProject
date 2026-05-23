@@ -52,6 +52,11 @@ namespace Script.UI.Panel.Auto
                    }
                    else if (matchResult.UIType == 2)  // 失败后的，最高分数
                        item.SetData(DU.FloatFormat(matchResult.Score, 2), matchResult.Rect, new Color());
+                   else if (matchResult.UIType == 3)  // 
+                   {
+                       var r = matchResult.Rect;
+                       item.SetData($"P({(int)r.x},{(int)r.y}), Size({(int)r.w},{(int)r.h})", r, Color.green);
+                   }
                });
 
             // 若此时不让显示。就得隐藏

@@ -12,13 +12,13 @@ namespace Script.UI.Panel.Auto.DeskPet
 
     public class DeskPetNodeIcon : MonoBehaviour
     {
-        [Header("模版匹配")]
+        [Header("TempMatch")]
         [SerializeField] private GameObject TemplateMatchGO;
         [SerializeField] private Image TemplateMatchOutlineRed;
         [SerializeField] private Image TemplateMatchOutlineWhite;
         [SerializeField] private GameObject BgIfNeed;
 
-        [Header("鼠标")]
+        [Header("Mouse")]
         [SerializeField] private GameObject MouseGO;
         [SerializeField] private Image MouseOutlineRed;
         [SerializeField] private Image MouseOutlineWhite;
@@ -29,14 +29,15 @@ namespace Script.UI.Panel.Auto.DeskPet
 
         [SerializeField] private Text MouseTitle;                   // 按键
 
-        [Header("赋值、条件、监听、触发")]
+        [Header("Assign、Con、Lis、Tri")]
         [SerializeField] private GameObject AssignGO;
         [SerializeField] private Image AssignOutlineRed;
         [SerializeField] private Image AssignOutlineWhite;
-        [SerializeField] private Text AssignTypeText;           // 类型：条件/触发事件/监听事件 
         [SerializeField] private Image AssignTypeBg;            // 图 
         [SerializeField] private Image AssignTypeLine;          // 图 
-        [Header("小地图")]
+        [SerializeField] private Text AssignTypeText;           // 类型：条件/触发事件/监听事件 
+        [SerializeField] private Image AssignTypeIcon;           // 类型：截图
+        [Header("Map")]
         [SerializeField] private GameObject MapGO;
         [SerializeField] private Image MapOutlineRed;
         [SerializeField] private Image MapOutlineWhite;
@@ -74,8 +75,10 @@ namespace Script.UI.Panel.Auto.DeskPet
                 || nodeType == NodeType.KeyBoardOper || nodeType == NodeType.WaitOper;
 
             bool is_AssignSeries = nodeType == NodeType.AssignOper || nodeType == NodeType.ConditionOper
-                || nodeType == NodeType.TriggerEvent || nodeType == NodeType.ListenEvent;
-            bool is_MapCapture = nodeType == NodeType.MapCapture || nodeType == NodeType.MapPathFinding;
+                || nodeType == NodeType.ForOper || nodeType == NodeType.TriggerEvent || nodeType == NodeType.ListenEvent
+                 || nodeType == NodeType.CaptureOper;
+            bool is_MapCapture = nodeType == NodeType.MapCapture || nodeType == NodeType.MapPathFinding
+                || nodeType == NodeType.ItemGridRecog;
 
             Utils.SetActive(TemplateMatchGO, is_TemplateMatch);
             Utils.SetActive(MouseGO, use_MouseGo);
@@ -121,13 +124,15 @@ namespace Script.UI.Panel.Auto.DeskPet
                     Utils.SetActive(MouseIconRT, false);
                     Utils.SetActive(MouseTitle, true);
                     KeyBoardOperNode data = node as KeyBoardOperNode;
-                    MouseTitle.text = data.Key;
+                    // MouseTitle.text = data.Key;
+                    MouseTitle.text = data.Key.Length > 0 ? data.Key.Substring(0, 1) : "";
                 }
                 else if (nodeType == NodeType.WaitOper)
                 {
                     Utils.SetActive(MouseIconRT, false);
                     Utils.SetActive(MouseTitle, true);
-                    MouseTitle.text = "待";
+                    // MouseTitle.text = "待";
+                    MouseTitle.text = "Wa";
                 }
 
             }
@@ -137,14 +142,33 @@ namespace Script.UI.Panel.Auto.DeskPet
                 outlineRed = AssignOutlineRed;
                 outlineWhite = AssignOutlineWhite;
 
-                bool is_Assign = nodeType == NodeType.AssignOper;
-                Utils.SetActive(AssignTypeText, !is_Assign);
-                Utils.SetActive(AssignTypeBg, !is_Assign);
-                Utils.SetActive(AssignTypeLine, !is_Assign);
+                bool show_type = nodeType != NodeType.AssignOper;
+                bool use_type_icon = nodeType == NodeType.CaptureOper;
+
+                Utils.SetActive(AssignTypeBg, show_type);
+                Utils.SetActive(AssignTypeLine, show_type);
+                Utils.SetActive(AssignTypeText, show_type && !use_type_icon);
+                Utils.SetActive(AssignTypeIcon, show_type && use_type_icon);
+
+
                 if (nodeType == NodeType.ConditionOper)
                 {
                     ConditionOperNode data = node as ConditionOperNode;
-                    AssignTypeText.text = "条件";
+                    AssignTypeText.text = "C";
+                    AssignTypeText.color = AssignNodeUI.TypeTextColor1;
+                    AssignTypeBg.color = AssignNodeUI.TypeBgColor1;
+                    AssignTypeLine.color = AssignNodeUI.TypeLineColor1;
+                }
+                else if (nodeType == NodeType.CaptureOper)
+                {
+                    ForOperNode data = node as ForOperNode;
+                    AssignTypeBg.color = AssignNodeUI.TypeBgColor4;
+                    AssignTypeLine.color = AssignNodeUI.TypeLineColor4;
+                }
+                else if (nodeType == NodeType.ForOper)
+                {
+                    ForOperNode data = node as ForOperNode;
+                    AssignTypeText.text = "F";
                     AssignTypeText.color = AssignNodeUI.TypeTextColor1;
                     AssignTypeBg.color = AssignNodeUI.TypeBgColor1;
                     AssignTypeLine.color = AssignNodeUI.TypeLineColor1;
@@ -153,7 +177,8 @@ namespace Script.UI.Panel.Auto.DeskPet
                 else if (nodeType == NodeType.TriggerEvent)
                 {
                     TriggerEventNode data = node as TriggerEventNode;
-                    AssignTypeText.text = "触发";
+                    // AssignTypeText.text = "触发";
+                    AssignTypeText.text = "T";
                     AssignTypeText.color = AssignNodeUI.TypeTextColor2;
                     AssignTypeBg.color = AssignNodeUI.TypeBgColor2;
                     AssignTypeLine.color = AssignNodeUI.TypeLineColor2;
@@ -162,7 +187,8 @@ namespace Script.UI.Panel.Auto.DeskPet
                 else if (nodeType == NodeType.ListenEvent)
                 {
                     ListenEventNode data = node as ListenEventNode;
-                    AssignTypeText.text = "监听";
+                    // AssignTypeText.text = "监听";
+                    AssignTypeText.text = "L";
                     AssignTypeText.color = AssignNodeUI.TypeTextColor3;
                     AssignTypeBg.color = AssignNodeUI.TypeBgColor3;
                     AssignTypeLine.color = AssignNodeUI.TypeLineColor3;
@@ -173,7 +199,15 @@ namespace Script.UI.Panel.Auto.DeskPet
             {
                 outlineRed = MapOutlineRed;
                 outlineWhite = MapOutlineWhite;
-                MapTitle.text = nodeType == NodeType.MapCapture ? "地图识别" : "地图寻路";
+                if (nodeType == NodeType.MapCapture)
+                    // MapTitle.text = "地图识别";
+                    MapTitle.text = "M-R";
+                else if (nodeType == NodeType.MapPathFinding)
+                    // MapTitle.text = "地图寻路";
+                    MapTitle.text = "M-F";
+                else if (nodeType == NodeType.ItemGridRecog)
+                    // MapTitle.text = "物品格识别";
+                    MapTitle.text = "GI-R";
             }
 
             //common logic
@@ -189,11 +223,14 @@ namespace Script.UI.Panel.Auto.DeskPet
 
         void Update()
         {
+
+
             if (_node == null)
                 return;
             if (_show_time)
             {
-                _outlineRed.fillAmount = _node.Timer / _node.Delay;
+                _outlineRed.fillAmount = 0;
+                // _outlineRed.fillAmount = _node.Timer / _node.Delay;
             }
         }
 

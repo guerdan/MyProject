@@ -84,13 +84,18 @@ namespace Script.Util
             }
         }
 
+
+        /// <summary>
+        /// 以 38X38为基础, 构造37X38, 38X37, 37X37 的采样点
+        /// </summary>
+        /// <returns></returns>
         public static Dictionary<Vector2Int, List<Vector2Int>> GetGameItemBlurPoints()
         {
             var res = new Dictionary<Vector2Int, List<Vector2Int>>();
             int w = 38;
             var colors = new Color32[38 * 38];
             var color_white = new Color32(255, 255, 255, 255);
-            int s = GameItemCfg.Inst.BlurScale;
+            int s = GameItemCfgManager.Inst.BlurScale;
 
             res.Add(new Vector2Int(38, 38), null);
             res.Add(new Vector2Int(38, 37), null);
@@ -123,66 +128,61 @@ namespace Script.Util
         }
 
         // 处理游戏物品
-        public static Dictionary<Vector2Int, Dictionary<string, Color32[]>> DealGameItem()
-        {
-            var record = new Dictionary<Vector2Int, Dictionary<string, Color32[]>>();
-            var pre_path = $"{Application.streamingAssetsPath}/GameItem/Item";
-            var Config = GameItemCfg.Inst;
-            int s = Config.BlurScale;
+        // public static Dictionary<Vector2Int, Dictionary<string, Color32[]>> DealGameItem()
+        // {
+        //     var record = new Dictionary<Vector2Int, Dictionary<string, Color32[]>>();
+        //     var pre_path = $"{Application.streamingAssetsPath}/GameItem/Item";
+        //     var Config = GameItemCfgManager.Inst;
+        //     int s = Config.BlurScale;
+
+            
+        //     int w = 38;
+        //     foreach (var id in Config.IdCfg.Keys)
+        //     {
+        //         var path = $"{pre_path}/{id}.png";
+        //         if (!File.Exists(path))
+        //             continue;
+
+        //         using (var source = new Bitmap(path))   // 源图为40X40
+        //         {
+        //             Rectangle rect = new Rectangle(1, 1, w, w);
+        //             using (Bitmap bitmap = source.Clone(rect, source.PixelFormat)) // 裁剪至38X38大小 
+        //             {
+        //                 var colors = IU.BitmapToColor32(bitmap);
+        //                 IU.Color32ReverseYAxis(colors, w);       // Y轴翻转
+
+        //                 // 裁剪掉左上角数字，右下角罗马数字。
+        //                 for (int y = 0; y < w; y++)
+        //                     for (int x = 0; x < w; x++)
+        //                     {
+        //                         var index = y * w + x;
+        //                         if ((x <= 17 && y >= 22) || (x >= 19 && y <= 14))
+        //                         {
+        //                             colors[index] = default;
+        //                         }
+        //                     }
 
 
-            foreach (var size in Config.BlurPoints.Keys)
-            {
-                record[size] = new Dictionary<string, Color32[]>();
-            }
+        //                 foreach (var pair in Config.BlurPoints)
+        //                 {
+        //                     Vector2Int size = pair.Key;
+        //                     var points = pair.Value;
+        //                     Color32[] deal = Bilinear(colors, w, size.x, size.y);
+        //                     var deal_info = GetBlurValue(deal, size.x, s, points);
+        //                     record[size][id] = deal_info;
 
-            int w = 38;
-            foreach (var id in Config.IdCfg.Keys)
-            {
-                var path = $"{pre_path}/{id}.png";
-                if (!File.Exists(path))
-                    continue;
+        //                     // debug        绘制处理后的图像，保存本地
+        //                     // res = Blur(res, scale_w, res_points);
+        //                     // IU.Color32ReverseYAxis(res, scale_w);
+        //                     // IU.SaveColor32(res, scale_w, $"{pre_path}/{id}_2.png");
+        //                 }
 
-                using (var source = new Bitmap(path))   // 源图为40X40
-                {
-                    Rectangle rect = new Rectangle(1, 1, w, w);
-                    using (Bitmap bitmap = source.Clone(rect, source.PixelFormat)) // 裁剪至38X38大小 
-                    {
-                        var colors = IU.BitmapToColor32(bitmap);
-                        IU.Color32ReverseYAxis(colors, w);       // Y轴翻转
+        //             }
+        //         }
 
-                        // 裁剪掉左上角数字，右下角罗马数字。
-                        for (int y = 0; y < w; y++)
-                            for (int x = 0; x < w; x++)
-                            {
-                                var index = y * w + x;
-                                if ((x <= 17 && y >= 22) || (x >= 19 && y <= 14))
-                                {
-                                    colors[index] = default;
-                                }
-                            }
-
-
-                        foreach (var pair in Config.BlurPoints)
-                        {
-                            Vector2Int size = pair.Key;
-                            var points = pair.Value;
-                            Color32[] deal = Bilinear(colors, w, size.x, size.y);
-                            var deal_info = GetBlurValue(deal, size.x, s, points);
-                            record[size][id] = deal_info;
-
-                            // debug        绘制处理后的图像，保存本地
-                            // res = Blur(res, scale_w, res_points);
-                            // IU.Color32ReverseYAxis(res, scale_w);
-                            // IU.SaveColor32(res, scale_w, $"{pre_path}/{id}_2.png");
-                        }
-
-                    }
-                }
-
-            }
-            return record;
-        }
+        //     }
+        //     return record;
+        // }
 
 
         public static Color32[] Bilinear(Color32[] ori, int w, int r_w, int r_h)
@@ -326,7 +326,7 @@ namespace Script.Util
             return res;
         }
 
-        public static Color32[] GetBlurValue(Color32[] ori, int w, int blur_scale, List<Vector2Int> sample_p)
+        public static Color32[] GetBlurValue(Color32Image source,int blur_scale, List<Vector2Int> sample_p)
         {
             int s = blur_scale;              //scale
             int size = s * s;
@@ -339,7 +339,7 @@ namespace Script.Util
                 for (int dy = 0; dy < s; dy++)
                     for (int dx = 0; dx < s; dx++)
                     {
-                        var col = ori[(p.y + dy) * w + p.x + dx];
+                        var col = source.Colors[(p.y + dy) * source.W + p.x + dx];
                         r += col.r;
                         g += col.g;
                         b += col.b;

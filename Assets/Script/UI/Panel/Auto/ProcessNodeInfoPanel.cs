@@ -1,6 +1,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using OpenCvSharp.Dnn;
 using Script.Framework.AssetLoader;
 using Script.Framework.UI;
@@ -18,11 +19,11 @@ namespace Script.UI.Panel.Auto
     /// </summary>
     public class ProcessNodeInfoPanel : BasePanel
     {
-        [Header("通用")]
+        [Header("Common")]
         [SerializeField] private InputTextComp NameInput;
         [SerializeField] private Text IdText;
         [SerializeField] private SelectBoxComp TypeBox;
-        [SerializeField] private KeywordTipsComp TipsComp;  //提示词组件
+        [SerializeField] private KeywordTipsComp TipsComp;      // 提示词组件
         [SerializeField] private InputTextComp DelayInput;
         [SerializeField] private InputTextComp DescriptionInput;
         [SerializeField] private CheckBox IsFirstCheck;
@@ -31,11 +32,11 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private Button UnfoldBtn;
         [SerializeField] private Button FoldBtn;
         [SerializeField] private GameObject RightPanel;
-        [SerializeField] private Button GreenBtn;            //debug按钮
-        [SerializeField] private Button YellowBtn;            //debug按钮
+        [SerializeField] private Button GreenBtn;               // 工具按钮
+        [SerializeField] private Button YellowBtn;              // 查看按钮
 
 
-        [Header("模版匹配")]
+        [Header("TempMatch")]
         [SerializeField] private GameObject TemplateMatchGO;
         [SerializeField] private ImageLoadComp TemplateImage;
         [SerializeField] private Button TemplateImageBtn;
@@ -44,45 +45,51 @@ namespace Script.UI.Panel.Auto
         [SerializeField] private InputTextProComp RegionInput;
         [SerializeField] private CheckBox SaveCaptureCheck;
 
-        [Header("鼠标")]
+        [Header("Mouse")]
         [SerializeField] private GameObject MouseOperGO;
         [SerializeField] private SelectBoxComp MouseOperTypeBox;
         [SerializeField] private InputTextProComp MouseOperPosInput;
         [SerializeField] private InputTextComp MouseHoldTimeInput;
 
-        [Header("键盘")]
+        [Header("Keyboard")]
         [SerializeField] private GameObject KeyboardOperGO;
         [SerializeField] private SelectBoxComp KeyboardTypeBox;
         [SerializeField] private InputTextComp KeyboardInput;
         [SerializeField] private CheckBox KeyboardCheck;
         [SerializeField] private InputTextComp KeyboardHoldTimeInput;
+        [SerializeField] private InputTextComp KeyboardPipeInput;
 
-        [Header("赋值")]
+        [Header("Assign")]
         [SerializeField] private GameObject AssignOperGO;
         [SerializeField] private InputTextProComp AssignInput;
         [SerializeField] private SelectBoxComp VarTypeBox;      // 变量类型
         [SerializeField] private Text AssignCheckNum;           // 统计赋值此变量的节点个数,包含自己
 
-        [Header("条件判断")]
+        [Header("Condition")]
         [SerializeField] private GameObject ConditionOperGO;
         [SerializeField] private InputTextProComp ConditionInput;
 
-        [Header("抛出/监听事件")]
+        [Header("Trigger/Listen Event")]
         [SerializeField] private GameObject EventOperGO;
         [SerializeField] private InputTextComp EventNameInput;
         [SerializeField] private Text EventNum;                 // 检索被对方的引用数量，例如监听查看有几个触发
 
-        [Header("地图识别")]
+        [Header("MapRecog")]
         [SerializeField] private GameObject MapCaptureGO;
         [SerializeField] private InputTextProComp MapCaptureRegionInput;
         [SerializeField] private InputTextComp MapCaptureIdInput;
         [SerializeField] private InputTextComp MapColorSetInput;
-        [Header("地图寻路")]
-        [SerializeField] private GameObject MapPFGO;                    //MapPathFindingGO
-        [SerializeField] private InputTextComp MapPFIdInput;
-        [SerializeField] private InputTextComp MapPFXAxisInput;
-        [SerializeField] private InputTextComp MapPFYAxisInput;
-        [SerializeField] private SelectBoxComp MapPFTypeBox;
+
+        [Header("CommonParamPanel")]
+        [SerializeField] private GameObject CommonParamPanel;              //寻路模块,
+        [SerializeField] private SelectBoxComp CommonParamTypeBox;
+        [SerializeField] private TextScrollView InParamListComp;
+        [SerializeField] private TextScrollView OutParamListComp;
+
+        [SerializeField] private Button InParamBtn;
+        [SerializeField] private Button OutParamBtn;
+        [SerializeField] private InputTextSV InputTextSV;
+
 
 
         AutoScriptManager manager => AutoScriptManager.Inst;
@@ -92,6 +99,18 @@ namespace Script.UI.Panel.Auto
         DrawProcessPanel _drawPanel;
         AutoScriptData _scriptData;
 
+
+        // 以下是CommonParamPanel 可以扩展的
+        InputTextSVItemData[] _inParam_edit_list;
+        InputTextSVItemData[] _outParam_edit_list;
+        Action<List<InputTextSVItemData>> _inParam_onEditEnd;
+        Action<List<InputTextSVItemData>> _outParam_onEditEnd;
+
+        // 以下是GreenBtn(工具)、YellowBtn(数据) 可以扩展的
+        List<string> _greenBtn_options;
+        Action<int> _greenBtn_onClick;
+        List<string> _yellowBtn_options;
+
         void Awake()
         {
             UnfoldBtn.onClick.AddListener(OnFoldChangeBtnClick);
@@ -99,6 +118,17 @@ namespace Script.UI.Panel.Auto
             TemplateImageBtn.onClick.AddListener(OnTemplateImageBtnClick);
             GreenBtn.onClick.AddListener(OnClickGreenBtn);
             YellowBtn.onClick.AddListener(OnClickYellowBtn);
+            InParamBtn.onClick.AddListener(OnClickInParamBtn);
+            OutParamBtn.onClick.AddListener(OnClickOutParamBtn);
+
+            TipsComp.gameObject.SetActive(false);
+            InputTextSV.gameObject.SetActive(false);
+        }
+
+        void OnDisable()
+        {
+            NameInput.SetText("");
+            DescriptionInput.SetText("");
         }
 
 
@@ -110,7 +140,7 @@ namespace Script.UI.Panel.Auto
             _nodeType = _data.NodeType;
             _drawPanel = dataList[1] as DrawProcessPanel;
             _scriptData = _drawPanel._scriptData;
-            TipsComp.gameObject.SetActive(false);
+
 
             Refresh();
         }
@@ -118,31 +148,64 @@ namespace Script.UI.Panel.Auto
 
         void Refresh()
         {
-            NameInput.SetData(_data.Name, str => { _data.Name = str; RefreshDrawPanel(); });
+            NameInput.SetData(_data.GetName(), str => { _data.SetName(str); RefreshDrawPanel(); });
             DelayInput.SetData(_data.Delay + "s", OnDelayEndEdit);
-            DescriptionInput.SetData(_data.Description, str => _data.Description = str);
+            DescriptionInput.SetData(_data.GetDescription(), str => _data.SetDescription(str));
 
             IdText.text = $"id: {_data.Id}";
             List<string> list = AutoDataUIConfig.GetNodeTypeNameList();
-            TypeBox.SetData(list, OnSelect, TipsComp);
-            TypeBox.SetCurIndex(AutoDataUIConfig.NodeTypes.IndexOf(_nodeType));
+            TypeBox.SetData(list, OnSelectType, TipsComp);
+            TypeBox.SetCurIndex(AutoDataUIConfig.NodeTypes.FindIndex((type) => type.Item1 == _nodeType));
             IsFirstCheck.SetData(_scriptData.Config.FirstNode == _data.Id, OnIsFirstCheck);
             RefreshFoldStatus();
 
 
             TemplateMatchGO.SetActive(_nodeType == NodeType.TemplateMatchOper);
-            SaveCaptureCheck.transform.parent.gameObject.SetActive(_nodeType == NodeType.TemplateMatchOper);
+            SaveCaptureCheck.transform.parent.gameObject.SetActive(_nodeType == NodeType.CaptureOper);
             MouseOperGO.SetActive(_nodeType == NodeType.MouseOper);
             KeyboardOperGO.SetActive(_nodeType == NodeType.KeyBoardOper);
             AssignOperGO.SetActive(_nodeType == NodeType.AssignOper);
-            ConditionOperGO.SetActive(_nodeType == NodeType.ConditionOper);
+            ConditionOperGO.SetActive(_nodeType == NodeType.ConditionOper || _nodeType == NodeType.ForOper
+                                    || _nodeType == NodeType.CaptureOper);
             EventOperGO.SetActive(_nodeType == NodeType.TriggerEvent || _nodeType == NodeType.ListenEvent);
-            MapCaptureGO.SetActive(_nodeType == NodeType.MapCapture);
-            MapPFGO.SetActive(_nodeType == NodeType.MapPathFinding);
-            YellowBtn.gameObject.SetActive(_nodeType == NodeType.MapCapture || _nodeType == NodeType.MapPathFinding);
+            // MapCaptureGO.SetActive(_nodeType == NodeType.MapCapture);
+
+            _greenBtn_options = null;
+            _greenBtn_onClick = null;
+            _yellowBtn_options = null;
+            GreenBtn.gameObject.SetActive(_nodeType == NodeType.CaptureOper || _nodeType == NodeType.MapCapture);
+            YellowBtn.gameObject.SetActive(_nodeType == NodeType.TemplateMatchOper || _nodeType == NodeType.MapCapture);
 
 
-            if (_nodeType == NodeType.TemplateMatchOper)
+            bool use_commonParamPanel = _nodeType == NodeType.MapCapture || _nodeType == NodeType.MapPathFinding
+                                     || _nodeType == NodeType.ItemGridRecog;
+            bool commonParam_hasType = _nodeType == NodeType.MapPathFinding;
+
+            var DelayInputGo = DelayInput.transform.parent;
+            var Type_Rect = TypeBox.transform.parent.GetComponent<RectTransform>();
+            var CommonParam_Type_Rect = CommonParamTypeBox.transform.parent;
+            if (use_commonParamPanel)
+            {
+                Type_Rect.anchoredPosition = new Vector2(-240, 112);
+                Utils.SetActive(DelayInputGo, false);
+                Utils.SetActive(CommonParamPanel, true);
+                Utils.SetActive(CommonParam_Type_Rect, commonParam_hasType);
+            }
+            else
+            {
+                Type_Rect.anchoredPosition = new Vector2(-220, 112);
+                Utils.SetActive(DelayInputGo, true);
+                Utils.SetActive(CommonParamPanel, false);
+                Utils.SetActive(CommonParam_Type_Rect, commonParam_hasType);
+            }
+
+
+            if (_nodeType == NodeType.CaptureOper)
+            {
+                RefreshCaptureOperPanel();
+            }
+
+            else if (_nodeType == NodeType.TemplateMatchOper)
             {
                 RefreshTemplateMatchPanel();
             }
@@ -166,6 +229,14 @@ namespace Script.UI.Panel.Auto
             {
                 RefreshConditionOperPanel();
             }
+            else if (_nodeType == NodeType.ForOper)
+            {
+                RefreshForOperPanel();
+            }
+            else if (_nodeType == NodeType.ItemGridRecog)
+            {
+                RefreshItemGridRecogPanel();
+            }
 
             else if (_nodeType == NodeType.TriggerEvent || _nodeType == NodeType.ListenEvent)
             {
@@ -182,9 +253,9 @@ namespace Script.UI.Panel.Auto
             }
         }
 
-        void OnSelect(int index)
+        void OnSelectType(int index)
         {
-            var nodeType = AutoDataUIConfig.NodeTypes[index];
+            var nodeType = AutoDataUIConfig.NodeTypes[index].Item1;
             if (nodeType == _nodeType)
             {
                 return;
@@ -250,6 +321,112 @@ namespace Script.UI.Panel.Auto
             Utils.SetActive(UnfoldBtn.gameObject, manager.InfoPanelFolded);
         }
 
+        bool CheckExpressionIsLegal(string str)
+        {
+            str = str.Replace(" ", "");
+            if (string.IsNullOrEmpty(str)) return false;
+            if (str.IndexOf('=') >= 0) return false;
+
+            return AutoDataUIConfig.ExpressionIsLegal(str);
+        }
+
+        void OnClickYellowBtn()
+        {
+            if (_yellowBtn_options == null)
+                return;
+
+            Utils.SetActive(TipsComp, true);
+            TipsComp.SetData(_yellowBtn_options.ToList(), null, 400);
+
+            var tipsCompRectT = TipsComp.GetComponent<RectTransform>();
+            var targetR = YellowBtn.GetComponent<RectTransform>();
+            var offset = new Vector2(-targetR.rect.width / 2, -targetR.rect.height / 2) + new Vector2(0, -5);
+            var pos = Utils.GetPos(tipsCompRectT, targetR, offset, true);
+            tipsCompRectT.anchoredPosition = pos;
+        }
+
+        void OnClickGreenBtn()
+        {
+            if (_greenBtn_options == null)
+                return;
+
+            Utils.SetActive(TipsComp, true);
+            TipsComp.SetData(_greenBtn_options.ToList(), _greenBtn_onClick, 400);
+
+            var tipsCompRectT = TipsComp.GetComponent<RectTransform>();
+            var targetR = GreenBtn.GetComponent<RectTransform>();
+            var offset = new Vector2(-targetR.rect.width / 2, -targetR.rect.height / 2) + new Vector2(0, -5);
+            var pos = Utils.GetPos(tipsCompRectT, targetR, offset, true);
+            tipsCompRectT.anchoredPosition = pos;
+        }
+
+        #region CaptureOper
+
+        void RefreshCaptureOperPanel()
+        {
+            var data = _data as CaptureOperNode;
+            SaveCaptureCheck.SetData(data.SaveCaptureToLocal, (isOn) =>
+            {
+                data.SaveCaptureToLocal = isOn;
+            });
+
+            Action<string> save_func = (str) =>
+            {
+                str = str.Replace(" ", "");
+                data.RegionsExpression = str;
+                string format = AutoDataUIConfig.FormulaFormat(data.RegionsExpression);  //格式化
+                ConditionInput.SetText(format);
+
+                RefreshDrawPanel();
+            };
+
+
+            string t_format = AutoDataUIConfig.FormulaFormat(data.RegionsExpression);  //格式化
+            ConditionInput.SetData(t_format, save_func);
+            InputUseKeywordTips(ConditionInput);
+            ConditionInput.UseCheckBox(CheckExpressionIsLegal);
+
+            CaptureOperDebug();
+        }
+
+        void InputUseKeywordTips(InputTextProComp input)
+        {
+            var varRef = _scriptData.GetAllTips();
+            input.UseKeywordTips(TipsComp
+            , (search) => { return AutoDataUIConfig.GetAssignMatchList(search, varRef); }
+            , AutoDataUIConfig.GetAssignKeyword);
+
+        }
+
+        void CaptureOperDebug()
+        {
+            _greenBtn_options = new List<string>()
+            {
+                "显示截图范围",
+            };
+
+            _greenBtn_onClick = (index) =>
+            {
+                if (index == 0)     //"显示截图范围"
+                {
+                    if (_scriptData.IsEnd)
+                        return;
+                    var data = _data as CaptureOperNode;
+                    var Regions = _scriptData.FormulaGetResultV4L(data.RegionsExpression);
+                    var draw = new List<CVMatchResult>();
+
+                    for (int i = 0; i < Regions.Length; i++)
+                    {
+                        draw.Add(new CVMatchResult() { Rect = CVRect.ConvertV4Bigger(Regions[i]), UIType = 3 });
+                    }
+
+                    UIManager.Inst.ShowPanel(PanelEnum.TemplateMatchDrawResultPanel, new List<object> { draw, 3.0f });
+                }
+            };
+
+        }
+
+        #endregion
 
         #region TemplateMatch
         void RefreshTemplateMatchPanel()
@@ -278,15 +455,11 @@ namespace Script.UI.Panel.Auto
                 CountInput.SetText(data.Count.ToString());
             });
 
-            SaveCaptureCheck.SetData(data.SaveCaptureToLocal, (isOn) =>
-            {
-                data.SaveCaptureToLocal = isOn;
-            });
-
 
             SetRegionInput();
             SetTemplateImage();
-            GreenBtn.GetComponentInChildren<Text>().text = "debug";
+
+            TemplateMatchDebug();
         }
 
         void SetRegionInput()
@@ -305,21 +478,11 @@ namespace Script.UI.Panel.Auto
 
             string format = AutoDataUIConfig.FormulaFormat(data.RegionExpression);  //格式化
             RegionInput.SetData(format, save_func);
-
-            var varRef = _scriptData.GetInEditVarRef();
-            RegionInput.UseKeywordTips(TipsComp
-            , (search) => { return AutoDataUIConfig.GetAssignMatchList(search, varRef); }
-            , AutoDataUIConfig.GetAssignKeyword);
-
-            RegionInput.UseCheckBox((str) =>
-                {
-                    str = str.Replace(" ", "");
-                    if (string.IsNullOrEmpty(str)) return false;
-                    if (str.IndexOf("=") >= 0) return false;
-
-                    return AutoDataUIConfig.ExpressionIsLegal(str);
-                });
+            InputUseKeywordTips(RegionInput);
+            RegionInput.UseCheckBox(CheckExpressionIsLegal);
         }
+
+
 
         void SetTemplateImage()
         {
@@ -346,7 +509,21 @@ namespace Script.UI.Panel.Auto
             UIManager.Inst.ShowPanel(PanelEnum.ImageSourcePanel, param);
         }
 
+        void TemplateMatchDebug()
+        {
+            var data = _data as TemplateMatchOperNode;
+            _yellowBtn_options = new List<string>();
+            if (data.Meet_min_score <= 1)
+            {
+                _yellowBtn_options.Add($"<color='#069D00'>匹配中的最小值：{data.Meet_min_score}</color>");
+            }
 
+            if (data.Unmeet_max_score >= 0)
+            {
+                _yellowBtn_options.Add($"<color='#df3106ff'>未匹配上的最大值：{data.Unmeet_max_score}</color>");
+            }
+
+        }
 
 
         #endregion
@@ -372,7 +549,7 @@ namespace Script.UI.Panel.Auto
                 RefreshAssignCheckBox();
 
                 var count = 0;
-                bool has = TryGetVarInfo(str, out var info);
+                bool has = TryGetVarInfo(str, out var info, out bool has_bracket);
                 if (has)
                 {
                     count = info.Nodes.Count;
@@ -384,7 +561,8 @@ namespace Script.UI.Panel.Auto
 
                 if (count > 0)
                 {
-                    VarTypeBox.SetCurIndex(AutoDataUIConfig.VarTypes.IndexOf(info.Type));
+                    var type = AutoDataUIConfig.ConvertVarType(info.Type, has_bracket);
+                    VarTypeBox.SetCurIndex(AutoDataUIConfig.VarTypes.IndexOf(type));
                     VarTypeBox.SetLock(true);
                 }
                 else
@@ -395,21 +573,17 @@ namespace Script.UI.Panel.Auto
 
             string format = AutoDataUIConfig.FormulaFormat(data.Formula);  //格式化
             AssignInput.SetData(format, save_func, update_func);
-
-            var varRef = _scriptData.GetInEditVarRef();
-            AssignInput.UseKeywordTips(TipsComp
-            , (search) => { return AutoDataUIConfig.GetAssignMatchList(search, varRef); }
-            , AutoDataUIConfig.GetAssignKeyword);
+            InputUseKeywordTips(AssignInput);
 
             VarTypeBox.SetData(AutoDataUIConfig.VarTypeNames, (index) =>
             {
-                data.VarType = AutoDataUIConfig.VarTypes[index];
+                data.VarShowType = AutoDataUIConfig.VarTypes[index];
 
                 RefreshAssignCheckBox();
                 RefreshDrawPanel();
             }, TipsComp);
 
-            VarTypeBox.SetCurIndex(AutoDataUIConfig.VarTypes.IndexOf(data.VarType));
+            VarTypeBox.SetCurIndex(AutoDataUIConfig.VarTypes.IndexOf(data.VarShowType));
             // 初始刷一下
             //
             update_func(format);
@@ -420,10 +594,10 @@ namespace Script.UI.Panel.Auto
             var data = _data as AssignOperNode;
             var text = AssignInput.GetText();
             text = text.Replace(" ", "");
-            bool isLegal =  _scriptData.CheckFormulaLegal(text, data.VarType);
+            bool isLegal = _scriptData.CheckFormulaLegal(text, data.VarShowType);
 
             AssignInput.ValidCheck.SetData(isLegal);
-            bool has = TryGetVarInfo(text, out var info);
+            bool has = TryGetVarInfo(text, out var info, out _);
             if (!has)
             {
                 AssignCheckNum.text = "0";
@@ -435,15 +609,20 @@ namespace Script.UI.Panel.Auto
             }
         }
         // 文本到info
-        public bool TryGetVarInfo(string text, out FormulaVarInfo_Edit info)
+        public bool TryGetVarInfo(string text, out FormulaVarInfo_Edit info, out bool has_bracket)
         {
-            var i = text.IndexOf("=");
+            has_bracket = false;
+            var i = text.IndexOf('=');
             if (i < 0)
             {
                 info = new FormulaVarInfo_Edit();
                 return false;
             }
             var varName = text.Substring(0, i).Trim();
+            int slice_i = varName.IndexOf('[');
+            has_bracket = slice_i > -1;
+            if (has_bracket)
+                varName = varName.Substring(0, slice_i);
             bool has = _scriptData.GetFormulaVarInfo_Edit(varName, out info);
             return has;
         }
@@ -467,19 +646,44 @@ namespace Script.UI.Panel.Auto
 
             string t_format = AutoDataUIConfig.FormulaFormat(data.Formula);  //格式化
             ConditionInput.SetData(t_format, save_func);
-
-            var varRef = _scriptData.GetInEditVarRef();
-            ConditionInput.UseKeywordTips(TipsComp
-            , (search) => { return AutoDataUIConfig.GetAssignMatchList(search, varRef); }
-            , AutoDataUIConfig.GetAssignKeyword);
-
-            ConditionInput.UseCheckBox(RefreshConditionCheckBox);
+            InputUseKeywordTips(ConditionInput);
+            ConditionInput.UseCheckBox(CheckConditionIsLegal);
         }
 
-        bool RefreshConditionCheckBox(string str)
+        bool CheckConditionIsLegal(string str)
         {
             str = str.Replace(" ", "");
-            bool isLegal = _scriptData.CheckConditionLegal(str);
+            bool isLegal = AutoDataUIConfig.ConditionIsLegal(str);
+            return isLegal;
+        }
+
+        #endregion
+        #region ForOper
+        void RefreshForOperPanel()
+        {
+            var data = _data as ForOperNode;
+
+            Action<string> save_func = (str) =>
+            {
+                str = str.Replace(" ", "");
+                data.Formula = str;
+                string format = AutoDataUIConfig.FormulaFormat(data.Formula);  //格式化
+                ConditionInput.SetText(format);
+
+                RefreshDrawPanel();
+            };
+
+
+            string t_format = AutoDataUIConfig.FormulaFormat(data.Formula);  //格式化
+            ConditionInput.SetData(t_format, save_func);
+            InputUseKeywordTips(ConditionInput);
+            ConditionInput.UseCheckBox(RefreshForCheckBox);
+        }
+
+        bool RefreshForCheckBox(string str)
+        {
+            str = str.Replace(" ", "");
+            bool isLegal = _scriptData.CheckForExpressionLegal(str);
             return isLegal;
         }
 
@@ -512,20 +716,8 @@ namespace Script.UI.Panel.Auto
 
             string format = AutoDataUIConfig.FormulaFormat(data.ClickPos);  //格式化
             MouseOperPosInput.SetData(format, save_func);
-
-            var varRef = _scriptData.GetInEditVarRef();
-            MouseOperPosInput.UseKeywordTips(TipsComp
-            , (search) => { return AutoDataUIConfig.GetAssignMatchList(search, varRef); }
-            , AutoDataUIConfig.GetAssignKeyword);
-
-            MouseOperPosInput.UseCheckBox((str) =>
-                {
-                    str = str.Replace(" ", "");
-                    if (string.IsNullOrEmpty(str)) return false;
-                    if (str.IndexOf("=") >= 0) return false;
-
-                    return AutoDataUIConfig.ExpressionIsLegal(str);
-                });
+            InputUseKeywordTips(MouseOperPosInput);
+            MouseOperPosInput.UseCheckBox(CheckExpressionIsLegal);
 
             MouseHoldTimeInput.SetData(data.HoldTime + "s", (str) =>
             {
@@ -579,6 +771,8 @@ namespace Script.UI.Panel.Auto
                 }
 
             });
+            KeyboardPipeInput.SetData(data.Pipe,
+            (str) => { data.Pipe = str; });
         }
 
         #endregion
@@ -604,9 +798,7 @@ namespace Script.UI.Panel.Auto
                     UpdateEventOperPanel();
                 });
 
-                EventNameInput.UseKeywordTips(null, null);
 
-                UpdateEventOperPanel();
             }
             else
             {
@@ -624,15 +816,12 @@ namespace Script.UI.Panel.Auto
                     UpdateEventOperPanel();
                 });
 
-
-
-                var datas = _scriptData.Edit_TriggerNodes;
-                EventNameInput.UseKeywordTips(TipsComp
-                , (search) => { return AutoDataUIConfig.GetEventMatchList(search, datas); });
-
-                UpdateEventOperPanel();
             }
+            var datas = _scriptData.Edit_TriggerNodes;
+            EventNameInput.UseKeywordTips(TipsComp
+            , (search) => { return AutoDataUIConfig.GetEventMatchList(search, datas); });
 
+            UpdateEventOperPanel();
         }
         void UpdateEventOperPanel()
         {
@@ -666,147 +855,149 @@ namespace Script.UI.Panel.Auto
         {
             var data = _data as MapCaptureNode;
 
-            Action<string> save_func = (str) =>
+
+            _inParam_edit_list = new InputTextSVItemData[]
             {
-                str = str.Replace(" ", "");
-                data.RegionExpression = str;
-                string format = AutoDataUIConfig.FormulaFormat(data.RegionExpression);  //格式化
-                MapCaptureRegionInput.SetText(format);
+                new InputTextSVItemData("Map_Id:", data.MapId),
+                new InputTextSVItemData("Region_Expression:", AutoDataUIConfig.FormulaFormat(data.RegionExpression)),
+            };
+            _outParam_edit_list = new InputTextSVItemData[]
+            {
+                new InputTextSVItemData("P1_Pos:", data.P1Pos),
+                new InputTextSVItemData("P2_Pos:", data.P2Pos),
+                new InputTextSVItemData("Item_Pos[]:", data.ItemPosList),
+                new InputTextSVItemData("Boss_Pos[]:", data.BossPosList),
             };
 
-            string format = AutoDataUIConfig.FormulaFormat(data.RegionExpression);  //格式化
-            MapCaptureRegionInput.SetData(format, save_func);
-
-            var varRef = _scriptData.GetInEditVarRef();
-            MapCaptureRegionInput.UseKeywordTips(TipsComp
-            , (search) => { return AutoDataUIConfig.GetAssignMatchList(search, varRef); }
-            , AutoDataUIConfig.GetAssignKeyword);
-
-            MapCaptureRegionInput.UseCheckBox((str) =>
-                {
-                    str = str.Replace(" ", "");
-                    if (string.IsNullOrEmpty(str)) return false;
-                    if (str.IndexOf("=") >= 0) return false;
-
-                    return AutoDataUIConfig.ExpressionIsLegal(str);
-                });
-
-
-            MapCaptureIdInput.SetData(data.MapId, str =>
+            _inParam_onEditEnd = (_) =>
             {
-                str = str.Replace(" ", "");
-                data.MapId = str;
-                MapCaptureIdInput.SetText(data.MapId); // 可能会格式化
-            });
-            MapColorSetInput.SetData(data.ColorSet.ToString(), str =>
+                data.MapId = _inParam_edit_list[0].Content;
+                data.RegionExpression = _inParam_edit_list[1].DoFormulaFormat();
+                RefreshParamContent();
+            };
+            _outParam_onEditEnd = (_) =>
             {
-                str = str.Replace(" ", "");
-                if (int.TryParse(str, out var result))
-                {
-                    data.ColorSet = result;
-                    MapColorSetInput.SetText(str);
-                }
-                else
-                {
-                    MapColorSetInput.SetText("");
-                }
+                data.UnloadData();
+                data.P1Pos = _outParam_edit_list[0].Content;
+                data.P2Pos = _outParam_edit_list[1].Content;
+                data.ItemPosList = _outParam_edit_list[2].Content;
+                data.BossPosList = _outParam_edit_list[3].Content;
+                data.LoadData();
+                RefreshParamContent();
+            };
 
-            });
+            RefreshParamContent();
 
-
-            YellowBtn.GetComponentInChildren<Text>().text = "准确率";
-            GreenBtn.GetComponentInChildren<Text>().text = "debug";
+            MapCaptureDebug();
         }
 
-        void OnClickGreenBtn()
-        {
-            if (_nodeType == NodeType.TemplateMatchOper)
-                OnClickTemplateMatchDebug();
-            if (_nodeType == NodeType.MapCapture || _nodeType == NodeType.MapPathFinding)
-                OnClickMapCaptureDebug();
-        }
-
-
-        void OnClickTemplateMatchDebug()
-        {
-            var data = _data as TemplateMatchOperNode;
-            List<string> options = new List<string>();
-            if (data.Meet_min_score <= 1)
-            {
-                options.Add($"<color='#069D00'>匹配中的最小值：{data.Meet_min_score}</color>");
-            }
-
-            if (data.Unmeet_max_score >= 0)
-            {
-                options.Add($"<color='#df3106ff'>未匹配上的最大值：{data.Unmeet_max_score}</color>");
-            }
-
-            Utils.SetActive(TipsComp, true);
-            TipsComp.SetData(options, null, 400);
-
-            var tipsCompRectT = TipsComp.GetComponent<RectTransform>();
-            var targetR = GreenBtn.GetComponent<RectTransform>();
-            var offset = new Vector2(targetR.rect.width / 2, targetR.rect.height / 2) + new Vector2(5, -5);
-            var pos = Utils.GetPos(tipsCompRectT, targetR, offset, true);
-            tipsCompRectT.anchoredPosition = pos;
-        }
-        void OnClickMapCaptureDebug()
+        void MapCaptureDebug()
         {
             var data = _data as MapCaptureNode;
-            UIManager.Inst.ShowPanel(PanelEnum.ImageCompareTestPanel, new string[] { data.MapId, _drawPanel._id });
-        }
+            var mapData = MapDataManager.Inst.Get(data.MapId);
+            if (mapData == null)
+                return;
 
-        void OnClickYellowBtn()
-        {
-            if (_nodeType == NodeType.MapCapture || _nodeType == NodeType.MapPathFinding)
+            var list = mapData.AccuracyRecord;
+            List<string> options = new List<string>();
+            float sum = 0;
+            // 5个一行 ,倒着 遍历
+            if (list.Count > 0)
             {
-                var data = _data as MapCaptureNode;
-                var mapData = MapDataManager.Inst.Get(data.MapId);
-                if (mapData == null)
-                    return;
-
-                var list = mapData.AccuracyRecord;
-                List<string> options = new List<string>();
-                float sum = 0;
-                // 5个一行 ,倒着 遍历
-                if (list.Count > 0)
+                var l = new List<float>();
+                for (int i = list.Count - 1; i >= 0; i--)
                 {
-                    var l = new List<float>();
-                    for (int i = list.Count - 1; i >= 0; i--)
+                    var tuple = list[i];
+                    sum += tuple.Item2;
+                    l.Add(tuple.Item2);
+
+                    int index = tuple.Item1;
+                    int delta = index % 5 - 1;
+                    if (delta == 0)
                     {
-                        var tuple = list[i];
-                        sum += tuple.Item2;
-                        l.Add(tuple.Item2);
+                        var str = $"{tuple.Item1}帧 — ";
 
-                        int index = tuple.Item1;
-                        int delta = index % 5 - 1;
-                        if (delta == 0)
-                        {
-                            var str = $"{tuple.Item1}帧 — ";
+                        for (int j = l.Count - 1; j >= 0; j--)
+                            str += $"{l[j].ToString("F2")}  ";       // 注意：两位小数不能省略哦
 
-                            for (int j = l.Count - 1; j >= 0; j--)
-                                str += $"{l[j].ToString("F2")}  ";       // 注意：两位小数不能省略哦
-
-                            options.Add(str);
-                            l.Clear();
-                        }
+                        options.Add(str);
+                        l.Clear();
                     }
-
                 }
 
-                var average = sum / list.Count;
-                options.Insert(0, $"平均准确率 — {average.ToString("F3")}");
-                options.InsertRange(0, mapData.GetPrintResult());
-
-                Utils.SetActive(TipsComp, true);
-                TipsComp.SetData(options, null, 400, 10);
-
-                var tipsCompRectT = TipsComp.GetComponent<RectTransform>();
-                var targetR = YellowBtn.GetComponent<RectTransform>();
-                var offset = new Vector2(targetR.rect.width / 2, targetR.rect.height / 2) + new Vector2(5, -5);
-                var pos = Utils.GetPos(tipsCompRectT, targetR, offset, true);
-                tipsCompRectT.anchoredPosition = pos;
             }
+
+            var average = sum / list.Count;
+            options.Insert(0, $"平均准确率 — {average.ToString("F3")}");
+            options.InsertRange(0, mapData.GetPrintResult());
+            _yellowBtn_options = options;
+
+
+            _greenBtn_options = new List<string>()
+            {
+                "Show Tool",
+            };
+
+            _greenBtn_onClick = (index) =>
+            {
+                if (index == 0)     //"显示截图范围"
+                {
+                    var data = _data as MapCaptureNode;
+                    UIManager.Inst.ShowPanel(PanelEnum.ImageCompareTestPanel, new string[] { data.MapId, _drawPanel._id });
+                }
+            };
+
+        }
+
+        #endregion
+
+
+        #region CommonParamPanel
+
+        void RefreshParamContent()
+        {
+            if (_inParam_edit_list == null) return;
+            var inShow = new string[_inParam_edit_list.Length];
+            for (int i = 0; i < _inParam_edit_list.Length; i++)
+            {
+                var edit_info = _inParam_edit_list[i];
+                inShow[i] = $"{edit_info.Title} {edit_info.Content}";
+            }
+
+            InParamListComp.SetData(inShow, spacing: 6);
+
+            var outShow = new string[_outParam_edit_list.Length];
+            for (int i = 0; i < _outParam_edit_list.Length; i++)
+            {
+                var edit_info = _outParam_edit_list[i];
+                outShow[i] = $"{edit_info.Title} {edit_info.Content}";
+            }
+
+            OutParamListComp.SetData(outShow, spacing: 6);
+
+        }
+
+        void OnClickInParamBtn()
+        {
+            Utils.SetActive(InputTextSV, true);
+            InputTextSV.SetData(_inParam_edit_list.ToList(), _inParam_onEditEnd, 500, 7);
+
+            var rectT = InputTextSV.GetComponent<RectTransform>();
+            var targetR = InParamBtn.GetComponent<RectTransform>();
+            var offset = new Vector2(targetR.rect.width / 2, targetR.rect.height / 2) + new Vector2(5, -5);
+            var pos = Utils.GetPos(rectT, targetR, offset, true);
+            rectT.anchoredPosition = pos;
+        }
+        void OnClickOutParamBtn()
+        {
+            Utils.SetActive(InputTextSV, true);
+            InputTextSV.SetData(_outParam_edit_list.ToList(), _outParam_onEditEnd, 500, 7);
+
+            var rectT = InputTextSV.GetComponent<RectTransform>();
+            var targetR = OutParamBtn.GetComponent<RectTransform>();
+            var offset = new Vector2(targetR.rect.width / 2, targetR.rect.height / 2) + new Vector2(5, -5);
+            var pos = Utils.GetPos(rectT, targetR, offset, true);
+            rectT.anchoredPosition = pos;
         }
 
 
@@ -819,38 +1010,137 @@ namespace Script.UI.Panel.Auto
         {
             var data = _data as MapPathFindingNode;
 
-
-            MapPFIdInput.SetData(data.MapId, str =>
+            CommonParamTypeBox.SetData(AutoDataUIConfig.GetMapPFTypeNameList(), (index) =>
             {
-                str = str.Replace(" ", "");
-                data.MapId = str;
-                MapPFIdInput.SetText(data.MapId);          // 可能会格式化
-            });
-            MapPFXAxisInput.SetData(data.XAxisVar, str =>
-            {
-                str = str.Replace(" ", "");
-                data.XAxisVar = str;
-                MapPFXAxisInput.SetText(data.XAxisVar);
-            });
-            MapPFYAxisInput.SetData(data.YAxisVar, str =>
-            {
-                str = str.Replace(" ", "");
-                data.YAxisVar = str;
-                MapPFYAxisInput.SetText(data.YAxisVar);
-            });
-
-            MapPFTypeBox.SetData(AutoDataUIConfig.GetMapPFTypeNameList(), (index) =>
-            {
-                data.SearchMode = (PathFindingType)index;
+                data.FindMode = (PathFindingType)index;
+                InitMapPathFindingEditList();
+                RefreshParamContent();
             }, TipsComp);
-            MapPFTypeBox.SetCurIndex(AutoDataUIConfig.MapPFTypes.IndexOf(data.SearchMode));
 
+            CommonParamTypeBox.SetCurIndex((int)data.FindMode);
 
-            YellowBtn.GetComponentInChildren<Text>().text = "准确率";
-            GreenBtn.GetComponentInChildren<Text>().text = "debug";
         }
 
+        void InitMapPathFindingEditList()
+        {
+            var data = _data as MapPathFindingNode;
+            var type = data.FindMode;
+            var inParam = data.GetInputParam();
+            var outParam = data.GetOutputParam();
+            switch (type)
+            {
+                case PathFindingType.ExploreFog:
+                    if (inParam.Length < 4) return;
+                    _inParam_edit_list = new InputTextSVItemData[]
+                    {
+                        new InputTextSVItemData("Map_Id:", inParam[0]),
+                        new InputTextSVItemData("Player:", inParam[1]),
+                        new InputTextSVItemData("Avoid_Factor:", inParam[2]),
+                        new InputTextSVItemData("Team_Dist:", inParam[3]),
+                    };
+                    _outParam_edit_list = new InputTextSVItemData[]
+                    {
+                        new InputTextSVItemData("Move_Dir:", outParam[0]),
+                    };
+                    break;
+                case PathFindingType.FollowPlayer:
+                    if (inParam.Length < 6) return;
+                    _inParam_edit_list = new InputTextSVItemData[]
+                    {
+                        new InputTextSVItemData("Map_Id:", inParam[0]),
+                        new InputTextSVItemData("Target:", inParam[1]),
+                        new InputTextSVItemData("P1:", inParam[2]),
+                        new InputTextSVItemData("P2:", inParam[3]),
+                        new InputTextSVItemData("Stop_Dist:", inParam[4]),
+                        new InputTextSVItemData("Avoid_Factor:", inParam[5]),
+                    };
+                    _outParam_edit_list = new InputTextSVItemData[]
+                    {
+                        new InputTextSVItemData("P1_Dir:", outParam[0]),
+                        new InputTextSVItemData("P2_Dir:", outParam[1]),
+                    };
+                    break;
+                case PathFindingType.ReachPos:
+                    if (inParam.Length < 6) return;
+                    _inParam_edit_list = new InputTextSVItemData[]
+                    {
+                        new InputTextSVItemData("Map_Id:", inParam[0]),
+                        new InputTextSVItemData("Player:", inParam[1]),
+                        new InputTextSVItemData("Reach_Pos:", inParam[2]),
+                        new InputTextSVItemData("Stop_Dist:", inParam[3]),
+                        new InputTextSVItemData("Avoid_Factor:", inParam[4]),
+                        new InputTextSVItemData("Team_Dist:", inParam[5]),
+                    };
+                    _outParam_edit_list = new InputTextSVItemData[]
+                    {
+                        new InputTextSVItemData("Move_Dir:", outParam[0]),
+                    };
+                    break;
+                default:
+                    _inParam_edit_list = new InputTextSVItemData[0];
+                    _outParam_edit_list = new InputTextSVItemData[0];
+                    break;
+            }
+
+
+            _inParam_onEditEnd = (_) =>
+            {
+                var in_param = new string[_inParam_edit_list.Length];
+                for (int i = 0; i < _inParam_edit_list.Length; i++)
+                {
+                    in_param[i] = _inParam_edit_list[i].Content;
+                }
+                data.SetInputParam(in_param);
+                RefreshParamContent();
+            };
+            _outParam_onEditEnd = (_) =>
+            {
+                var out_param = new string[_outParam_edit_list.Length];
+                for (int i = 0; i < _outParam_edit_list.Length; i++)
+                {
+                    out_param[i] = _outParam_edit_list[i].Content;
+                }
+                data.SetOutputParam(out_param);
+                RefreshParamContent();
+            };
+
+
+        }
 
         #endregion
+
+        #region ItemGridRecog
+        void RefreshItemGridRecogPanel()
+        {
+            var data = _data as ItemGridRecogNode;
+
+
+            _inParam_edit_list = new InputTextSVItemData[]
+            {
+                new InputTextSVItemData("Pos_Type:", $"{(int)(data.PosType)}"),
+                new InputTextSVItemData("Start_Pos:", AutoDataUIConfig.FormulaFormat(data.StartPos)),
+            };
+            _outParam_edit_list = new InputTextSVItemData[]
+            {
+                new InputTextSVItemData("Result_Prefix:", data.ResultPrefix),
+            };
+
+            _inParam_onEditEnd = (_) =>
+            {
+                data.PosType = (ItemGridPosType)int.Parse(_inParam_edit_list[0].Content);
+                data.StartPos = _inParam_edit_list[1].DoFormulaFormat();
+                RefreshParamContent();
+            };
+            _outParam_onEditEnd = (_) =>
+            {
+                data.ResultPrefix = _outParam_edit_list[0].Content;
+                RefreshParamContent();
+            };
+
+            RefreshParamContent();
+        }
+
+        #endregion
+
     }
 }

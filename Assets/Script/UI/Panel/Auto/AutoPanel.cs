@@ -115,7 +115,7 @@ namespace Script.UI.Panel.Auto
             }
             Debug.Log($"窗口句柄: {hWnd}");
             DU.Log(WU.GetWindowRect(hWnd));
-            WU.SimulateMouseClick(hWnd, 220, 170);
+            // WU.SimulateMouseClick(hWnd, 220, 170);
         }
 
 
@@ -133,36 +133,36 @@ namespace Script.UI.Panel.Auto
 
         #region 
 
-        void MouseRecord(MouseHookEnum action, WU.MSLLHOOKSTRUCT hookStruct)
-        {
+        // void MouseRecord(MouseHookEnum action, WU.MSLLHOOKSTRUCT hookStruct)
+        // {
 
-            // 判断鼠标事件类型
-            if (action == MouseHookEnum.LeftUp)
-            {
-                IntPtr win = WU.WindowFromPoint(hookStruct.pt);
-                string p = WU.PrintHandle(win);
+        //     // 判断鼠标事件类型
+        //     if (action == MouseHookEnum.LeftUp)
+        //     {
+        //         IntPtr win = WU.WindowFromPoint(hookStruct.pt);
+        //         string p = WU.PrintHandle(win);
 
-                if (selectSwitch)
-                {
-                    selectedWin = win;
-                    selectSwitch = false;
-                    var img = startBtn.GetComponent<Image>();
-                    img.color = selectSwitch ? Color.red : Color.white;
-                    infoText.text = p;
-                }
+        //         if (selectSwitch)
+        //         {
+        //             selectedWin = win;
+        //             selectSwitch = false;
+        //             var img = startBtn.GetComponent<Image>();
+        //             img.color = selectSwitch ? Color.red : Color.white;
+        //             infoText.text = p;
+        //         }
 
-                if (selectedWin == IntPtr.Zero)
-                {
-                    infoText.text = p;
-                }
+        //         if (selectedWin == IntPtr.Zero)
+        //         {
+        //             infoText.text = p;
+        //         }
 
-                // DU.Log($"左键 ({hookStruct.pt.x}, {hookStruct.pt.y})");
-            }
-            else if (action == MouseHookEnum.RightUp)
-            {
-                // DU.Log($"右键 ({hookStruct.pt.x}, {hookStruct.pt.y})");
-            }
-        }
+        //         // DU.Log($"左键 ({hookStruct.pt.x}, {hookStruct.pt.y})");
+        //     }
+        //     else if (action == MouseHookEnum.RightUp)
+        //     {
+        //         // DU.Log($"右键 ({hookStruct.pt.x}, {hookStruct.pt.y})");
+        //     }
+        // }
 
         /// <summary>
         /// 监听几个按键
@@ -187,20 +187,20 @@ namespace Script.UI.Panel.Auto
         private HashSet<KeyboardEnum> repeatKeySet = new HashSet<KeyboardEnum>();
 
         // 按键回调
-        void KeyboardRecord(KeyboardHookEnum action, WU.KBDLLHOOKSTRUCT hookStruct)
-        {
+        // void KeyboardRecord(KeyboardHookEnum action, WU.KBDLLHOOKSTRUCT hookStruct)
+        // {
 
-            // 普通键，
-            if (action == KeyboardHookEnum.KeyDown)
-            {
-                if (hookStruct.vkCode == (uint)KeyboardEnum.Esc)
-                {
-                    string id = DrawProcessPanel.LastOpenId;
-                    AutoScriptManager.Inst.StopScript(id);
-                }
-            }
+        //     // 普通键，
+        //     if (action == KeyboardHookEnum.KeyDown)
+        //     {
+        //         if (hookStruct.vkCode == (uint)KeyboardEnum.Esc)
+        //         {
+        //             string id = DrawProcessPanel.LastOpenId;
+        //             AutoScriptManager.Inst.StopScript(id);
+        //         }
+        //     }
 
-        }
+        // }
 
         private void KeyOper(KeyboardEnum key, WU.KBDLLHOOKSTRUCT hookStruct, bool isDown = true)
         {

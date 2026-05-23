@@ -20,7 +20,6 @@ namespace Script.Model.Auto
     // 需要额外的废弃边界优化吗？不需要，大格子寻路可以搞，但是其总耗时不高
     public class GridData
     {
-        public readonly float Finding_ObstacleFactor = 1.2f;
         public int BuildCellTimes = 0;
         public int MultiEmptyCellCount = 0;
         public int ObstacleFill2EmptyCount = 0;
@@ -40,7 +39,6 @@ namespace Script.Model.Auto
         int _mList_count = 0;                               // 用于构造大格子，复用动态列表
 
         public Vector2Int _target_c = new Vector2Int(-1, -1);       //寻路目标，大格子粒度
-        public bool success;                                        //寻路，本次是否成功
         List<BigCell> accessList = new List<BigCell>(400);
 
 
@@ -66,6 +64,18 @@ namespace Script.Model.Auto
             _grid = new BigCell[_gridEdge, _gridEdge];
         }
 
+        public BigCell GetBigCell(int x, int y)
+        {
+            var cell = _grid[x, y];
+            if (cell == null)
+            {
+                cell = new BigCell(x, y);
+                _grid[x, y] = cell;
+            }
+
+            return cell;
+        }
+
         public int GetActiveCount()
         {
             int result = 0;
@@ -87,6 +97,10 @@ namespace Script.Model.Auto
 
         #region Apply
 
+
+        /// <summary>
+        /// 传入Empty发生变化的pix，来刷新grid地图
+        /// </summary>
         public void Apply(List<Vector2Int> changePixList)
         {
             List<BigCell> needList = new List<BigCell>();
@@ -107,6 +121,11 @@ namespace Script.Model.Auto
                 }
             }
 
+            ApplyBigCell(needList);
+        }
+
+        public void ApplyBigCell(List<BigCell> needList)
+        {
             _afterDic.Clear();
 
             // needList的大格子需要重建
@@ -115,7 +134,6 @@ namespace Script.Model.Auto
 
             // needList的HasObstacle大格子需要刷方向
             // ，并且改"有变化的方向"对应的相邻大格子的方向
-            // 信息重点醒目并且提前。
             foreach (var cell in needList)
                 if (cell.Type == BigCellType.HasObstacle)
                     CellRefreshDir(cell);
@@ -129,25 +147,56 @@ namespace Script.Model.Auto
             BuildCellTimes += needList.Count;
         }
 
+        Vector2Int[] FourAngle = new Vector2Int[] { new Vector2Int(-1, -1), new Vector2Int(-1, 1), new Vector2Int(1, -1), new Vector2Int(1, 1) };
+        Vector2Int[] FourSide = new Vector2Int[] { new Vector2Int(0, 1), new Vector2Int(0, -1), new Vector2Int(-1, 0), new Vector2Int(1, 0) };
 
+
+        /// <summary>
+        /// HasFog依据范围扩大为7*7
+        /// </summary>
         public void ApplyFog(List<Vector2Int> changePixList)
         {
+            bool[] side = new bool[4];
             List<BigCell> needList = new List<BigCell>();
             foreach (var pos in changePixList)
             {
                 int x = pos.x / _s;
                 int y = pos.y / _s;
-                var cell = _grid[x, y];
-                if (cell == null)
-                {
-                    cell = new BigCell(x, y);
-                    _grid[x, y] = cell;
-                }
+                int x_remain = pos.x % _s;      // 余数
+                int y_remain = pos.y % _s;
+                var cell = GetBigCell(x, y);
                 if (!cell.NeedRefresh)
                 {
                     cell.NeedRefresh = true;
                     needList.Add(cell);
                 }
+
+                // 四个对角。直接打包
+                if ((x_remain == 0 || x_remain == 4) && (y_remain == 0 || y_remain == 4))
+                    foreach (var off in FourAngle)
+                    {
+                        var c = GetBigCell(x + off.x, y + off.y);
+                        if (!c.NeedRefresh)
+                        {
+                            c.NeedRefresh = true;
+                            needList.Add(c);
+                        }
+                    }
+
+                // 上下左右
+                side[0] = y_remain == 4; side[1] = y_remain == 0; 
+                side[2] = x_remain == 0; side[3] = x_remain == 4;
+                for (int i = 0; i < 4; i++)
+                    if (side[i])
+                    {
+                        var off = FourSide[i];
+                        var c = GetBigCell(x + off.x, y + off.y);
+                        if (!c.NeedRefresh)
+                        {
+                            c.NeedRefresh = true;
+                            needList.Add(c);
+                        }
+                    }
             }
 
             foreach (var cell in needList)
@@ -157,13 +206,17 @@ namespace Script.Model.Auto
                 cell.NeedRefresh = false;
         }
 
+
+        /// <summary>
+        /// HasFog依据范围扩大为7*7
+        /// </summary>
         public void CellCheckFog(BigCell cell)
         {
             PixType[,] map = _mapData._map;
-            int x_start = cell.x * _s;
-            int y_start = cell.y * _s;
-            int x_end = x_start + _s;
-            int y_end = y_start + _s;
+            int x_start = cell.x * _s - 1;
+            int y_start = cell.y * _s - 1;
+            int x_end = x_start + 7;
+            int y_end = y_start + 7;
 
             cell.HasFog = false;
             for (int m = y_start; m < y_end; m++)
@@ -314,7 +367,10 @@ namespace Script.Model.Auto
         #region CellRefreshDir
 
 
-        //大格子刷新方向，并统计有变化的方向 对应的大格子，对方也要刷
+        /// <summary>
+        /// 大格子刷新方向，并统计有变化的方向 对应的大格子，对方也要刷
+        /// bug:破坏了MutiSideEmpty约定，把MutiSideEmpty原本阻碍的刷成连通的了。(修复)
+        /// </summary>
         public void CellRefreshDir(BigCell cell)
         {
             int x_start = cell.x * _s;
@@ -333,7 +389,7 @@ namespace Script.Model.Auto
             //     }
 
             // debug
-            // if (cell.x == 52 && cell.y == 61)
+            // if (cell.x == (221 + 119)/5 && cell.y == (350 + 105)/5)
             // {
             //     var a = 2;
             // }
@@ -413,31 +469,34 @@ namespace Script.Model.Auto
                 right_bottom = 1;   // 右下
             }
 
+            (Vector2Int, int, int)[] list = new (Vector2Int, int, int)[8]
+            {
+                (new Vector2Int(0,-1),3 ,bottom),
+                (new Vector2Int(0,1),7 ,top),
+                (new Vector2Int(-1,0),5 ,left),
+                (new Vector2Int(1,0),1 ,right),
+                (new Vector2Int(-1,-1),4 ,left_bottom),
+                (new Vector2Int(1,1),0 ,right_top),
+                (new Vector2Int(-1,1),6 ,left_top),
+                (new Vector2Int(1,-1),2 ,right_bottom),
+            };
 
-            BigCell adjacent = null;
-            adjacent = _grid[cx, cy - 1];
-            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 3)) | (bottom << 3));
+            for (int i = 0; i < 8; i++)
+            {
+                var item = list[i];
+                var v2 = item.Item1;
+                var v1 = item.Item2;
+                var value = item.Item3;
+                BigCell neighbor = _grid[cx + v2.x, cy + v2.y];
+                if (neighbor != null && neighbor.Type != BigCellType.MutiSideEmpty)
+                    neighbor.Direction = (byte)((neighbor.Direction & ~(1 << v1)) | (value << v1));
+            }
 
-            adjacent = _grid[cx, cy + 1];
-            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 7)) | (top << 7));
-
-            adjacent = _grid[cx - 1, cy];
-            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 5)) | (left << 5));
-
-            adjacent = _grid[cx + 1, cy];
-            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 1)) | (right << 1));
-
-            adjacent = _grid[cx - 1, cy - 1];
-            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 4)) | (left_bottom << 4));
-
-            adjacent = _grid[cx + 1, cy + 1];
-            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 0)) | (right_top << 0));
-
-            adjacent = _grid[cx - 1, cy + 1];
-            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 6)) | (left_top << 6));
-
-            adjacent = _grid[cx + 1, cy - 1];
-            if (adjacent != null) adjacent.Direction = (byte)((adjacent.Direction & ~(1 << 2)) | (right_bottom << 2));
+            // 原生
+            //
+            // var neighbor = _grid[cx, cy - 1];
+            // if (neighbor != null && neighbor.Type != BigCellType.MutiSideEmpty)
+            //     neighbor.Direction = (byte)((neighbor.Direction & ~(1 << 3)) | (bottom << 3));
 
 
         }
@@ -523,9 +582,11 @@ namespace Script.Model.Auto
 
         #region AStar
 
-        public BigCellPath StartAStar(Vector2Int start_p, Vector2Int target_p)
+        public BigCellPathResult StartAStar(Vector2Int start_p, Vector2Int target_p, float avoid_factor = 1.2f)
         {
             ClearStatus();  // 清理状态
+            BigCellPathResult result = new BigCellPathResult();
+            result.Status = PathFindingResult.Failed;
 
             var start = start_p / 5;
             var target = target_p / 5;
@@ -537,7 +598,7 @@ namespace Script.Model.Auto
             // 角色沿墙壁走，就可能发生。角色被识别跑到障碍里了，就不寻了
             //
             if (startNode == null)
-                return null;
+                return result;
 
             startNode.G = 0;
             startNode.F = Estimate(start.x, start.y, target.x, target.y); // 使用启发式函数计算H值
@@ -561,7 +622,7 @@ namespace Script.Model.Auto
 
                 if (current.x == target.x && current.y == target.y)
                 {
-                    success = true;
+                    result.Status = PathFindingResult.Success;
                     break;
                 }
 
@@ -610,7 +671,7 @@ namespace Script.Model.Auto
                     // 加点激励机制
                     //
                     float param = current.Type == BigCellType.HasObstacle
-                        || neighbor.Type == BigCellType.HasObstacle ? Finding_ObstacleFactor : 1;
+                        || neighbor.Type == BigCellType.HasObstacle ? avoid_factor : 1;
                     int new_G = current.G + (int)(GetDistance(current_pos, neighbor_pos) * param);
 
                     //新的邻节点或者要更新G值的邻节点
@@ -640,19 +701,22 @@ namespace Script.Model.Auto
                 }
             }
 
-            var success_str = success ? "成功" : "失败";
-            DU.LogWarning($"AStar {success_str}  times:" + times);
-
-            if (success)
+            if (result.Status == PathFindingResult.Success)
             {
                 var target_cell = _grid[target.x, target.y];
-                // 迷雾寻路是多个目标
-                BigCellPath result = new BigCellPath(target_cell, _mapData._map, start_p, target_p);
-                return result;
+                // 迷雾寻路可能有多个像素目标
+                result.SetPath(target_cell, _mapData._map, start_p, target_p);
+                DU.LogWarning($"AStar成功 times:" + times);
             }
             else
-                return null;
+            {
+                DU.LogWarning($"AStar失败 times:" + times);
+            }
+
+
+            return result;
         }
+
 
         public void ClearStatus()
         {
@@ -665,7 +729,6 @@ namespace Script.Model.Auto
                 cell.Parent = null;
             }
             accessList.Clear();
-            success = false;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -739,14 +802,19 @@ namespace Script.Model.Auto
         /// <summary>
         /// 寻找最近的Fog，输入和输出都是在大格子坐标系
         /// </summary>
-        public BigCellPath StartFindFog(Vector2Int start_p)
+        public BigCellPathResult StartFindFog(Vector2Int start_p, float avoid_factor = 1f)
         {
             ClearStatus();  // 清理状态
+            BigCellPathResult result = new BigCellPathResult();
+            result.Status = PathFindingResult.NoTarget;
+
             Vector2Int target = Utils.DefaultV2I;
 
             var times = 0;
             var openList = new BinarySearchTree<BigCell>(BigCell.ComparerG);
             var startNode = _grid[start_p.x / 5, start_p.y / 5];
+            if (startNode == null)
+                return result;
 
             startNode.G = 0;
 
@@ -767,9 +835,10 @@ namespace Script.Model.Auto
 
                 current.Access = true;
 
+                // 要是5*5区域全是迷雾，你是不是就寻不到了
                 if (current.HasFog)
                 {
-                    success = true;
+                    result.Status = PathFindingResult.Success;
                     target = new Vector2Int(current.x, current.y);
                     break;
                 }
@@ -813,7 +882,7 @@ namespace Script.Model.Auto
                     bool is_new = neighbor.G == 0;
 
                     float param = current.Type == BigCellType.HasObstacle
-                        || neighbor.Type == BigCellType.HasObstacle ? Finding_ObstacleFactor : 1;
+                        || neighbor.Type == BigCellType.HasObstacle ? avoid_factor : 1;
                     int new_G = current.G + (int)(GetDistance(current_pos, neighbor_pos) * param);
 
                     if (is_new)
@@ -834,19 +903,20 @@ namespace Script.Model.Auto
                 }
             }
 
-            var success_str = success ? "成功" : "失败";
-            DU.LogWarning($"Find Fog {success_str}  times:" + times);
 
-            if (success)
+            if (result.Status == PathFindingResult.Success)
             {
                 var target_cell = _grid[target.x, target.y];
                 // 迷雾寻路是多个目标
-                BigCellPath result = new BigCellPath(target_cell, _mapData._map, start_p, Utils.DefaultV2I);
-                return result;
+                result.SetPath(target_cell, _mapData._map, start_p, Utils.DefaultV2I);
+                DU.LogWarning($"AStar成功 times:" + times);
             }
             else
-                return null;
+            {
+                DU.LogWarning($"AStar失败 times:" + times);
+            }
 
+            return result;
         }
 
         #endregion
@@ -1018,27 +1088,13 @@ namespace Script.Model.Auto
         public Vector2Int From;     // 大格子内的"寻路起点"
         public Vector2Int To;       // 大格子内的"寻路终点"
 
-        public List<Vector2Int> GetPixPath(MapData mapData, SmallCellFinder finder)
-        {
-            var zero_pos = new Vector2Int(Cell.x * 5, Cell.y * 5);
-            var map = mapData.GetByRegion(zero_pos.x, zero_pos.y, 5, 5);
-
-            List<Vector2Int> result = finder.BeginAStar(map, From, To);
-            var len = result.Count;
-            for (int i = 0; i < len; i++)
-            {
-                var p = result[i];
-                result[i] = new Vector2Int(p.x + zero_pos.x, p.y + zero_pos.y);
-            }
-
-            return result;
-        }
     }
 
 
 
-    public class BigCellPath
+    public class BigCellPathResult
     {
+        public PathFindingResult Status;
         /// <summary>
         /// 开头项是路径起点大格子，结尾项是路径终点大格子。
         /// </summary>
@@ -1047,8 +1103,13 @@ namespace Script.Model.Auto
         public Vector2Int FromPos => GetFromPos();          // 像素坐标下的起点
         public Vector2Int ToPos => GetToPos();              // 终点
 
+        public BigCellPathResult()
+        {
+            Status = PathFindingResult.Undefined;
+        }
 
-        public BigCellPath(BigCell target, PixType[,] map, Vector2Int from, Vector2Int to)
+        public void SetPath(BigCell target, PixType[,] map, Vector2Int from, Vector2Int to
+                            , bool from_bigger = false, bool to_bigger = false)
         {
             Path = new List<BigCellPathNode>();
 
@@ -1076,8 +1137,21 @@ namespace Script.Model.Auto
                 // 
                 var zero_pos0 = new Vector2Int(cx0 * 5, cy0 * 5);
                 var zero_pos1 = new Vector2Int(cx1 * 5, cy1 * 5);
-                var map0 = GetByRegion(zero_pos0.x, zero_pos0.y, 5, 5, map);
-                var map1 = GetByRegion(cx1 * 5, cy1 * 5, 5, 5, map);
+
+                bool[,] map0;
+                bool[,] map1;
+
+                if (from_bigger && i == 0 || to_bigger && i == Path.Count - 2)  // 只有两种情况需要排除图标的Undefined
+                {
+                    map0 = MapData.GetByRegionBoard(zero_pos0.x, zero_pos0.y, 5, 5, map);
+                    map1 = MapData.GetByRegionBoard(cx1 * 5, cy1 * 5, 5, 5, map);
+                }
+                else
+                {
+                    map0 = MapData.GetByRegion(zero_pos0.x, zero_pos0.y, 5, 5, map);
+                    map1 = MapData.GetByRegion(cx1 * 5, cy1 * 5, 5, 5, map);
+                }
+
 
                 GridData.GetConnectPixel(map0, map1, new Vector2Int(cx0, cy0)
                 , new Vector2Int(cell1.x, cell1.y), out var rA, out var rB);
@@ -1101,17 +1175,6 @@ namespace Script.Model.Auto
         }
 
 
-        public bool[,] GetByRegion(int fromX, int fromY, int w, int h, PixType[,] map)
-        {
-            bool[,] result = new bool[w, h];
-            int x_end = fromX + w;
-            int y_end = fromY + h;
-            for (int y = fromY; y < y_end; y++)
-                for (int x = fromX; x < x_end; x++)
-                    result[x - fromX, y - fromY] = map[x, y] == PixType.Empty;
-            return result;
-        }
-
         public Vector2Int GetFromPos()
         {
             var node = Path[0];
@@ -1123,6 +1186,11 @@ namespace Script.Model.Auto
             var node = Path[Path.Count - 1];
             var cell = node.Cell;
             return new Vector2Int(cell.x * 5 + node.From.x, cell.y * 5 + node.From.y);
+        }
+
+        public BigCell GetLastCell()
+        {
+            return Path[Path.Count - 1].Cell;
         }
     }
 
@@ -1314,6 +1382,22 @@ namespace Script.Model.Auto
             return result;
         }
 
+
+        public List<Vector2Int> GetPixPath(PixType[,] mapData, BigCellPathNode node)
+        {
+            var zero_pos = new Vector2Int(node.Cell.x * 5, node.Cell.y * 5);
+            var map = MapData.GetByRegion(zero_pos.x, zero_pos.y, 5, 5, mapData);
+
+            List<Vector2Int> result = BeginAStar(map, node.From, node.To);
+            var len = result.Count;
+            for (int i = 0; i < len; i++)
+            {
+                var p = result[i];
+                result[i] = new Vector2Int(p.x + zero_pos.x, p.y + zero_pos.y);
+            }
+
+            return result;
+        }
     }
 
 

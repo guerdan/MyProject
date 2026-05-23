@@ -1,7 +1,9 @@
 using Script.Framework.AssetLoader;
+using Script.Framework.Else;
 using Script.Framework.UI;
 using Script.Model.Auto;
 using Script.UI.Panel.Auto;
+using Script.Util;
 using UnityEngine;
 
 namespace Script.Framework
@@ -21,8 +23,14 @@ namespace Script.Framework
             inst = this;
             Camera = Camera.main;
 
+            Utils.Init();
             // 提前加载
             AssetManager.Inst.LoadAssetAsync<Shader>("Shader/OutlineEx", (s) => { }, this);
+        }
+
+        protected void Start()
+        {
+            
         }
 
         private float intervalFor1s = 1;   // 1s间隔实例 
@@ -38,8 +46,7 @@ namespace Script.Framework
                 (UIManager.Inst as UIManager).OnUpdate(1);
                 ImageManager.Inst.OnUpdate(1);
             }
-
-            AutoScriptManager.Inst.OnUpdate(delta);
+            GlobalKeyboardManager.Inst.OnUpdate();
             TemplateMatchDrawResultPanel.Inst?.OnUpdate();
         }
 

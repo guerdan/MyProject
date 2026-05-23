@@ -62,6 +62,7 @@ namespace Script.UI.Components
         {
             _checkBox = checkBox;
             _checkFunc = checkFunc;
+            RefreshCheckBox();
         }
 
         public void SetText(string text)

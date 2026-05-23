@@ -2,10 +2,15 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
+using Newtonsoft.Json;
 using OpenCvSharp;
+using Script.Framework;
 using Script.Framework.UI;
 using Script.Model.Auto;
 using Script.Test;
@@ -62,10 +67,10 @@ namespace Script.UI.Panel.Auto
             Btn4th.onClick.AddListener(OnClickBtn4th);
 
             Utils.SetActive(TipsComp, false);
+            SU.Print();
         }
         public override void SetData(object data)
         {
-            Config.Init();
             // Config.DebugImageTmplsQuality();
 
             Utils.SetActive(LeftMemoryBtn, false);
@@ -76,6 +81,7 @@ namespace Script.UI.Panel.Auto
                 RightImage.ClearData();
                 LeftImage.ClearData();
                 _mapId = list[0];
+                _mapData = MapDataManager.Inst.Get("Map-22");
                 _scriptId = list[1];
                 RefreshMapPanel();
             }
@@ -94,6 +100,8 @@ namespace Script.UI.Panel.Auto
 
         string _mapId;
         string _scriptId;
+        AutoScriptData _script;
+
         bool _clickLeft;
         int[] _optionSelectStatus = new int[] { -1, -1 };
         Action<Vector2Int> _onSelectPixel;
@@ -119,8 +127,8 @@ namespace Script.UI.Panel.Auto
 
             var comp = _clickLeft ? LeftMemoryBtn : RightMemoryBtn;
 
-
-            TipsComp.SetData(MapOptions, OnSelectMapOption, 140, 7);
+            var strList = MapOptions.Select(t => t.Item2).ToList();
+            TipsComp.SetData(strList, OnSelectMapOption, 140, 7);
             TipsComp.SetCurIndex(_optionSelectStatus[_clickLeft ? 0 : 1]);
 
             var tipsCompRectT = TipsComp.GetComponent<RectTransform>();
@@ -133,16 +141,16 @@ namespace Script.UI.Panel.Auto
             if (option_int < 0)
                 return;
 
-
+            Options option = MapOptions[option_int].Item1;
             ImageDetailComp comp = _clickLeft ? LeftImage : RightImage;
-            GetSpriteOfMapOption(_scriptId, _mapId, (Options)option_int, InputText.text
-                                , out var mapSprite, out var line_offset, out _, comp);
+            GetSpriteOfMapOption(_scriptId, _mapId, option, InputText.text
+                                , out var mapSprite, out var line_offset, out _, out var debug_str, comp);
 
             if (mapSprite == null)
                 return;
 
             _optionSelectStatus[_clickLeft ? 0 : 1] = option_int;
-            comp.SetData(mapSprite);
+            comp.SetData(mapSprite, debug_str);
             comp.SetLineOffset(line_offset);
 
         }
@@ -151,32 +159,44 @@ namespace Script.UI.Panel.Auto
 
         public enum Options
         {
-            Map,
-            Grid,
-            AStartFunc,
-            SearchTargetFunc,
+            Map,                        // 像素粒度
+            Grid,                       // 5X5大格子粒度
+            Auto,                       // 根据脚本变量，自动切换模式
             FindNearestFog,
             FindNearestFogFollowing,
+            FollowTarget,
             LightMap,
             SmallMap,
+            RawSmallMap,
+            ErrorSmallMap,
+            SmallMapOrigin,
             JudgeMap,
             FogMap,
-            SaveAllMap,
+            AStartFunc,                 // 目标寻路
+            SaveAllMap,                 // 保存至本地
         }
 
-        static List<string> MapOptions = new List<string>()
+        static List<(Options, string)> MapOptions = new List<(Options, string)>()
             {
-                "_map",             // 像素粒度
-                "_grid",            // 5X5大格子粒度
-                "A*寻路",           // 5X5大格子粒度
-                "指定目标寻路",      // 5X5大格子粒度
-                "最近迷雾",
-                "最近迷雾 (跟踪)",
-                "_light_map",
-                "_small_map",
-                "_judge_map",
-                "_fog_map",
-                "保存全部地图",       // 保存至本地
+                (Options.Map,"map"),
+                (Options.Grid,"grid"),
+
+                (Options.Auto,"Auto"),
+                (Options.FindNearestFog,"NearFog"),
+                (Options.FindNearestFogFollowing,"NearFog (Follow)"),
+                (Options.FollowTarget,"FollowTarget"),
+
+                (Options.SmallMapOrigin,"原图_small_map"),
+                (Options.SmallMap,"small_map"),
+                (Options.RawSmallMap,"raw_small_map"),
+                (Options.ErrorSmallMap,"error_small_map"),
+
+                (Options.LightMap,"light_map"),
+                (Options.JudgeMap,"judge_map"),
+                (Options.FogMap,"fog_map"),
+
+                (Options.AStartFunc,"A*寻路:位置"),
+                (Options.SaveAllMap,"保存全部地图"),
             };
 
         /// <summary>
@@ -184,12 +204,14 @@ namespace Script.UI.Panel.Auto
         /// </summary>
         static Dictionary<Component, (Texture2D, Sprite)> _mapOptionCache = new Dictionary<Component, (Texture2D, Sprite)>();
         public static void GetSpriteOfMapOption(string scriptId, string mapId, Options option, string command,
-                         out Sprite sprite, out Vector2Int line_offset, out Vector2Int anchor,
+                         out Sprite sprite, out Vector2Int line_offset, out Vector2Int anchor, out string debug_str,
                         Component cacheKey = null)
         {
+            debug_str = "";
             sprite = null;
             line_offset = default;
             anchor = default;
+            var script = AutoScriptManager.Inst.GetScriptData(scriptId);
 
             MapData mapData = MapDataManager.Inst.Get(mapId);
             if (mapData == null) return;
@@ -211,11 +233,142 @@ namespace Script.UI.Panel.Auto
             // {
             if (option == Options.Map)
             {
+                // mapData.RestoreMapInfo();
                 pixels = mapData.GetImageMap0();
             }
             else if (option == Options.Grid)
             {
-                pixels = mapData.GetImageGrid();
+                pixels = mapData.GetDebugImage_Grid();
+            }
+            else if (option == Options.Auto)
+            {
+                var status = script.FormulaGetResult("map_finding_status");
+                size = new Vector2Int(200, 200);
+                var debug1 = "";
+                if (status == 0)
+                {
+                    pixels = mapData.GetDebugImage_DetailFollowing(size, out _);
+                    debug1 += "S=0";
+                }
+                else if (status == 1)
+                {
+                    ExploreFog(script, mapData, out var info);
+                    pixels = mapData.GetDebugImage_NearestFogFollowing(size, out _);
+                    debug1 += $"S=1 {info}";
+                }
+                else if (status == 2)
+                {
+                    ReachPos(script, mapData, out pixels, out var info);
+                    debug1 += $"S=2 {info}";
+                }
+
+                debug_str += debug1;
+                var start_pos = mapData.SmallMapPos;
+                line_offset = new Vector2Int(-(start_pos.x % 5), -(start_pos.y % 5));
+
+            }
+            else if (option == Options.FindNearestFog || option == Options.FindNearestFogFollowing)
+            {
+                ExploreFog(script, mapData, out var info);
+                debug_str += info;
+
+                if (option == Options.FindNearestFog)
+                    pixels = mapData.GetDebugImage_NearestFog();
+                else
+                {
+                    size = new Vector2Int(200, 200);
+                    pixels = mapData.GetDebugImage_NearestFogFollowing(size, out var start_pos);
+                    line_offset = new Vector2Int(-(start_pos.x % 5), -(start_pos.y % 5));
+                }
+            }
+            else if (option == Options.FollowTarget)
+            {
+                size = new Vector2Int(200, 200);
+
+                MapIconType executor1 = default;
+                MapIconType executor2 = default;
+                MapIconType follow_target = default;
+                bool exe1_recog = false;
+                bool exe2_recog = false;
+                bool target_recog = false;
+                float distance = 7;
+                float avoid_factor = 2;
+
+                var node = script.GetMapPathFindingNode(PathFindingType.FollowPlayer);
+                if (node == null)
+                {
+                    follow_target = MapIconType.P1;
+                    executor1 = MapIconType.P2;
+                }
+                else
+                {
+                    var input_param = node._input_param;
+                    follow_target = MapPathFindingNode.StringToPlayer(input_param[1]);
+                    executor1 = MapPathFindingNode.StringToPlayer(input_param[2]);
+                    executor2 = MapPathFindingNode.StringToPlayer(input_param[3]);
+                    distance = float.Parse(input_param[4]);
+                    avoid_factor = float.Parse(input_param[5]);
+                }
+
+
+                var small_map_pos = mapData.SmallMapPos;
+                var dir = mapData.GetDir_FollowTarget(executor1, follow_target, distance, avoid_factor
+                                                    , out exe1_recog, out target_recog, out var path1);
+
+                mapData.GetDir_FollowTarget(executor2, follow_target, distance, avoid_factor
+                                            , out exe2_recog, out target_recog, out var path2);
+
+                pixels = mapData.GetDebugImage_PlayerAStar(path1, path2, size, out var start_pos);
+
+
+                line_offset = new Vector2Int(-(start_pos.x % 5), -(start_pos.y % 5));
+
+                if (!exe1_recog || !target_recog || (executor2 != MapIconType.Undefined && !exe2_recog))
+                {
+                    debug_str = $"无法识别: ";
+                    if (!exe1_recog) debug_str += $"E1 |";
+                    if (executor2 != MapIconType.Undefined && !exe2_recog) debug_str += $"E2 |";
+                    if (!target_recog) debug_str += $"T |";
+                    debug_str = debug_str.TrimEnd('|');
+                }
+
+                DU.LogWarning($"方向 {dir}");
+            }
+            else if (option == Options.LightMap)
+            {
+                pixels = mapData.GetImageLightMap();
+            }
+            else if (option == Options.SmallMapOrigin)
+            {
+                size = new Vector2Int(200, 200);
+                pixels = mapData.GetDebugImage_SmallMapOrigin();
+            }
+            else if (option == Options.SmallMap)
+            {
+                var match_score = mapData.GetCurAccuracyScore();
+                var average_score = mapData.GetAverageAccuracyScore();
+                debug_str += $"{DU.FloatFormat(match_score)}/{DU.FloatFormat(average_score)}";
+                size = new Vector2Int(200, 200);
+                pixels = mapData.GetDebugImage_SmallMap(MapData.SmallMapDebugType.Normal);
+            }
+            else if (option == Options.RawSmallMap)
+            {
+                size = new Vector2Int(200, 200);
+                pixels = mapData.GetDebugImage_SmallMap(MapData.SmallMapDebugType.Raw);
+            }
+            else if (option == Options.ErrorSmallMap)
+            {
+                size = new Vector2Int(200, 200);
+                pixels = mapData.GetDebugImage_SmallMap(MapData.SmallMapDebugType.Error);
+            }
+
+            else if (option == Options.JudgeMap)
+            {
+                pixels = mapData.GetDebugImage_JudgeMap();
+            }
+            else if (option == Options.FogMap)
+            {
+                pixels = mapData.GetDebugImage_FogMap();
             }
             else if (option == Options.AStartFunc)
             {
@@ -232,76 +385,20 @@ namespace Script.UI.Panel.Auto
                 }
                 catch
                 {
-                    DU.LogError("[A*寻路 打印图像] 输入文本格式不对");
+                    DU.LogError("[AStartFunc] 输入文本格式不对");
                     return;
                 }
 
+                BigCellPathResult pathObj = null;
                 DU.RunWithTimer(() =>
-                    mapData.StartAStarBigGrid(start, target)
+                  pathObj = mapData.StartAStarBigGrid(start, target)
                     , "StartAStarBigGrid");
-                pixels = mapData.GetImageGridAStar();
+                pixels = mapData.GetDebugImage_GridAStar(pathObj);
 
-            }
-            else if (option == Options.SearchTargetFunc)
-            {
-                var str = command;
-                int target_index = 0;
-                try
-                {
-                    target_index = int.Parse(str);
-                }
-                catch
-                {
-                    DU.LogError("[指定目标寻路 打印图像] 输入文本格式不对");
-                    return;
-                }
-                DU.RunWithTimer(() =>
-                    mapData.StartAStarByIndex(target_index)
-                , "StartAStarBigGrid");
-
-                // 可能会变
-                //
-                mapData.GetContentAttr(out xRange, out yRange
-               , out w, out h);
-                size = new Vector2Int(w, h);
-
-                pixels = mapData.GetImageGridAStar();
-            }
-            else if (option == Options.FindNearestFog)
-            {
-                mapData.FindNearestFog(false);
-                pixels = mapData.GetImageToNearestFog();
-            }
-            else if (option == Options.FindNearestFogFollowing)
-            {
-                size = new Vector2Int(200, 200);
-                mapData.FindNearestFog(false);
-                pixels = mapData.GetImageToNearestFogFollowing(size.x, size.y, out var start_pos);
-                line_offset = new Vector2Int(-(start_pos.x % 5), -(start_pos.y % 5));
-
-                DU.LogWarning($"寻路方向：{mapData.GetPFDirection()}");
-            }
-            else if (option == Options.LightMap)
-            {
-                pixels = mapData.GetImageLightMap();
-            }
-            else if (option == Options.SmallMap)
-            {
-                size = new Vector2Int(200, 200);
-                pixels = mapData.GetImageSmallMap();
-            }
-            else if (option == Options.JudgeMap)
-            {
-                pixels = mapData.GetImageJudgeMap();
-            }
-            else if (option == Options.FogMap)
-            {
-                pixels = mapData.GetImageFogMap();
             }
             else if (option == Options.SaveAllMap)
             {
                 //保存
-                var script = AutoScriptManager.Inst.GetScriptData(scriptId);
                 string dir = $"{script.GetCapturePath()}/拍摄地图节点";
                 if (!Directory.Exists(dir))
                     Directory.CreateDirectory(dir);
@@ -312,6 +409,23 @@ namespace Script.UI.Panel.Auto
 
             if (pixels.Length == 0)
                 return;
+
+
+
+            var errors = mapData.ErrorList;
+            if (errors[0] > 0)
+                debug_str += $" 匹配E{errors[0]}";
+            if (errors[1] > 0)
+                debug_str += $" 漏缝E{errors[1]}";
+            if (errors[2] > 0)
+                debug_str += $" 空地E{errors[2]}";
+
+            if (option != Options.SmallMap)
+            {
+                var match_score = mapData.GetCurAccuracyScore();
+                var average_score = mapData.GetAverageAccuracyScore();
+                debug_str += $" {DU.FloatFormat(match_score)}";
+            }
 
             Texture2D mapTexture = null;
             if (cacheKey != null && _mapOptionCache.TryGetValue(cacheKey, out var val)
@@ -334,7 +448,7 @@ namespace Script.UI.Panel.Auto
                 }
             }
 
-            pixels = IU.Color32ReverseYAxis(pixels, size.x);
+            // if (needReverseY) pixels = IU.Color32ReverseYAxis(pixels, size.x);
 
             // 应用像素数据到纹理
             mapTexture.SetPixels32(pixels);
@@ -352,16 +466,85 @@ namespace Script.UI.Panel.Auto
             }
         }
 
+        static void ExploreFog(AutoScriptData script, MapData mapData, out string debug_str)
+        {
+            debug_str = "";
+            MapIconType executor = MapIconType.P1;
+            var node = script.GetMapPathFindingNode(PathFindingType.ExploreFog);
+            float avoid_factor = 1.5f;
+            float team_max_distance = 0;
+            if (node != null)
+            {
+                var input_param = node._input_param;
+                executor = MapPathFindingNode.StringToPlayer(input_param[1]);
+                avoid_factor = float.Parse(input_param[2]);
+                team_max_distance = float.Parse(input_param[3]);
+            }
+
+            bool distance_fit = mapData.CheckPlayerDistance(executor, team_max_distance);
+            if (distance_fit)
+                mapData.FindNearestFogAStar(executor, false, avoid_factor);
+            else
+                debug_str += "友方过远";
+        }
+
+
+        static void ReachPos(AutoScriptData script, MapData mapData, out Color32[] pixels, out string debug_str)
+        {
+            var size = new Vector2Int(200, 200);
+            debug_str = "";
+            var node = script.GetMapPathFindingNode(PathFindingType.ReachPos);
+            if (node == null)
+            {
+                debug_str = "无脚本节点";
+                pixels = mapData.GetDebugImage_DetailFollowing(size, out _);
+                return;
+            }
+
+            var input_param = node._input_param;
+            MapIconType executor = MapPathFindingNode.StringToPlayer(input_param[1]);
+            var temp = script.FormulaGetResultV2(input_param[2]);
+            var target_pos = mapData.ConvertToData(temp);
+            float stop_distance = script.FormulaGetResult(input_param[3]);
+            float avoid_factor = float.Parse(input_param[4]);
+            float team_max_distance = float.Parse(input_param[5]);
+
+
+            var executor_pos = mapData.FindPlayerPosAndHistory(executor, out _);
+
+            bool stop_distance_fit = (executor_pos - target_pos).magnitude > stop_distance;
+            bool team_distance_fit = mapData.CheckPlayerDistance(executor, team_max_distance);
+            if (team_distance_fit && stop_distance_fit)
+            {
+                var findPath = mapData.PlayerToTileAStar(executor_pos, target_pos, avoid_factor);
+                pixels = mapData.GetDebugImage_DetailFollowing(size, out _, findPath);
+                if (findPath.Status != PathFindingResult.Success)
+                {
+                    debug_str = "寻路失败";
+                }
+            }
+            else
+            {
+                if (!team_distance_fit)
+                    debug_str = "友方过远";
+                else if (!stop_distance_fit)
+                    debug_str = "已抵达";
+                pixels = mapData.GetDebugImage_DetailFollowing(size, out _);
+            }
+
+        }
+
         #endregion
 
 
         #endregion
+
+        string _init_path = @"D:\unityProject\MyProject_Resource";
 
         void OnClickLeftPathBtn()
         {
             // string init_path = Application.streamingAssetsPath;
-            string init_path = @"D:\unityProject\MyProject\TestResource\图";
-            string path = WU.OpenFileDialog("选择图片", init_path, "图片 *.png *.jpg)|*.png;*.jpg");
+            string path = WU.OpenFileDialog("选择图片", _init_path, "图片 *.png *.jpg)|*.png;*.jpg");
             LoadLeftImage(path);
         }
 
@@ -384,20 +567,28 @@ namespace Script.UI.Panel.Auto
 
         void OnClickRightPathBtn()
         {
-            string init_path = @"D:\unityProject\MyProject\TestResource\图";
-            string path = WU.OpenFileDialog("选择图片", init_path, "图片 *.png *.jpg)|*.png;*.jpg");
+            string path = WU.OpenFileDialog("选择图片", _init_path, "图片 *.png *.jpg)|*.png;*.jpg");
             if (string.IsNullOrEmpty(path)) return;
 
             RightImage.SetData(path, Path.GetFileName(path));
         }
 
         #region Update
+
+        List<string> _strList = new List<string>();
+        List<Vector3Int> _colorList1 = new List<Vector3Int>();
+        List<Vector3Int> _colorList2 = new List<Vector3Int>();
         void Update()
         {
             if (Input.GetKeyDown(KeyCode.Space) && _mapData != null && _index <= _max_index)
             {
+                // GameTimer.Inst.SetTimeOnce(this, () =>      // 防止断点时，对代码输出了空格
+                // {
+
                 var file_path = _debug_dir + $"/{_index++}.png";
-                _mapData.Capture(new Bitmap(file_path));
+                var bit = new Bitmap(file_path);
+                var colors = IU.BitmapToColor32(bit);
+                _mapData.Capture(colors);
 
                 _clickLeft = false;
                 OnSelectMapOption(_optionSelectStatus[_clickLeft ? 0 : 1]);
@@ -405,7 +596,18 @@ namespace Script.UI.Panel.Auto
                 _clickLeft = true;
                 OnSelectMapOption(_optionSelectStatus[_clickLeft ? 0 : 1]);
 
-                _mapData.PrintResult();
+                // _mapData.PrintResult();
+
+                // }, 0);
+            }
+
+            if (Input.GetKeyDown(KeyCode.Return))
+            {
+                _strList.Add(InputText.text);
+                LeftImage.GetSelectPixelInfo(out var center, out var convolution);
+                _colorList1.Add(center);
+                _colorList2.Add(convolution);
+                InputText.text = "";
             }
 
 
@@ -497,13 +699,18 @@ namespace Script.UI.Panel.Auto
 
             // 数据源
             var pixs = LeftImage.GetColor32(out _, out _);
-            var colorData = MapData.ColorToData(pixs);
+            PixType[,] colorData = null;
+            List<Vector2Int>[] icon_result = null;
+            DU.RunWithTimer(() =>
+            {
+                MapData.ColorToData(pixs, out colorData, out _, out _);
+            }, "ColorToData");
 
 
             Texture2D texture = new Texture2D(_imgW, _imgH, TextureFormat.RGBA32, false);
-
             // 填充纹理数据
             Color32[] pixels = new Color32[_imgW * _imgH];
+            Color32Image image = new Color32Image(pixels, _imgW, _imgH);
             for (int i = 0; i < _imgH; i++)
                 for (int j = 0; j < _imgW; j++)
                 {
@@ -523,6 +730,7 @@ namespace Script.UI.Panel.Auto
                         pixels[index] = new Color32(0, 0, 180, 255);
 
                 }
+            // MapData.DrawIcon(image, icon_result, default);
 
             // 应用像素数据到纹理
             texture.SetPixels32(pixels);
@@ -658,13 +866,7 @@ namespace Script.UI.Panel.Auto
 
 
         #region Other与Btn
-        static List<string> ToolOptions = new List<string>()
-            {
-                "裁剪区域",         //以左上角为起点，截取指定宽高的区域
-                "对比颜色",         //颜色不同的像素，会有白色遮罩
-                "处理图片",         //个性化需求
-                "对比图片指标",     //个性化需求
-            };
+
 
 
         MapData _mapData;
@@ -684,12 +886,17 @@ namespace Script.UI.Panel.Auto
 
         void OnClickBtn2th()
         {
+            // var img = RecogUtil.GetImg(LeftImage._path);
+            // RecogUtil.RecogAffix(img);
 
             // FilterPixel();
             // SplitBagCell();
 
             //  比较下谁执快
             TestExecutionTime.Inst.Test();
+            // TestExecutionTime.Inst.Test10();
+            // TestExecutionTime.Inst.Test20();
+
         }
 
 
@@ -702,7 +909,7 @@ namespace Script.UI.Panel.Auto
             // if (_mapData == null)
             // {
             MapDataManager.Inst.Remove("Map-22");
-            MapDataManager.Inst.Create("Map-22", new CVRect(0, 0, 200, 200), 0);
+            MapDataManager.Inst.Create("Map-22", new CVRect(0, 0, 200, 200));
             _mapData = MapDataManager.Inst.Get("Map-22");
             // }
 
@@ -714,13 +921,28 @@ namespace Script.UI.Panel.Auto
             // var dir = @"D:\unityProject\MyProject\Assets\StreamingAssets\SmallMap\小地图_22";
 
             // _index = 1; _max_index = 40; _debug_dir = @"Assets\StreamingAssets\SmallMap\Map-22";
-            // _index = 31; _max_index = 111; _debug_dir = @"D:\unityProject\MyProject\TestResource\0.2间隔";
-            _index = 1; _max_index = 48; _debug_dir = @"D:\unityProject\MyProject\TestResource\Map-23";
+            // _index = 31; _max_index = 111; _debug_dir = @"D:\unityProject\MyProject_Resource\0.2间隔";
+            // _index = 1; _max_index = 48; _debug_dir = @"D:\unityProject\MyProject\TestResource\Map-23";
+
+            // _index = 0; _max_index = 51; _debug_dir = @"D:\unityProject\MyProject_Resource\for_init";
+
+            // _index = 15; _max_index = 25; _debug_dir = @"D:\unityProject\MyProject_Resource\案例\P3P4";
+
+            // _index = 1; _max_index = 31; _debug_dir = @"D:\unityProject\MyProject_Resource\案例\Map-102";
+            // _index = 1; _max_index = 11; _debug_dir = @"D:\unityProject\MyProject_Resource\案例\物品";
+            // _index = 1; _max_index = 37; _debug_dir = @"D:\unityProject\MyProject_Resource\案例\bug1";
+            // _index = 1; _max_index = 22; _debug_dir = @"D:\unityProject\MyProject_Resource\案例\bug初始空地";
+            // _index = 1; _max_index = 20; _debug_dir = @"D:\unityProject\MyProject_Resource\案例\开头堵死2";
+            _index = 340; _max_index = 380; _debug_dir = @"D:\unityProject\MyProject_Resource\案例\事故1";
+
+            // _debug_dir = @"D:\unityProject\MyProject\TestResource";
+            // var file_path = _debug_dir + $"/{1}.png";
 
             // for (_index = 31; _index <= 111; _index++)
             // {
-            //     var file_path = _debug_dir + $"/{_index}.png";
-            //     _mapData.Capture(new Bitmap(file_path));
+            // var file_path = _debug_dir + $"/{_index}.png";
+            // var colors = IU.BitmapToColor32(new Bitmap(file_path));
+            // _mapData.Capture(colors);
             // }
 
 
@@ -731,36 +953,49 @@ namespace Script.UI.Panel.Auto
 
         void OnClickBtn4th()
         {
-            if (_mapData == null)
-            {
-                OnClickBtn3th();
-            }
+            // if (_mapData == null)
+            // {
+            //     OnClickBtn3th();
+            // }
 
-            var str = InputText.text;
-            str.Replace(" ", "");
-            str = str.Substring(1, str.Length - 2);
-            var arr = str.Split(',');
-            var start = new Vector2Int(int.Parse(arr[0]), int.Parse(arr[1]));
-            var target = new Vector2Int(int.Parse(arr[2]), int.Parse(arr[3]));
+            // var str = InputText.text;
+            // str.Replace(" ", "");
+            // str = str.Substring(1, str.Length - 2);
+            // var arr = str.Split(',');
+            // var start = new Vector2Int(int.Parse(arr[0]), int.Parse(arr[1]));
+            // var target = new Vector2Int(int.Parse(arr[2]), int.Parse(arr[3]));
 
 
-            DU.RunWithTimer(() =>
-            {
-                // for (int i =0;i<10;i++)
-                _mapData.StartAStarBigGrid(start, target);
-            }, "StartAStarBigGrid");
+            // DU.RunWithTimer(() =>
+            // {
+            //     // for (int i =0;i<10;i++)
+            //     _mapData.StartAStarBigGrid(start, target);
+            // }, "StartAStarBigGrid");
 
-            var save_path = Application.streamingAssetsPath + $"/SmallMap/big_map.png";
-            _mapData.SaveAStar(save_path);
+            // var save_path = Application.streamingAssetsPath + $"/SmallMap/big_map.png";
+            // _mapData.SaveAStar(save_path);
 
         }
 
         #region ToolOption
+
+        static List<string> ToolOptions = new List<string>()
+            {
+                "处理图片",         //个性化需求
+                "处理图片2",         //个性化需求
+                "裁剪区域",         //以左上角为起点，截取指定宽高的区域
+                "喂单张地图",
+                "对比颜色",         //颜色不同的像素，会有白色遮罩
+                "对比图片",
+                "打印数据",
+                "处理文本",
+            };
+
         void OnSelectToolOption(int opt_index)
         {
             string option = ToolOptions[opt_index];
             var input_str = InputText.text;
-            string output_path = @"D:\unityProject\MyProject\TestResource\图\输出";
+            string output_path = @"D:\unityProject\MyProject_Resource\输出";
 
             if (option == "裁剪区域")
             {
@@ -776,13 +1011,67 @@ namespace Script.UI.Panel.Auto
                 {
                     int h = bitmap.Height;
                     using (Bitmap cut = IU.CutOutImage(bitmap
-                        , new CVRect(num0, h - 1 - num1, num2, num3)))
+                        , new CVRect(num0, h - 1 - (num1 + num3 - 1), num2, num3)))
                     {
                         IU.SaveBitmap(cut, $"{output_path}/{name}_cut.png");
                     }
                 }
 
             }
+            else if (option == "喂单张地图")
+            {
+                MapDataManager.Inst.Remove("Map-22");
+                MapDataManager.Inst.Create("Map-22", new CVRect(0, 0, 200, 200));
+                _mapData = MapDataManager.Inst.Get("Map-22");
+                var colors = IU.BitmapToColor32(new Bitmap(LeftImage._path));
+                _mapData.Capture(colors);
+            }
+
+            else if (option == "处理图片")
+            {
+                string path = LeftImage._path;
+
+                List<Color32Image> list = null;
+                using (Bitmap bitmap = new Bitmap(path))
+                using (Bitmap bitmap1 = bitmap.Clone(new Rectangle(0, 0, bitmap.Width, bitmap.Height), PixelFormat.Format32bppArgb))
+                {
+                    IU.BitmapToMat(bitmap1, out Mat source, out Vec4b[] data);
+                    var img = new Vec4bImage(data, bitmap1.Width, bitmap1.Height);
+                    list = RecogUtil.ItemFloatParse(img);
+                    source.Dispose();
+                }
+
+                string dir_path = @"D:\unityProject\MyProject_Resource\ItemAttr\template";
+                string name = Path.GetFileNameWithoutExtension(path);
+                string[] sub_names = name.Split(",");
+
+
+                for (var i = 0; i < list.Count; i++)
+                {
+                    if (i >= sub_names.Length) continue;
+                    string sub = sub_names[i];
+                    if (string.IsNullOrEmpty(sub)) continue;
+                    RecogUtil.Save(list[i], $"{dir_path}/{sub}.png");
+                }
+
+            }
+            else if (option == "处理图片2")
+            {
+                var img = RecogUtil.GetImg(LeftImage._path);
+
+                // string dir_path = @"D:\unityProject\MyProject_Resource\ItemAttr\template\输出";
+                // string path = $"{dir_path}/word";
+                // RecogUtil.SplitTextImg(img, path);
+
+
+                // RecogUtil.IdentifyNumber(img, false, out int number);
+                // DU.LogWarning($"数字: {number}");
+
+                RecogUtil.IdentifyFrame(img, false, out var en);
+                DU.LogWarning($"框: {en}");
+
+            }
+
             else if (option == "对比颜色")
             {
 
@@ -810,37 +1099,9 @@ namespace Script.UI.Panel.Auto
                 RightImage.SetMask(colors);
 
             }
-            else if (option == "处理图片")
+            else if (option == "对比图片")
             {
 
-                // var input_path = LeftImage._path;
-                // using (Bitmap bitmap = new Bitmap(input_path))
-                // {
-                //     var input = IU.BitmapToColor32(bitmap);
-                //     IU.Color32ReverseVertical(input, 40);
-                //     IdentifyRomanNumber(input, new Vector2Int(37, 5), out _, out _);
-                // }
-
-
-                // var input_path = LeftImage._path;
-                // var name = Path.GetFileNameWithoutExtension(input_path);
-                // using (Bitmap bitmap = new Bitmap(input_path))
-                // {
-                //     int h = bitmap.Height;
-                //     MakeImageUtil.DealGameItem1(bitmap, out var cut, out var w);
-                //     IU.Color32ReverseVertical(cut, w);
-                //     IU.SaveColor32(cut,w, $"{output_path}/{name}_cut.png");
-                // }
-
-                // var colors = LeftImage.GetColor32(out int w, out _);
-                // var res = MakeImageUtil.Blur(colors, w, new Vector2Int(18, 15), new Vector2Int(17, 20));
-                // IU.Color32ReverseYAxis(res, w);
-                // var name = Path.GetFileNameWithoutExtension(LeftImage._path);
-                // IU.SaveColor32(res, w, $"{output_path}/{name}_cut.png");
-
-            }
-            else if (option == "对比图片指标")
-            {
                 // 算平均方差, 平均差
                 var pixs_left = LeftImage.GetColor32(out int w, out int h);
                 var pixs_right = RightImage.GetColor32(out _, out _);
@@ -872,6 +1133,92 @@ namespace Script.UI.Panel.Auto
                 float average_square_diff = (float)square_diff / count;
                 DU.LogWarning($"两图像的平均差：{DU.FloatFormat(average_diff, 2)}；平均方差：{DU.FloatFormat(average_square_diff, 2)} ");
             }
+            else if (option == "打印数据")
+            {
+                string str1 = "";
+                string str2 = "";
+                string str3 = "";
+                for (int i = 0; i < _strList.Count; i++)
+                {
+                    var str = _strList[i];
+                    var color1 = _colorList1[i];
+                    var color2 = _colorList2[i];
+                    str1 += $"#{i + 1}.{str}/";
+                    str2 += $"({color1.x},{color1.y},{color1.z})/";
+                    str3 += $"({color2.x},{color2.y},{color2.z})/";
+                }
+
+                DU.LogWarning($"{str1}\n{str2}\n{str3}");
+
+                _strList.Clear();
+                _colorList1.Clear();
+                _colorList2.Clear();
+            }
+            else if (option == "处理文本")
+            {
+                var str = InputText.text;
+                var itemList = str.Split("/");
+                Vector3Int sum = default;
+                Vector3Int max = default;
+                Vector3Int min = default;
+
+                float g2r_min = 0;
+                float g2r_max = 0;
+                float b2g_min = 0;
+                float b2g_max = 0;
+                float b2r_min = 0;
+                float b2r_max = 0;
+
+                foreach (var item in itemList)
+                {
+                    var nums = item.Substring(1, item.Length - 2).Split(",");
+                    var x = int.Parse(nums[0]);
+                    var y = int.Parse(nums[1]);
+                    var z = int.Parse(nums[2]);
+                    var g2r = (float)y / x;
+                    var b2g = (float)z / y;
+                    var b2r = (float)z / x;
+                    sum.x += x;
+                    sum.y += y;
+                    sum.z += z;
+
+                    if (max == default)
+                        max = new Vector3Int(x, y, z);
+                    if (min == default)
+                        min = new Vector3Int(x, y, z);
+                    if (g2r_min == 0)
+                        g2r_min = g2r;
+                    if (g2r_max == 0)
+                        g2r_max = g2r;
+                    if (b2g_min == 0)
+                        b2g_min = b2g;
+                    if (b2g_max == 0)
+                        b2g_max = b2g;
+                    if (b2r_min == 0)
+                        b2r_min = b2r;
+                    if (b2r_max == 0)
+                        b2r_max = b2r;
+
+                    max.x = x > max.x ? x : max.x;
+                    max.y = y > max.y ? y : max.y;
+                    max.z = z > max.z ? z : max.z;
+                    min.x = x < min.x ? x : min.x;
+                    min.y = y < min.y ? y : min.y;
+                    min.z = z < min.z ? z : min.z;
+                    if (g2r < g2r_min) g2r_min = g2r;
+                    if (g2r > g2r_min) g2r_max = g2r;
+                    if (b2g < b2g_min) b2g_min = b2g;
+                    if (b2g > b2g_min) b2g_max = b2g;
+                    if (b2r < b2r_min) b2r_min = b2r;
+                    if (b2r > b2r_min) b2r_max = b2r;
+                }
+                int len = itemList.Length;
+                Vector3Int average = new Vector3Int(sum.x / len, sum.y / len, sum.z / len);
+                DU.LogWarning($"最小值({min.x},{min.y},{min.z}) 最大值({max.x},{max.y},{max.z}) 平均({average.x},{average.y},{average.z})\n"
+                + $"g2r最小值{g2r_min}最大值{g2r_max}\n" + $"b2g最小值{b2g_min}最大值{b2g_max}\n"
+                + $"b2r最小值{b2r_min}最大值{b2r_max}\n");
+                InputText.text = "";
+            }
 
 
 
@@ -898,7 +1245,7 @@ namespace Script.UI.Panel.Auto
         #endregion
         #region SplitBagCell
 
-        public GameItemCfg Config = GameItemCfg.Inst;
+        public GameItemCfgManager Config => GameItemCfgManager.Inst;
 
         void SplitBagCell()
         {
@@ -930,21 +1277,17 @@ namespace Script.UI.Panel.Auto
             //
             for (int i = 0; i < 5; i++)
             {
-                var y = 18 + 39 * i;
+                // var y = 18 + 39 * i;
+                var y = i < 4 ? 153 + 39 * i : 152 + 39 * i;
 
                 for (int j = 0; j < 12; j++)
                 {
                     var cell = bagCells[i * 12 + j];
-                    var x = j < 5 ? 21 + 39 * j : 20 + 39 * j;
+                    var x = j < 5 ? 1099 + 39 * j : 1098 + 39 * j;
                     cell.Row = 5 - i;
                     cell.Column = j + 1;
-                    cell.StartP = new Vector2Int(x, y);
-                    var size = new Vector2Int(40, 40);
-                    if (i == 4)
-                        size.y = size.y - 1;
-                    if (j == 4)
-                        size.x = size.x - 1;
-                    cell.Size = size;
+                    cell.LeftUp = new Vector2Int(x, y);
+                    cell.Size = new Vector2Int(j != 4 ? 40 : 39, i != 4 ? 40 : 39);
                 }
 
             }
@@ -958,6 +1301,7 @@ namespace Script.UI.Panel.Auto
                 foreach (BagCell cell in bagCells)
                 {
                     var startP = cell.StartP;
+                    var size = cell.Size;
                     // debug
                     // if (cell.Row == 4 && cell.Column == 5)
                     // {
@@ -967,27 +1311,23 @@ namespace Script.UI.Panel.Auto
                     string item_debug = "";
                     string number_debug = "";
                     string roman_debug = "";
-                    IdentifyItem(img, cell, out string item_id, out float item_score, out var a_diff);
-                    IdentifyFrame(img, startP, out string frame_id, out float frame_score);
+
+                    RecogUtil.IdentifyItem(img, out int item_id, out float item_score, out var a_diff);
+                    RecogUtil.IdentifyFrame(img, false, out ItemGridFrame frame_id);
 
                     var frame_debug = "";
-                    if (frame_id != "0") frame_debug = $"框{frame_id}/ {(item_score >= 1 ? "1" : GetDebugStr(frame_score))}\n";
+                    if (frame_id != ItemGridFrame.Empty) frame_debug = $"框{(int)frame_id}/\n";
 
-                    if (item_id != null)
+                    if (item_id > 0)
                     {
                         var item = Config.GetItem(item_id);
-                        var numberPos = startP + new Vector2Int(5, 23);
-                        var RomanPos = startP + new Vector2Int(37, 5);
-                        if (cell.Row == 1)
-                        {
-                            numberPos.y -= 1;
-                            RomanPos.y -= 1;
-                        }
+                        // 以左下角不行就以左上角。 5/23
+                        var numberPos = new Vector2Int(startP.x + 5, cell.LeftUp.y - 16);
 
-                        IdentifyNumber(img, numberPos, out int number, out float number_score);
+                        RecogUtil.IdentifyNumber(img, false, out int number);
 
-                        item_debug = $"{item.Name}/ {(item_score == 0 ? "0" : GetDebugStr(item_score) + "/ " + GetDebugStr(a_diff))}\n";
-                        number_debug = $"数{number}/ {(number_score == 1 ? "1" : GetDebugStr(number_score))}\n";
+                        item_debug = $"{SU.GetString(item.Name)}/ {(item_score == 0 ? "0" : GetDebugStr(item_score) + "/ " + GetDebugStr(a_diff))}\n";
+                        number_debug = $"数{number}/ \n";
                         // roman_debug = romanNumber > 1 ?
                         // $"阶{romanNumber}/ {(roman_score == 1 ? "1" : GetDebugStr(roman_score))}\n"
                         //  : "";
@@ -1046,10 +1386,7 @@ namespace Script.UI.Panel.Auto
         {
             return $"<color=#FF0000>{DU.FloatFormat(num, 2)}</color>";
         }
-        /// <summary>
-        /// Item1是颜色为(0,0,0,255)的坐标列表，Item2是图像数据
-        /// </summary>
-        (List<Vector2Int>, Color32[])[] numberTmpls;
+
         /// <summary>
         /// 罗马数字三个符号。Item1是数字值，Item2是图像数据
         /// </summary>
@@ -1062,11 +1399,7 @@ namespace Script.UI.Panel.Auto
         /// </summary>
         void IdentifyNumber(Color32Image image, Vector2Int offset, out int number, out float score)
         {
-
-            if (numberTmpls == null)
-                InitNumberTemplate();
-
-
+            var Config = GameItemCfgManager.Inst;
             number = 1;
             score = 1;
             var colors = image.Colors;
@@ -1075,65 +1408,66 @@ namespace Script.UI.Panel.Auto
             List<(int, float)> result = new List<(int, float)>();
             // tar[offset.y * w + offset.x] = color_red;   // debug
 
-            while (true)
-            {
-                int black_count = 0;
-                for (int i = 0; i < 12; i++)
-                    for (int j = 0; j < 7; j++)
-                    {
-                        var x = offset.x + j;
-                        var y = offset.y + i;
-                        var index = y * w + x;
-                        if (IU.Color32Equal(colors[index], black_color))
-                        {
-                            black_count++;
-                        }
-                    }
-                if (black_count < 2)
-                    break;
+            // while (true)
+            // {
+            //     int black_count = 0;
+            //     for (int i = 0; i < 12; i++)
+            //         for (int j = 0; j < 7; j++)
+            //         {
+            //             var x = offset.x + j;
+            //             var y = offset.y + i;
+            //             var index = y * w + x;
+            //             Color32 a = colors[index];
+            //             Color32 b = black_color;
+            //             if (a.r == b.r && a.g == b.g && a.b == b.b)
+            //                 black_count++;
+            //         }
+            //     if (black_count < 2)
+            //         break;
 
-                var fit_list = new float[10];
-                int max_fit_num = 0;
-                float max_fit_score = 0;
-                for (int image_i = 0; image_i < 10; image_i++)
-                // for (int image_i = 1; image_i < 2; image_i++)
-                {
-                    var template = numberTmpls[image_i];
-                    var list = template.Item1;
-                    var fit_count = 0;
-                    foreach (var pos in list)
-                    {
-                        var index = (pos.y + offset.y) * w + pos.x + offset.x;
-                        // input[index] = new Color32(255, 0, 0, 255);
-                        if (IU.Color32Equal(colors[index], black_color))
-                        {
-                            fit_count++;
-                        }
-                    }
+            //     var fit_list = new float[10];
+            //     int max_fit_num = 0;
+            //     float max_fit_score = 0;
+            //     for (int image_i = 0; image_i < 10; image_i++)
+            //     // for (int image_i = 1; image_i < 2; image_i++)
+            //     {
+            //         var template = Config.numberTmpls[image_i];
+            //         var list = template.Item1;
+            //         var fit_count = 0;
+            //         foreach (var pos in list)
+            //         {
+            //             var index = (pos.y + offset.y) * w + pos.x + offset.x;
+            //             Color32 a = colors[index];
+            //             Color32 b = black_color;
+            //             // input[index] = new Color32(255, 0, 0, 255);
+            //             if (a.r == b.r && a.g == b.g && a.b == b.b)
+            //                 fit_count++;
+            //         }
 
-                    float fit_score = (float)fit_count / list.Count;
-                    fit_list[image_i] = fit_score;
-                    if (fit_score > max_fit_score)
-                    {
-                        max_fit_score = fit_score;
-                        max_fit_num = image_i;
-                    }
-                }
-
-
-                result.Add((max_fit_num, max_fit_score));
-
-                // 至少要一半的黑像素符合。不达及格线就终止
-                if (max_fit_score < 0.5f)
-                    break;
+            //         float fit_score = (float)fit_count / list.Count;
+            //         fit_list[image_i] = fit_score;
+            //         if (fit_score > max_fit_score)
+            //         {
+            //             max_fit_score = fit_score;
+            //             max_fit_num = image_i;
+            //         }
+            //     }
 
 
-                offset = offset + new Vector2Int(7, 0);
-            }
+            //     result.Add((max_fit_num, max_fit_score));
+
+            //     // 至少要一半的黑像素符合。不达及格线就终止
+            //     if (max_fit_score < 0.5f)
+            //         break;
+
+
+            //     offset = offset + new Vector2Int(7, 0);
+            // }
 
             if (result.Count == 0)
                 return;
 
+            // 拼接字符串，再转为数字
             string s = "";
             float min = 1;
             foreach (var pair in result)
@@ -1148,35 +1482,6 @@ namespace Script.UI.Panel.Auto
 
 
 
-        void InitNumberTemplate()
-        {
-            numberTmpls = new (List<Vector2Int>, Color32[])[10];
-            var pre_path = $"{Application.streamingAssetsPath}/GameItem/Num";
-
-            for (int image_i = 0; image_i < 10; image_i++)
-            {
-                var path = $"{pre_path}/{image_i}.png";
-                using (var bitmap = new Bitmap(path))
-                {
-                    var colors = IU.BitmapToColor32(bitmap);
-                    IU.Color32ReverseYAxis(colors, 7);
-                    List<Vector2Int> list = new List<Vector2Int>();
-                    for (int i = 0; i < 12; i++)
-                    {
-                        for (int j = 0; j < 7; j++)
-                        {
-                            var index = i * 7 + j;
-                            var color = colors[index];
-                            if (color.r == 0 && color.a == 255)
-                            {
-                                list.Add(new Vector2Int(j, i));
-                            }
-                        }
-                    }
-                    numberTmpls[image_i] = (list, colors);
-                }
-            }
-        }
 
         void IdentifyRomanNumber(Color32Image image, Vector2Int offset, out int number, out float score)
         {
@@ -1374,171 +1679,131 @@ namespace Script.UI.Panel.Auto
 
         #region IdentItem
 
-        void IdentifyItem(Color32Image image, BagCell cell, out string id, out float score, out float a_diff)
-        {
-            id = null;
-            score = 0;
-            a_diff = 0;
+        // void IdentifyItem(Color32Image image, Vector2Int startP, Vector2Int cell_size,
+        //                 out string id, out float score, out float a_diff)
+        // {
+        //     GameItemCfgManager Config = GameItemCfgManager.Inst;
+        //     id = null;
+        //     score = 0;
+        //     a_diff = 0;
 
-            var colors = image.Colors;
-            var w = image.W;
+        //     var colors = image.Colors;
+        //     var w = image.W;
 
-            Vector2Int size = cell.Size - new Vector2Int(2, 2);
-            List<Vector2Int> sample_points = Config.BlurPoints[size];
-            List<(string, Color32[])> tmpls = Config.ImageTmplsList[size];
-            var sample_count = sample_points.Count;
-            var tmpl_count = tmpls.Count;
+        //     Vector2Int size = cell_size - new Vector2Int(2, 2);
+        //     List<Vector2Int> sample_points = Config.BlurPoints;
+        //     List<(string, Color32[])> tmpls = Config.ImageTmplsList;
+        //     var sample_count = sample_points.Count;
+        //     var tmpl_count = tmpls.Count;
 
-            // 中间10X10是黑的就表明为空背包格
-            Vector2Int m_off = new Vector2Int(15, 15) + cell.StartP;
-            int black_sum = 0;
-            for (int dy = 0; dy < 10; dy++)
-                for (int dx = 0; dx < 10; dx++)
-                {
-                    var col = colors[(dy + m_off.y) * w + dx + m_off.x];
-                    black_sum = black_sum + col.r + col.g + col.b;
-                }
-            int average_black = black_sum / 300;
-            if (average_black < 10)
-                return;
+        //     // 中间10X10是黑的就表明为空背包格
+        //     Vector2Int m_off = startP + new Vector2Int(15, 15);
+        //     int black_sum = 0;
+        //     for (int dy = 0; dy < 10; dy++)
+        //         for (int dx = 0; dx < 10; dx++)
+        //         {
+        //             var col = colors[(dy + m_off.y) * w + dx + m_off.x];
+        //             black_sum = black_sum + col.r + col.g + col.b;
+        //         }
+        //     int average_black = black_sum / 300;
+        //     if (average_black < 10)
+        //         return;
 
-            Vector2Int off = new Vector2Int(1, 1) + cell.StartP;
-            var sampl_result = new Color32[sample_count];
+        //     Vector2Int off = startP + new Vector2Int(1, 1);
+        //     var sampl_result = new Color32[sample_count];
 
-            int s = Config.BlurScale;
-            int blur_size = s * s;
-            for (int i = 0; i < sample_count; i++)
-            {
-                var p = sample_points[i];
-                int r = 0, g = 0, b = 0;
-                for (int dy = 0; dy < s; dy++)
-                    for (int dx = 0; dx < s; dx++)
-                    {
-                        var col = colors[(p.y + dy + off.y) * w + p.x + dx + off.x];
-                        r += col.r;
-                        g += col.g;
-                        b += col.b;
-                    }
-                var blur_col = new Color32((byte)(r / blur_size), (byte)(g / blur_size), (byte)(b / blur_size), 255);
-                sampl_result[i] = blur_col;
-            }
+        //     int s = Config.BlurScale;
+        //     int blur_size = s * s;
+        //     for (int i = 0; i < sample_count; i++)
+        //     {
+        //         var p = sample_points[i];
+        //         int r = 0, g = 0, b = 0;
+        //         for (int dy = 0; dy < s; dy++)
+        //             for (int dx = 0; dx < s; dx++)
+        //             {
+        //                 var col = colors[(p.y + dy + off.y) * w + p.x + dx + off.x];
+        //                 r += col.r;
+        //                 g += col.g;
+        //                 b += col.b;
+        //             }
+        //         var blur_col = new Color32((byte)(r / blur_size), (byte)(g / blur_size), (byte)(b / blur_size), 255);
+        //         sampl_result[i] = blur_col;
+        //     }
 
-            // 全匹配
-            // score = float.MaxValue;
-            // foreach (var pair in tmpls)
-            // {
-            //     var c2 = pair.Item2;
-            //     CompareTwoImage(sampl_result, c2, out var average_diff, out var diff);
-            //     if (diff < score)
-            //     {
-            //         id = pair.Item1;
-            //         score = diff;
-            //         a_diff = average_diff;
-            //     }
-            // }
-
-
-            // threshold 淘汰阈值，当累计差达到阈值时淘汰此匹配项，但至少保留一项
-
-            int result = 0;
-            bool plan1 = false;
-            float thr = 20 * 3 * sample_count;
-
-            if (plan1)
-            {
-                // int[] diffs = new int[tmpl_count];
-                // int remain = tmpl_count;
-
-                // for (int i = 0; i < sample_count; i++)
-                // {
-                //     if (remain <= 1)
-                //         break;
-
-                //     var left = sampl_result[i];
-                //     for (int j = 0; j < tmpl_count; j++)
-                //     {
-                //         if (diffs[j] < 0)
-                //             continue;
-
-                //         var pair = tmpls[j];
-                //         Color32[] t_colors = pair.Item2;
-                //         Color32 right = t_colors[i];
-                //         int dr = left.r - right.r, dg = left.g - right.g, db = left.b - right.b;
-                //         diffs[j] = diffs[j] +  dr * dr + dg * dg + db * db;
-                //         if (diffs[j] >= thr && remain > 1)
-                //         {
-                //             diffs[j] = -1;  //淘汰
-                //             remain--;
-                //         }
-                //     }
-                // }
-                // result = Array.FindIndex(diffs, (val) => val >= 0);
-            }
-            else
-            {
-                // 减少了循环次数
-                //
-                // (模版序,累计差)[]
-                DiffInfo[] diffs = new DiffInfo[tmpl_count];
-                for (int i = 0; i < tmpl_count; i++)
-                {
-                    diffs[i] = new DiffInfo() { Index = i, Sum = 0 };
-                }
-
-                int remain = tmpl_count;
-                for (int i = 0; i < sample_count; i++)
-                {
-                    var index = 0;
-                    var left = sampl_result[i];
-                    for (int j = 0; j < remain; j++)
-                    {
-                        DiffInfo t_diff = diffs[j];
-                        var pair = tmpls[t_diff.Index];
-
-                        Color32[] t_colors = pair.Item2;
-                        Color32 right = t_colors[i];
-                        int dr = left.r - right.r, dg = left.g - right.g, db = left.b - right.b;
-                        t_diff.Sum = t_diff.Sum + dr * dr + dg * dg + db * db;
-                        diffs[j] = t_diff;
-
-                        if (t_diff.Sum < thr)
-                        {
-                            diffs[index++] = t_diff;
-                        }
-                    }
-
-                    if (index <= 1)
-                    {
-                        if (index == 0)     // 保留方差最小的
-                            for (int j = 1; j < remain; j++)
-                            {
-                                if (diffs[j].Sum < diffs[0].Sum)
-                                    diffs[0] = diffs[j];
-                            }
-                        break;
-                    }
-
-                    remain = index;
-                }
-                result = diffs[0].Index;
-            }
-
-            var tmpl = tmpls[result];
-            MakeImageUtil.CompareTwoImage(sampl_result, tmpl.Item2, out var average_diff, out var diff);
-            id = tmpl.Item1;
-            score = diff;
-            a_diff = average_diff;
-
-            var startP = cell.StartP;
-            var RomanPos = startP + new Vector2Int(37, 5);
-            if (cell.Row == 1)
-            {
-                RomanPos.y -= 1;
-            }
-            IdentifyRomanNumber(image, RomanPos, out int romanNumber, out float roman_score);
+        //     // 全匹配
+        //     // score = float.MaxValue;
+        //     // foreach (var pair in tmpls)
+        //     // {
+        //     //     var c2 = pair.Item2;
+        //     //     CompareTwoImage(sampl_result, c2, out var average_diff, out var diff);
+        //     //     if (diff < score)
+        //     //     {
+        //     //         id = pair.Item1;
+        //     //         score = diff;
+        //     //         a_diff = average_diff;
+        //     //     }
+        //     // }
 
 
-        }
+        //     // 如同淘汰制比赛一样，冠军最后胜出。
+        //     // threshold 淘汰阈值，当累计差达到阈值时淘汰此匹配项，但至少保留一项
+        //     //
+        //     float thr = 20 * 3 * sample_count;
+        //     DiffInfo[] diffs = new DiffInfo[tmpl_count];    // DiffInfo = (模版序,累计差)
+        //     for (int i = 0; i < tmpl_count; i++)
+        //     {
+        //         diffs[i] = new DiffInfo() { Id = i, Sum = 0 };
+        //     }
+
+        //     int remain = tmpl_count;
+        //     for (int i = 0; i < sample_count; i++)
+        //     {
+        //         var index = 0;
+        //         var left = sampl_result[i];
+        //         for (int j = 0; j < remain; j++)
+        //         {
+        //             DiffInfo t_diff = diffs[j];
+        //             var pair = tmpls[t_diff.Id];
+
+        //             Color32[] t_colors = pair.Item2;
+        //             Color32 right = t_colors[i];
+        //             int dr = left.r - right.r, dg = left.g - right.g, db = left.b - right.b;
+        //             t_diff.Sum = t_diff.Sum + dr * dr + dg * dg + db * db;
+        //             diffs[j] = t_diff;
+
+        //             if (t_diff.Sum < thr)
+        //             {
+        //                 diffs[index++] = t_diff;
+        //             }
+        //         }
+
+        //         if (index <= 1)
+        //         {
+        //             if (index == 0)     // 保留方差最小的
+        //                 for (int j = 1; j < remain; j++)
+        //                 {
+        //                     if (diffs[j].Sum < diffs[0].Sum)
+        //                         diffs[0] = diffs[j];
+        //                 }
+        //             break;
+        //         }
+
+        //         remain = index;
+        //     }
+        //     int result = diffs[0].Id;
+
+
+        //     var tmpl = tmpls[result];
+        //     MakeImageUtil.CompareTwoImage(sampl_result, tmpl.Item2, out var average_diff, out var diff);
+        //     id = tmpl.Item1;
+        //     score = diff;
+        //     a_diff = average_diff;
+
+        //     // var startP = cell_startP;
+        //     // var RomanPos = startP + new Vector2Int(37, 5);
+        //     // var RomanPos = new Vector2Int(startP.x + 37, startP.y + size.y - 35);
+        //     // IdentifyRomanNumber(image, RomanPos, out int romanNumber, out float roman_score);
+        // }
 
 
 
@@ -1547,29 +1812,14 @@ namespace Script.UI.Panel.Auto
 
     }
 
-    public struct Color32Image
-    {
-        public Color32[] Colors;
-        public int W;
-        public int H;
-        public Color32Image(Color32[] colors, int w, int h)
-        {
-            Colors = colors;
-            W = w;
-            H = h;
-        }
-    }
 
-    public struct DiffInfo
-    {
-        public int Index;
-        public int Sum;
 
-    }
+
 
     public class BagCell
     {
-        public Vector2Int StartP;
+        public Vector2Int LeftUp;
+        public Vector2Int StartP => new Vector2Int(LeftUp.x, LeftUp.y - Size.y + 1);
         public Vector2Int Size;
         public int Row;             // 背包中的第几行
         public int Column;          // 背包中的第几列

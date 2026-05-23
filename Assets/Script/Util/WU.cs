@@ -54,23 +54,27 @@ namespace Script.Util
         public const uint MOUSEEVENTF_MOVE = 0x0001;
         public const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
 
-        [DllImport("user32.dll")]
-        public static extern IntPtr WindowFromPoint(Point point);
+        // [DllImport("user32.dll")]
+        // public static extern IntPtr WindowFromPoint(Point point);
         /// <summary>
         /// 设置鼠标光标的可见性
         /// </summary>
-        [DllImport("user32.dll")]
-        public static extern int ShowCursor(bool bShow);
+        // [DllImport("user32.dll")]
+        // public static extern int ShowCursor(bool bShow);
 
         #endregion
 
         #region 键盘API
 
+        [DllImport("user32.dll")]               // 监听全局的键盘输入，失去焦点时也能监听
+        public static extern short GetAsyncKeyState(int vKey);
+
+
         [DllImport("user32.dll")]
         static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
-        [DllImport("Kernel32.dll", EntryPoint = "GetTickCount", CharSet = CharSet.Auto)]
-        internal static extern int GetTickCount();
+        // [DllImport("Kernel32.dll", EntryPoint = "GetTickCount", CharSet = CharSet.Auto)]
+        // internal static extern int GetTickCount();
 
         [StructLayout(LayoutKind.Sequential)]
         struct INPUT
@@ -104,49 +108,51 @@ namespace Script.Util
         const int INPUT_KEYBOARD = 1;
         const int KEYEVENTF_KEYUP = 0x0002;
         const int KEYEVENTF_SCANCODE = 0x0008;
-        public static void SendInputKeyDown(int vkCode, bool isDown = true)
-        {
-            INPUT[] inputs = new INPUT[1];
-            inputs[0].type = INPUT_KEYBOARD;
-            inputs[0].u.ki.wVk = (ushort)vkCode; // 推荐为0
-            inputs[0].u.ki.wScan = 0;
-            inputs[0].u.ki.dwFlags = (uint)(isDown ? 0 : KEYEVENTF_KEYUP);
-            inputs[0].u.ki.time = 0;
-            inputs[0].u.ki.dwExtraInfo = IntPtr.Zero;
-
-            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
-        }
-
-        public static void SendKeyPress(int vkCode)
-        {
-            // SendInputKeyDown(vkCode);
-            // System.Threading.Thread.Sleep(200);
-            // SendInputKeyDown(vkCode, false);
-
-            // 按下
-            keybd_event((byte)vkCode, 0, 0, UIntPtr.Zero);
-            System.Threading.Thread.Sleep(200); // 可根据需要调整延迟
-                                                // 抬起
-            keybd_event((byte)vkCode, 0, KEYEVENTF_KEYUP, UIntPtr.Zero); // 2 = KEYEVENTF_KEYUP
-        }
 
 
-        public static void PostMessagePacked(IntPtr handle, KeyboardEnum key, bool isRepeat, bool isDown = true)
-        {
-            int repeatCount = 1;
-            int scanCode = (int)MapVirtualKey((uint)key, 0);  /* 你的扫描码 */
-            int extended = 0; // 一般为0，扩展键如右侧Ctrl/Alt/方向键为1
-            int repeat = isRepeat ? 1 : 0; //之前是否被按下过
+        // public static void SendInputKeyDown(int vkCode, bool isDown = true)
+        // {
+        //     INPUT[] inputs = new INPUT[1];
+        //     inputs[0].type = INPUT_KEYBOARD;
+        //     inputs[0].u.ki.wVk = (ushort)vkCode; // 推荐为0
+        //     inputs[0].u.ki.wScan = 0;
+        //     inputs[0].u.ki.dwFlags = (uint)(isDown ? 0 : KEYEVENTF_KEYUP);
+        //     inputs[0].u.ki.time = 0;
+        //     inputs[0].u.ki.dwExtraInfo = IntPtr.Zero;
 
-            int lParam = (repeatCount & 0xFFFF) | ((scanCode & 0xFF) << 16) | (repeat << 30) | (extended << 24);
-            var flag = isDown ? KeyboardHookEnum.KeyDown : KeyboardHookEnum.KeyUp;
-            PostMessage(handle, (uint)flag, (IntPtr)key, (IntPtr)lParam);
-        }
+        //     SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
+        // }
+
+        // public static void SendKeyPress(int vkCode)
+        // {
+        //     // SendInputKeyDown(vkCode);
+        //     // System.Threading.Thread.Sleep(200);
+        //     // SendInputKeyDown(vkCode, false);
+
+        //     // 按下
+        //     keybd_event((byte)vkCode, 0, 0, UIntPtr.Zero);
+        //     System.Threading.Thread.Sleep(200); // 可根据需要调整延迟
+        //                                         // 抬起
+        //     keybd_event((byte)vkCode, 0, KEYEVENTF_KEYUP, UIntPtr.Zero); // 2 = KEYEVENTF_KEYUP
+        // }
+
+
+        // public static void PostMessagePacked(IntPtr handle, KeyboardEnum key, bool isRepeat, bool isDown = true)
+        // {
+        //     int repeatCount = 1;
+        //     int scanCode = (int)MapVirtualKey((uint)key, 0);  /* 你的扫描码 */
+        //     int extended = 0; // 一般为0，扩展键如右侧Ctrl/Alt/方向键为1
+        //     int repeat = isRepeat ? 1 : 0; //之前是否被按下过
+
+        //     int lParam = (repeatCount & 0xFFFF) | ((scanCode & 0xFF) << 16) | (repeat << 30) | (extended << 24);
+        //     var flag = isDown ? KeyboardHookEnum.KeyDown : KeyboardHookEnum.KeyUp;
+        //     PostMessage(handle, (uint)flag, (IntPtr)key, (IntPtr)lParam);
+        // }
 
         public static void keybd_event_packed(KeyboardEnum vkCode, bool isDown = true)
         {
             var flag = isDown ? 0 : KEYEVENTF_KEYUP;
-            byte scanCode = (byte)MapVirtualKey((uint)vkCode, 0); 
+            byte scanCode = (byte)MapVirtualKey((uint)vkCode, 0);
             keybd_event((byte)vkCode, scanCode, (uint)flag, UIntPtr.Zero);
         }
 
@@ -156,8 +162,8 @@ namespace Script.Util
         /// <summary>
         /// 设置焦点窗口
         /// </summary>
-        [DllImport("user32.dll")]
-        public static extern bool SetForegroundWindow(IntPtr hWnd);
+        // [DllImport("user32.dll")]
+        // public static extern bool SetForegroundWindow(IntPtr hWnd);
 
         /// <summary>
         /// 对后台窗口发送消息。鼠标操作或键盘操作
@@ -175,10 +181,11 @@ namespace Script.Util
         /// <param name="wParam">附加参数，word parameter</param>
         /// <param name="lParam">附加参数，long parameter</param>
         /// <returns></returns>
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-        [DllImport("user32.dll", EntryPoint = "PostMessage")]
-        public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+        // [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        // public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        // [DllImport("user32.dll", EntryPoint = "PostMessage")]
+        // public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
         /// <summary>
         /// 查找窗口句柄
         /// </summary>
@@ -407,21 +414,21 @@ namespace Script.Util
         /// <summary>
         /// 后台鼠标点击。x和y是相对于窗口的坐标,原点是窗口左上角
         /// </summary>
-        public static void SimulateMouseClick(IntPtr hWnd, int x, int y)
-        {
-            const uint WM_MOUSEMOVE = 0x0200; // 鼠标左键按下
-            const uint WM_LBUTTONDOWN = 0x0201; // 鼠标左键按下
-            const uint WM_LBUTTONUP = 0x0202;   // 鼠标左键释放
+        // public static void SimulateMouseClick(IntPtr hWnd, int x, int y)
+        // {
+        //     const uint WM_MOUSEMOVE = 0x0200; // 鼠标左键按下
+        //     const uint WM_LBUTTONDOWN = 0x0201; // 鼠标左键按下
+        //     const uint WM_LBUTTONUP = 0x0202;   // 鼠标左键释放
 
-            // 将 x 和 y 坐标打包到 lParam
-            IntPtr lParam = (IntPtr)((y << 16) | x);
+        //     // 将 x 和 y 坐标打包到 lParam
+        //     IntPtr lParam = (IntPtr)((y << 16) | x);
 
-            SendMessage(hWnd, WM_MOUSEMOVE, IntPtr.Zero, lParam);
-            SendMessage(hWnd, WM_LBUTTONDOWN, (IntPtr)0x0001, lParam);
-            SendMessage(hWnd, WM_LBUTTONUP, IntPtr.Zero, lParam);
-            // SendMessage(hWnd, WM_LBUTTONDOWN, (IntPtr)0x0001, lParam);
-            // SendMessage(hWnd, WM_LBUTTONUP, IntPtr.Zero, lParam);
-        }
+        //     SendMessage(hWnd, WM_MOUSEMOVE, IntPtr.Zero, lParam);
+        //     SendMessage(hWnd, WM_LBUTTONDOWN, (IntPtr)0x0001, lParam);
+        //     SendMessage(hWnd, WM_LBUTTONUP, IntPtr.Zero, lParam);
+        //     // SendMessage(hWnd, WM_LBUTTONDOWN, (IntPtr)0x0001, lParam);
+        //     // SendMessage(hWnd, WM_LBUTTONUP, IntPtr.Zero, lParam);
+        // }
 
         public static string GetWindowTitle(IntPtr hWnd)
         {
@@ -434,71 +441,48 @@ namespace Script.Util
 
         #region  截屏
 
-        [DllImport("user32.dll")]
-        public static extern IntPtr GetWindowDC(IntPtr hWnd);
 
-        [DllImport("user32.dll")]
-        public static extern IntPtr ReleaseDC(IntPtr hWnd, IntPtr hDC);
+        // public static Bitmap CaptureWindowByHWnd(IntPtr hWnd, string filePath)
+        // {
+        //     // IntPtr hdcSrc = GetWindowDC(hWnd);
+        //     // IntPtr hdcDest = CreateCompatibleDC(hdcSrc);
+        //     // IntPtr hBitmap = CreateCompatibleBitmap(hdcSrc, width, height);
+        //     // IntPtr hOld = SelectObject(hdcDest, hBitmap);
 
-        [DllImport("gdi32.dll")]
-        public static extern IntPtr CreateCompatibleDC(IntPtr hdc);
+        //     // BitBlt(hdcDest, 0, 0, width, height, hdcSrc, 0, 0, 0x00CC0020); // SRCCOPY
 
-        [DllImport("gdi32.dll")]
-        public static extern IntPtr CreateCompatibleBitmap(IntPtr hdc, int nWidth, int nHeight);
+        //     // Bitmap bmp = Image.FromHbitmap(hBitmap);
 
-        [DllImport("gdi32.dll")]
-        public static extern IntPtr SelectObject(IntPtr hdc, IntPtr hgdiobj);
-
-        [DllImport("gdi32.dll")]
-        public static extern bool BitBlt(IntPtr hdcDest, int nXDest, int nYDest, int nWidth, int nHeight,
-            IntPtr hdcSrc, int nXSrc, int nYSrc, int dwRop);
-
-        [DllImport("gdi32.dll")]
-        public static extern bool DeleteObject(IntPtr hObject);
-
-        [DllImport("gdi32.dll")]
-        public static extern bool DeleteDC(IntPtr hdc);
-        public static Bitmap CaptureWindowByHWnd(IntPtr hWnd, string filePath)
-        {
-            // IntPtr hdcSrc = GetWindowDC(hWnd);
-            // IntPtr hdcDest = CreateCompatibleDC(hdcSrc);
-            // IntPtr hBitmap = CreateCompatibleBitmap(hdcSrc, width, height);
-            // IntPtr hOld = SelectObject(hdcDest, hBitmap);
-
-            // BitBlt(hdcDest, 0, 0, width, height, hdcSrc, 0, 0, 0x00CC0020); // SRCCOPY
-
-            // Bitmap bmp = Image.FromHbitmap(hBitmap);
-
-            // SelectObject(hdcDest, hOld);
-            // DeleteObject(hBitmap);
-            // DeleteDC(hdcDest);
-            // ReleaseDC(hWnd, hdcSrc);
-            // return bmp;
+        //     // SelectObject(hdcDest, hOld);
+        //     // DeleteObject(hBitmap);
+        //     // DeleteDC(hdcDest);
+        //     // ReleaseDC(hWnd, hdcSrc);
+        //     // return bmp;
 
 
-            // 1. 获取窗口区域
-            RECT rect;
-            GetWindowRect(hWnd, out rect);
-            int width = rect.Right - rect.Left;
-            int height = rect.Bottom - rect.Top;
+        //     // 1. 获取窗口区域
+        //     RECT rect;
+        //     GetWindowRect(hWnd, out rect);
+        //     int width = rect.Right - rect.Left;
+        //     int height = rect.Bottom - rect.Top;
 
-            // 2. 截取全屏
-            Bitmap screenBmp = new Bitmap(width, height);
-            using (System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(screenBmp))
-            {
-                //第1、2个参数：屏幕起始坐标（如 0,0）
-                //第3、4个参数：目标 Bitmap 的起始坐标（如 0,0）
-                //第5个参数：复制的区域大小
-                g.CopyFromScreen(rect.Left, rect.Top, 0, 0, screenBmp.Size);
-            }
+        //     // 2. 截取全屏
+        //     Bitmap screenBmp = new Bitmap(width, height);
+        //     using (System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(screenBmp))
+        //     {
+        //         //第1、2个参数：屏幕起始坐标（如 0,0）
+        //         //第3、4个参数：目标 Bitmap 的起始坐标（如 0,0）
+        //         //第5个参数：复制的区域大小
+        //         g.CopyFromScreen(rect.Left, rect.Top, 0, 0, screenBmp.Size);
+        //     }
 
-            return screenBmp;
-        }
+        //     return screenBmp;
+        // }
 
-
-     /// <summary>
-     /// 全屏25ms, bitmap.PixelFormat = Format32bppArgb
-     /// </summary>
+        /// <summary>
+        /// 全屏25ms, bitmap.PixelFormat = Format32bppArgb。
+        /// 能不能更快。
+        /// </summary>
         public static Bitmap CaptureWindow(CVRect rect)
         {
             int screenW = Screen.width;
@@ -664,14 +648,14 @@ namespace Script.Util
         SystemUp = 0x0105,   // 系统按键释放
     }
 
-    public enum KeyboardEnum 
+    public enum KeyboardEnum
     {
         Esc = 0x1B,
         Tab = 0x09,
         CapsLock = 0x14,
-        Shift = 0x10,
-        Ctrl = 0x11,
-        Alt = 0x12,
+        Shift = 0x10,           // 不区分左右的信号
+        Ctrl = 0x11,            // 不区分左右
+        Alt = 0x12,             // 不区分左右
         Space = 0x20,
         Enter = 0x0D,
         Backspace = 0x08,
@@ -684,6 +668,13 @@ namespace Script.Util
         LeftWin = 0x5B,
         RightWin = 0x5C,
         Menu = 0x5D,
+
+        LeftShift = 0xA0,
+        RightShift = 0xA1,
+        LeftCtrl = 0xA2,
+        RightCtrl = 0xA3,
+        LeftAlt = 0xA4,
+        RightAlt = 0xA5,
         // 方向键
         Up = 0x26,
         Down = 0x28,
@@ -728,7 +719,20 @@ namespace Script.Util
         W = 0x57,
         X = 0x58,
         Y = 0x59,
-        Z = 0x5A
+        Z = 0x5A,
+
+        // 特殊标点符号 keys
+        Comma = 0xBC,       // ','
+        Period = 0xBE,      // '.'
+        Semicolon = 0xBA,   // ';'
+        Quote = 0xDE,       // '''
+        Slash = 0xBF,       // '/'
+        Backslash = 0xDC,   // '\\'
+        BracketLeft = 0xDB, // '['
+        BracketRight = 0xDD,// ']'
+        Minus = 0xBD,       // '-'
+        Equals = 0xBB,      // '='
+        Grave = 0xC0,       // '`'
     }
 
     #endregion

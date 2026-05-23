@@ -24,7 +24,7 @@ namespace Script.UI.Components
     {
         public bool Init => _data != null;
         Vector2 _size;
-        float _width;
+        float[] _width;
 
         [SerializeField] private MenuComp[] Menus;         //菜单
 
@@ -38,9 +38,9 @@ namespace Script.UI.Components
                 Utils.SetActive(m, false);
         }
 
-        public void SetData(List<(string, string, Action)> strList, float width = 100, int maxShowCount = 10)
+        public void SetData(List<(string, string, Action)> strList, float[] width = null, int maxShowCount = 10)
         {
-            _width = width;
+            _width = width != null ? width : new float[3] { 100, 100, 100 };
             _data = new List<MenuStrPack>();
             int max_level_record = 0;
 
@@ -116,7 +116,7 @@ namespace Script.UI.Components
                 HoverRecord[i] = -1;
             }
             Utils.SetActive(Menus[0], true);
-            Menus[0].SetData(_data, this, _width);
+            Menus[0].SetData(_data, this, _width[0]);
             ChangeHoverRecord(1, -1);
         }
 
@@ -159,7 +159,7 @@ namespace Script.UI.Components
             MenuComp next = Menus[item.Level];
 
             Utils.SetActive(next, true);
-            next.SetData(item.Pack, this, _width);
+            next.SetData(item.Pack, this, _width[item.Level]);
 
             var screenP = current.GetItemScreenPos(item.Index);
             var menusRectT = next.GetComponent<RectTransform>();
